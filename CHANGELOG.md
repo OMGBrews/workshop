@@ -10,6 +10,16 @@ they create a manually initiated milestone tag or GitHub Release.
 - `Tools/devcontainer/` publishes a project-neutral `install-packages.sh` and a
   mount-agnostic `post_install.sh`, so a consuming image can source its whole
   container layer from Workshop instead of keeping a private copy.
+- New `audit-and-fix` skill family — `audit-and-fix`, `audit-next`, and
+  `audit-done` — with the audit tracker that powers them bundled inside the
+  skill (`audit_tracker/`, stdlib-only Python ≥ 3.11, no venv needed). A repo
+  opts in by committing `docs/work/audits/config.toml`; records live at
+  `docs/work/audits/records/<type>.json` as text-mergeable JSON; the derived
+  SQLite cache lives under the git dir. Repos without the config get a
+  distinct "not opted in" outcome and `--path`-only audits.
+- The `docs/work/` conformance checker gained clause 17: an opted-in
+  `docs/work/audits/` must carry its declaring `config.toml` and parseable
+  JSON records.
 
 ## Release policy
 
