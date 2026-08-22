@@ -294,8 +294,8 @@ def done(
 ) -> None:
     """Upsert an audit record at the given commit (defaults to current HEAD).
 
-    Writes to the YAML source of truth at
-    ``devtools/audit_records/<audit_type>.yaml`` and refreshes the
+    Writes to the JSON source of truth at
+    ``<repo>/docs/work/audits/records/<audit_type>.json`` and refreshes the
     SQLite cache row. When ``note`` is ``None`` on re-audit, the
     existing note (if any) is preserved; pass an explicit empty
     string to clear it. Raises ``ValueError`` if the path is not
@@ -314,7 +314,7 @@ def done(
     now = datetime.now(UTC).isoformat()
     next_counter = _pick_counter(conn, audit_type) + 1
 
-    # YAML is the source of truth; write it first so a crash between
+    # Records are the source of truth; write them first so a crash between
     # writes leaves the cache stale-but-rebuildable rather than the
     # source missing a recorded audit.
     records.write_record(

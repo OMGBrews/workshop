@@ -192,7 +192,6 @@ def validate_types_have_prompts(config: Config, prompts_dir: Path) -> None:
 
 __all__ = [
     "CONFIG_SUBPATH",
-    "CONFIG_SUBPATH",
     "ConfigError",
     "NotARepositoryError",
     "PathKind",

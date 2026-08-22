@@ -2,16 +2,19 @@
 
 Patterns are gitignore-style, matched against repo-relative POSIX paths:
 
-- ``**`` spans **one or more whole segments** — ``app/**`` matches
-  ``app/features`` but not ``app`` itself; a leading or trailing ``**``
-  likewise needs a segment on that side.
+- ``**`` matches whole segments. A ``**`` at the start or between two other
+  segments may match **zero** of them (``app/**/*.py`` matches ``app/x.py``;
+  ``**/__pycache__/**`` matches ``__pycache__/x.py``). A ``**`` at the end
+  requires at least one segment on its side (``app/**`` matches ``app/x`` but
+  not ``app`` itself).
 - ``*`` and ``?`` stay within one segment (they never match ``/``).
 - Everything else in a segment is literal. Character classes are not
   supported; the configs this ships with only use literals and ``*``.
 
-The reference semantics were ``pathlib.PurePosixPath.full_match``, which is
-Python 3.13+; this hand-rolled translation keeps the tracker running on any
-Python >= 3.11 while preserving the behaviour the test suite pins.
+The reference semantics were measured against ``pathlib.PurePosixPath
+.full_match`` on CPython 3.13, which the tracker previously required; this
+hand-rolled translation keeps it running on any Python >= 3.11 while
+preserving the behaviour the test suite pins.
 """
 
 from __future__ import annotations
@@ -24,13 +27,7 @@ from .config import TargetRule
 
 @lru_cache(maxsize=None)
 def _pattern_regex(pattern: str) -> re.Pattern[str]:
-    segments = pattern.split("/")
-    parts: list[str] = []
-    for segment in segments:
-        if segment == "**":
-            # One or more whole segments — never zero.
-            parts.append(r"[^/]+(?:/[^/]+)*")
-            continue
+    def segment_rx(segment: str) -> str:
         piece: list[str] = []
         for char in segment:
             if char == "*":
@@ -39,8 +36,26 @@ def _pattern_regex(pattern: str) -> re.Pattern[str]:
                 piece.append("[^/]")
             else:
                 piece.append(re.escape(char))
-        parts.append("".join(piece))
-    return re.compile("/".join(parts))
+        return "".join(piece)
+
+    segments = pattern.split("/")
+    tokens: list[str] = []
+    last = len(segments) - 1
+    for i, segment in enumerate(segments):
+        if segment == "**":
+            if i == last:
+                # Trailing **: one or more whole segments.
+                tokens.append("[^/]+(?:/[^/]+)*")
+            else:
+                # Leading or interior **: zero or more whole segments,
+                # slashes included, so the next segment glues directly on.
+                tokens.append("(?:[^/]+/)*")
+        elif i == last:
+            tokens.append(segment_rx(segment))
+        else:
+            tokens.append(segment_rx(segment) + "/")
+    return re.compile("".join(tokens))
+
 
 
 def _matches_any(path: str, patterns: list[str]) -> bool:

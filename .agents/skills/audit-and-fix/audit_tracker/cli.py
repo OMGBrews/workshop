@@ -264,12 +264,6 @@ def main(argv: list[str] | None = None) -> int:
     except ConfigError as exc:
         print(f"audit_tracker: {exc}", file=sys.stderr)
         return 2
-    if args.config is None and not config_path.exists():
-        print(
-            f"audit_tracker: not opted in — missing config: {config_path}",
-            file=sys.stderr,
-        )
-        return EXIT_NOT_CONFIGURED
 
     # The shipped prompt set is the closed vocabulary of audit types; a
     # config naming a combination with no prompt file is rejected here.
