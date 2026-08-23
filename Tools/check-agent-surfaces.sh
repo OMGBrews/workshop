@@ -386,9 +386,8 @@ fi
 # backtick spans are stripped before matching `$ARGUMENTS` and slash tokens,
 # because a skill QUOTING a mechanism is documentation, not use of it. That
 # strip is what makes the house form conformant — mentioning `$ARGUMENTS` in
-# backticks with a plain-prose gloss (the way devtools' own docs-audit skill
-# does) is the correct way to talk about the mechanism; writing it bare in
-# prose is what this check flags. The slash pattern additionally requires
+# backticks with a plain-prose gloss is the correct way to talk about the
+# mechanism; writing it bare in prose is what this check flags. The slash pattern additionally requires
 # start-of-line or whitespace before the slash and a lowercase skill-name
 # shape after it, so URL and path fragments (owner/repo, ../x, docs/standing.md)
 # never match. A bare absolute path in prose ("stored in /tmp") is the one

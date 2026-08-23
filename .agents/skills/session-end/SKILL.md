@@ -124,7 +124,7 @@ Consider — as your own judgment call, **not** a question to put to the user �
 
 ## Phase 4 — Docs drift (flag only)
 
-If the session changed architecture, a feature's behavior, a convention, or a procedure, check whether the present-tense docs still match. **Flag** any divergence in the Phase 6 report; do not fix it here. The documentation quality sweep is the `docs-audit` skill — run it separately. It is deliberately not part of this skill.
+If the session changed architecture, a feature's behavior, a convention, or a procedure, check whether the present-tense docs still match. **Flag** any divergence in the Phase 6 report; do not fix it here. The documentation quality sweep is the `audit-and-fix` skill — run it separately. It is deliberately not part of this skill.
 
 One drift shape gets its own check: **a problem document describing a flaw this session fixed.** If the repo keeps `docs/work/problems/` and the session's work fixed — or plausibly fixed — a flaw one of those documents describes, flag that the `kaizen-resolve` skill may be due, naming the document. Flag only, never run it: the close-out deletes the document and the journal entries it consumed behind an evidence gate, and invoking that ritual is the user's call. The flag belongs *here*, at session end, because the close-out cascade falls to the session that verifies the flaw gone — this session holds the evidence, and that context evaporates when it closes.
 
@@ -178,7 +178,7 @@ End there. Do not offer to commit, push, or schedule anything.
 
 - **Do NOT push.** The user pushes manually.
 - **Do NOT auto-commit.** Surface uncommitted work; let the user decide. The single documented exception is a *different* skill: [`session-land`](../session-land/SKILL.md) commits everything, labeled, because it runs when the user is not available to decide. Invoking that skill is how the user opts into the override — never do it from here.
-- **Do NOT run full audits** — the `docs-audit` skill and other heavy audits are separate, not per-session.
+- **Do NOT run full audits** — the `audit-and-fix` skill and other heavy audits are separate, not per-session.
 - **Do NOT force a `patterns/` review** — that's the periodic Act stage, not per-session.
 - **Do NOT write to `docs/work/kaizen/singletons.md`, `patterns/`, or `docs/work/problems/`** — the journal entry is the only kaizen artifact this skill writes. Matches are noted inside the entry (Phase 2c); a fixed flaw is flagged for the `kaizen-resolve` skill (Phase 4), never resolved here.
 - **Do NOT touch an autonomous runner or its worktrees.** If the project runs one (e.g. a task-queue runner), it actively mutates the repo while you work; leaving it running is correct.

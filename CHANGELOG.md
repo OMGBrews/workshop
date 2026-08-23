@@ -3,7 +3,11 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
-## Unreleased
+- Retired the legacy whole-tree documentation audit skill. Its judgment half is owned by the
+  `audit-and-fix` skill's `doc-quality` and `readme-quality` lenses, and
+  whole-tree link integrity by `Tools/check-markdown-links.sh`; the auto-fix
+  pass and the guaranteed style-source fallback were dropped by decision.
+- Workshop is now the hand-authored source of truth; public contributions use
 
 - Workshop is now the hand-authored source of truth; public contributions use
   the pull-request workflow and private vulnerability reporting.

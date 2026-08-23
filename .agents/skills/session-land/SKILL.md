@@ -421,7 +421,7 @@ skipping a caller's confirmation because the landing "already ended".
   landing is not completing.
 - **Do NOT claim a step happened without reading its exit code and output.** A landing that
   reports a clean tree it never verified is worse than one that reports the mess.
-- **Do NOT run full audits** — the `docs-audit` skill and similar are separate and heavy.
+- **Do NOT run full audits** — the `audit-and-fix` skill and similar are separate and heavy.
 - **Do NOT touch an autonomous runner or its worktrees.**
 
 ## See also

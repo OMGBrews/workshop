@@ -433,8 +433,8 @@ fi
 # checks; each stays visible so no registry row silently vanishes.
 
 note 13 "AGENTS.md / CLAUDE.md are outside this contract — audited by Tools/check-agent-surfaces.sh"
-note 14 "README.md files and the docs/README.md index are curation with an accuracy-only obligation — docs-audit's per-repo accuracy check owns them"
-note 15 "docs/style-guides/ and procedures are repo-local taste — owned by the docs-audit skill and the style guide"
+note 14 "README.md files and the docs/README.md index are curation with an accuracy-only obligation — audit-and-fix's readme-quality lens plus Tools/check-markdown-links.sh own them"
+note 15 "docs/style-guides/ and procedures are repo-local taste — owned by the style guide and instruction-file discovery"
 note 16 "scripts/repair_doc_links.py is opt-in and owned by the repo that keeps it — not a shared-conformance concern"
 
 # --- 17: the audit-state directory (opt-in via the declaring config) ----------
