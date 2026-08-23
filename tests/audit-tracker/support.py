@@ -132,6 +132,7 @@ class FakeGit:
         # empty. Empty by default so every test keeps its whole file list.
         self.submodule_owned: set[str] = set()
         self.empty_files: set[str] = set()
+        self.symlink_files: set[str] = set()
 
     def install(self, test: unittest.TestCase) -> FakeGit:
         """Patch ``git_utils`` for the duration of ``test``."""
@@ -151,6 +152,11 @@ class FakeGit:
                 git_utils, "empty_blob_paths", lambda: set(self.empty_files)
             )
         )
+        test.enterContext(
+            mock.patch.object(
+                git_utils, "symlink_paths", lambda: set(self.symlink_files)
+            )
+        )
 
         def _commits_since(since_sha: str, path: str) -> int:
             if since_sha in self.unknown_shas:
@@ -159,6 +165,32 @@ class FakeGit:
 
         test.enterContext(
             mock.patch.object(git_utils, "commits_since", _commits_since)
+        )
+
+        def _commits_since_many(since_sha: str, paths: list[str]) -> dict[str, int]:
+            if since_sha in self.unknown_shas:
+                raise git_utils.UnknownCommitError(f"unknown sha: {since_sha}")
+            return {
+                path: self.commits_by_path.get((since_sha, path), 0)
+                for path in paths
+            }
+
+        test.enterContext(
+            mock.patch.object(git_utils, "commits_since_many", _commits_since_many)
+        )
+        test.enterContext(
+            mock.patch.object(
+                git_utils,
+                "commits_since_many_by_sha",
+                lambda requests: {
+                    sha: {
+                        path: self.commits_by_path.get((sha, path), 0)
+                        for path in paths
+                    }
+                    for sha, paths in requests.items()
+                    if sha not in self.unknown_shas
+                },
+            )
         )
         return self
 
@@ -215,4 +247,3 @@ class RepoTestCase(unittest.TestCase):
             self.repo / "docs/work/audits/config.toml",
             "[audit_types]\n" + types_body.strip() + "\n",
         )
-

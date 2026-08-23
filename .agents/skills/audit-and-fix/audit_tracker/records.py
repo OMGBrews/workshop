@@ -1,7 +1,7 @@
 """JSON source-of-truth for audit records.
 
 Each audit type has its own file at ``<repo>/docs/work/audits/records/<type>.json``
-holding the per-path audit history and the round-robin pick counter.
+holding the per-path audit history.
 The SQLite database is a derivable cache — :func:`load_into_db`
 repopulates it from these files on every CLI invocation, and
 :func:`write_record` writes through whenever ``done()`` records a new
@@ -14,7 +14,6 @@ audited the same path, and someone must decide which audit "wins").
 File format::
 
     {
-      "pick_counter": 17,
       "audits": {
         "app/features/foo.py": {
           "last_audited_at": "2026-05-10T12:34:56+00:00",
@@ -40,9 +39,14 @@ sibling of the records.
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import sys
+import tempfile
+from contextlib import contextmanager
+from fcntl import LOCK_EX, LOCK_UN, flock
 from pathlib import Path
+from collections.abc import Iterator
 from typing import TypedDict
 
 from . import git_utils
@@ -66,11 +70,13 @@ class _RecordsFile(TypedDict, total=False):
     audits: dict[str, _AuditEntry]
 
 
-class RefreshState(TypedDict):
+class RefreshState(TypedDict, total=False):
     """Persisted record of the most recent ``refresh()`` run."""
 
     last_refreshed_at: str
     last_refresh_commit: str | None
+    config_digest: str | None
+    index_fingerprint: str | None
 
 
 def default_records_dir(repo: Path | None = None) -> Path:
@@ -92,32 +98,68 @@ def records_path(audit_type: str, records_dir: Path | None = None) -> Path:
 def _read_records_file(path: Path) -> _RecordsFile:
     """Load one records file. Missing files are treated as empty."""
     if not path.exists():
-        return {"pick_counter": 0, "audits": {}}
+        return {"audits": {}}
     with path.open(encoding="utf-8") as fh:
         raw = json.load(fh)
     if raw is None:
-        return {"pick_counter": 0, "audits": {}}
+        return {"audits": {}}
     if not isinstance(raw, dict):
         raise ValueError(f"{path}: expected a JSON object at the top level, got {type(raw).__name__}")
-    pick_counter = raw.get("pick_counter", 0)
-    if not isinstance(pick_counter, int):
+    pick_counter = raw.get("pick_counter")
+    if pick_counter is not None and not isinstance(pick_counter, int):
         raise ValueError(f"{path}: pick_counter must be an int, got {type(pick_counter).__name__}")
     audits = raw.get("audits") or {}
     if not isinstance(audits, dict):
         raise ValueError(f"{path}: audits must be an object, got {type(audits).__name__}")
-    return {"pick_counter": pick_counter, "audits": audits}
+    parsed: _RecordsFile = {"audits": audits}
+    if pick_counter is not None:
+        parsed["pick_counter"] = pick_counter
+    return parsed
 
 
 def _write_records_file(path: Path, data: _RecordsFile) -> None:
-    """Serialize a records file with sorted keys for deterministic diffs."""
+    """Atomically serialize a records file with deterministic ordering."""
     path.parent.mkdir(parents=True, exist_ok=True)
     audits = data.get("audits") or {}
-    payload: dict[str, object] = {
-        "pick_counter": data.get("pick_counter", 0),
-        "audits": {k: dict(audits[k]) for k in sorted(audits)},
-    }
+    payload: dict[str, object] = {"audits": {k: dict(audits[k]) for k in sorted(audits)}}
+    # Read legacy counters for compatibility, but never create or advance one.
+    # Existing files retain their value until a deliberate migration removes
+    # it, avoiding a noisy fleet-wide rewrite on the next audit.
+    if "pick_counter" in data:
+        payload["pick_counter"] = data["pick_counter"]
     text = json.dumps(payload, sort_keys=True, indent=2, ensure_ascii=False) + "\n"
-    path.write_text(text, encoding="utf-8")
+    temporary: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            delete=False,
+        ) as handle:
+            temporary = Path(handle.name)
+            handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+        temporary = None
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+@contextmanager
+def _records_lock(audit_type: str) -> Iterator[None]:
+    """Serialize read-modify-write cycles for one audit type in this clone."""
+    lock_dir = cache_dir()
+    lock_dir.mkdir(parents=True, exist_ok=True)
+    safe_name = audit_type.replace("/", "_")
+    with (lock_dir / f"records-{safe_name}.lock").open("a+") as handle:
+        flock(handle.fileno(), LOCK_EX)
+        try:
+            yield
+        finally:
+            flock(handle.fileno(), LOCK_UN)
 
 
 def load_into_db(conn: sqlite3.Connection, records_dir: Path | None = None) -> None:
@@ -178,6 +220,8 @@ def load_into_db(conn: sqlite3.Connection, records_dir: Path | None = None) -> N
                 """,
                 rows,
             )
+            # Keep the legacy cache row readable for older callers. New code
+            # does not use or mutate this merge-prone global counter.
             conn.execute(
                 "INSERT INTO audit_type_state (audit_type, pick_counter) VALUES (?, ?)",
                 (audit_type, data.get("pick_counter", 0)),
@@ -205,13 +249,29 @@ def read_refresh_state(cache: Path | None = None) -> RefreshState | None:
     commit = raw.get("last_refresh_commit")
     if commit is not None and not isinstance(commit, str):
         commit = None
-    return {"last_refreshed_at": last_at, "last_refresh_commit": commit}
+    config_digest = raw.get("config_digest")
+    if config_digest is not None and not isinstance(config_digest, str):
+        config_digest = None
+    index = raw.get("index_fingerprint")
+    if index is not None and not isinstance(index, str):
+        index = None
+    state: RefreshState = {
+        "last_refreshed_at": last_at,
+        "last_refresh_commit": commit,
+    }
+    if config_digest is not None:
+        state["config_digest"] = config_digest
+    if index is not None:
+        state["index_fingerprint"] = index
+    return state
 
 
 def write_refresh_state(
     *,
     last_refreshed_at: str,
     last_refresh_commit: str | None,
+    config_digest: str | None = None,
+    index_fingerprint: str | None = None,
     cache: Path | None = None,
 ) -> None:
     """Persist refresh state so the question "when was the tracker last
@@ -222,6 +282,8 @@ def write_refresh_state(
     payload: dict[str, object] = {
         "last_refreshed_at": last_refreshed_at,
         "last_refresh_commit": last_refresh_commit,
+        "config_digest": config_digest,
+        "index_fingerprint": index_fingerprint,
     }
     text = json.dumps(payload, sort_keys=True, indent=2, ensure_ascii=False) + "\n"
     path.write_text(text, encoding="utf-8")
@@ -234,30 +296,34 @@ def write_record(
     last_audited_at: str,
     last_audit_commit: str | None,
     notes: str | None,
-    pick_counter: int,
+    pick_counter: int | None = None,
     records_dir: Path | None = None,
 ) -> None:
     """Upsert one audit record into the per-type JSON file.
 
     ``notes`` is preserved when ``None`` is passed and a prior note
     exists, matching the SQLite ``done()`` semantic. Pass an empty
-    string to clear the note.
+    string to clear the note. ``pick_counter`` is accepted but ignored for
+    compatibility with callers from before rotation state became local-only.
     """
     file_path = records_path(audit_type, records_dir)
-    data = _read_records_file(file_path)
-    audits = data.get("audits") or {}
-    existing = audits.get(path, {})
-    new_entry: _AuditEntry = {
-        "last_audited_at": last_audited_at,
-        "last_audit_commit": last_audit_commit,
-    }
-    if notes is None:
-        prior = existing.get("notes")
-        if prior is not None:
-            new_entry["notes"] = prior
-    elif notes != "":
-        new_entry["notes"] = notes
-    audits[path] = new_entry
-    data["audits"] = audits
-    data["pick_counter"] = pick_counter
-    _write_records_file(file_path, data)
+    with _records_lock(audit_type):
+        # The lock covers the whole read-modify-replace cycle. Atomic replace
+        # protects readers; the lock prevents two writers from both reading
+        # the same predecessor and dropping one another's path updates.
+        data = _read_records_file(file_path)
+        audits = data.get("audits") or {}
+        existing = audits.get(path, {})
+        new_entry: _AuditEntry = {
+            "last_audited_at": last_audited_at,
+            "last_audit_commit": last_audit_commit,
+        }
+        if notes is None:
+            prior = existing.get("notes")
+            if prior is not None:
+                new_entry["notes"] = prior
+        elif notes != "":
+            new_entry["notes"] = notes
+        audits[path] = new_entry
+        data["audits"] = audits
+        _write_records_file(file_path, data)

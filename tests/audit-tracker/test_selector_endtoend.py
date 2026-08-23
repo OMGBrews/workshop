@@ -37,7 +37,18 @@ from select_next import EXIT_MALFORMED_OUTPUT, EXIT_TRACKER_FAILED, repo_root
 
 _SELECTOR = support.SKILL_DIR / "select_next.py"
 
-_CANDIDATE = "app/api/routes.py\t[file]\tnever audited"
+_CANDIDATE = json.dumps(
+    {
+        "outcome": "selected",
+        "candidates": [{
+            "path": "app/api/routes.py",
+            "kind": "file",
+            "reason": "never-audited",
+            "last_audited_at": None,
+            "commits_since_audit": 0,
+        }],
+    }
+)
 _WARNING = "audit_tracker: auto-refresh (head-changed)"
 
 
@@ -116,7 +127,7 @@ class SelectorEndToEndTest(support.RepoTestCase):
             echo 'audit_tracker: skipping 20 orphan record(s)' >&2
             touch '{started}'
             sleep 1
-            printf 'app/api/routes.py\\t[file]\\tnever audited\\n'
+            printf '%s\\n' '{_CANDIDATE}'
             """
         )
 
@@ -155,7 +166,7 @@ class SelectorEndToEndTest(support.RepoTestCase):
                 "outcome": "selected",
                 "path": "app/api/routes.py",
                 "kind": "file",
-                "reason": "never audited",
+                "reason": "never-audited",
                 "diagnostics": [_WARNING, "audit_tracker: skipping 20 orphan record(s)"],
             },
         )
@@ -165,7 +176,7 @@ class SelectorEndToEndTest(support.RepoTestCase):
         self.stub_tracker(
             f"""
             echo '{_WARNING}' >&2
-            echo "No candidates for 'doc-quality' under 'docs/work/kaizen'."
+            echo '{{"outcome":"empty","candidates":[]}}'
             """
         )
         result = self.run_selector("doc-quality", "--under", "docs/work/kaizen")
@@ -178,15 +189,15 @@ class SelectorEndToEndTest(support.RepoTestCase):
     # 3. two records → exit 3 with no record on stdout -------------------------
     def test_malformed_success_output_exits_non_zero_with_no_record(self) -> None:
         self.stub_tracker(
-            """
-            printf 'app/api/routes.py\\t[file]\\tnever audited\\n'
-            printf 'docs/README.md\\t[file]\\tnever audited\\n'
+            f"""
+            printf '%s\\n' '{_CANDIDATE}'
+            printf '%s\\n' '{_CANDIDATE}'
             """
         )
         result = self.run_selector("code-quality")
         self.assertEqual(result.returncode, EXIT_MALFORMED_OUTPUT)
         self.assertEqual(result.stdout.strip(), "")
-        self.assertIn("got 2", result.stderr)
+        self.assertIn("not one JSON document", result.stderr)
 
     # 4. silence is never an empty queue ----------------------------------------
     def test_silent_tracker_is_not_an_empty_queue(self) -> None:
@@ -233,9 +244,21 @@ class SelectorEndToEndTest(support.RepoTestCase):
     def test_kind_and_under_reach_the_tracker_from_the_repo_root(self) -> None:
         argv_log = self.tmp / "argv"
         cwd_log = self.tmp / "cwd"
+        candidate = json.dumps(
+            {
+                "outcome": "selected",
+                "candidates": [{
+                    "path": "docs/architecture",
+                    "kind": "directory",
+                    "reason": "never-audited",
+                    "last_audited_at": None,
+                    "commits_since_audit": 0,
+                }],
+            }
+        )
         self.stub_tracker(
-            """
-            printf 'docs/architecture\\t[directory]\\tnever audited\\n'
+            f"""
+            printf '%s\\n' '{candidate}'
             """,
             argv_log=argv_log,
             cwd_log=cwd_log,
@@ -247,7 +270,8 @@ class SelectorEndToEndTest(support.RepoTestCase):
         # First argument is the launcher path; it must be THIS skill's tracker.
         self.assertTrue(argv_lines[0].endswith("tracker.py"), argv_lines[0])
         self.assertEqual(argv_lines[1:], ["next", "doc-quality", "-n", "1",
-                                          "--kind", "directory", "--under", "docs"])
+                                          "--format", "json", "--kind", "directory",
+                                          "--under", "docs"])
         self.assertEqual(Path(cwd_log.read_text().strip()).resolve(), repo_root().resolve())
         self.assertEqual(json.loads(result.stdout)["path"], "docs/architecture")
 

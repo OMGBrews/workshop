@@ -9,6 +9,7 @@ the tracker's dedicated exit 4 must translate into a success-shaped
 
 import support
 
+import json
 import unittest
 
 from select_next import (
@@ -20,8 +21,24 @@ from select_next import (
 )
 
 
-# One real candidate line, exactly as the tracker's ``next`` renders it.
-_CANDIDATE = "app/api/routes.py\t[file]\tnever audited"
+def candidate_json(path="app/api/routes.py", kind="file", reason="never-audited"):
+    return json.dumps(
+        {
+            "outcome": "selected",
+            "candidates": [
+                {
+                    "path": path,
+                    "kind": kind,
+                    "reason": reason,
+                    "last_audited_at": None,
+                    "commits_since_audit": 0,
+                }
+            ],
+        }
+    )
+
+
+_CANDIDATE = candidate_json()
 _WARNING = "audit_tracker: auto-refresh (head-changed)"
 
 
@@ -35,14 +52,14 @@ class InterpretTest(unittest.TestCase):
                 "outcome": "selected",
                 "path": "app/api/routes.py",
                 "kind": "file",
-                "reason": "never audited",
+                "reason": "never-audited",
                 "diagnostics": [],
             },
         )
 
     # 2. a directory candidate keeps its kind ----------------------------------
     def test_directory_candidate_keeps_its_kind(self) -> None:
-        line = "docs/architecture\t[directory]\t3 commit(s) since audit at 2026-08-01\n"
+        line = candidate_json("docs/architecture", "directory", "stale") + "\n"
         result = interpret(TrackerRun(0, line, ""))
         self.assertEqual(
             result,
@@ -50,23 +67,17 @@ class InterpretTest(unittest.TestCase):
                 "outcome": "selected",
                 "path": "docs/architecture",
                 "kind": "directory",
-                "reason": "3 commit(s) since audit at 2026-08-01",
+                "reason": "stale",
                 "diagnostics": [],
             },
         )
 
     # 3. only the tracker's own sentence means "empty" -------------------------
     def test_the_trackers_own_sentence_is_the_only_empty_result(self) -> None:
-        for sentence in [
-            "No candidates for 'code-quality'.",
-            "No candidates for 'doc-quality' under 'docs/work/kaizen'.",
-            'No candidates for "it\'s-odd".',
-        ]:
-            with self.subTest(sentence=sentence):
-                self.assertEqual(
-                    interpret(TrackerRun(0, sentence + "\n", "")),
-                    {"outcome": "empty", "diagnostics": []},
-                )
+        self.assertEqual(
+            interpret(TrackerRun(0, '{"outcome":"empty","candidates":[]}\n', "")),
+            {"outcome": "empty", "diagnostics": []},
+        )
 
     # 4. stderr warnings survive as diagnostics on a selection -----------------
     def test_stderr_warnings_survive_as_diagnostics_on_a_selection(self) -> None:
@@ -120,13 +131,13 @@ class InterpretTest(unittest.TestCase):
     def test_malformed_success_output_is_rejected(self) -> None:
         cases = [
             ("", "silence"),
-            (f"{_CANDIDATE}\ndocs/README.md\t[file]\tnever audited\n", "two records"),
-            ("app/api/routes.py\tnever audited\n", "no kind field"),
-            ("app/api/routes.py\t[symlink]\tnever audited\n", "unknown kind"),
-            ("\t[file]\tnever audited\n", "empty path"),
-            ("app/api/routes.py\t[file]\t\n", "empty reason"),
+            (f"{_CANDIDATE}\n{_CANDIDATE}\n", "two JSON records"),
+            ('{"outcome":"selected","candidates":[]}', "no candidate"),
+            (candidate_json(kind="symlink"), "unknown kind"),
+            (candidate_json(path=""), "empty path"),
+            (candidate_json(reason=""), "empty reason"),
             ("There is nothing left to audit.\n", "prose that is not the sentinel"),
-            ("No candidates for 'code-quality'. Try --stale.\n", "sentinel with a tail"),
+            ('{"outcome":"empty","candidates":[{}]}', "empty with candidate"),
         ]
         for stdout, why in cases:
             with self.subTest(stdout=stdout, why=why):

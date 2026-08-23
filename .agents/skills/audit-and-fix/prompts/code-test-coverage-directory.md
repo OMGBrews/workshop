@@ -1,6 +1,8 @@
 # code-test-coverage × directory
 
-Seven lenses to fan out in parallel against a source directory, asking whether the code within is adequately tested.
+Lens definitions for reviewers auditing test coverage of one source directory.
+Load this file after `audit-and-fix` selects a `code-test-coverage` directory
+subject.
 
 Each lens prompt ends with: "Prioritize the top five issues."
 

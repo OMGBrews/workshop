@@ -14,6 +14,8 @@ import contextlib
 import io
 import json
 import unittest
+from concurrent.futures import ThreadPoolExecutor
+from unittest import mock
 
 from audit_tracker import queries, records
 
@@ -74,7 +76,7 @@ class RoundTripTest(support.RepoTestCase):
         counter = conn.execute(
             "SELECT pick_counter FROM audit_type_state WHERE audit_type = 'code-quality'"
         ).fetchone()
-        self.assertEqual(counter["pick_counter"], 4)
+        self.assertEqual(counter["pick_counter"], 0)
 
     # 2. re-loading replaces the cache wholesale, never accumulates ----------
     def test_load_replaces_existing_audits(self) -> None:
@@ -167,7 +169,6 @@ class FileFormatTest(support.RepoTestCase):
         expected = (
             json.dumps(
                 {
-                    "pick_counter": 8,
                     "audits": {
                         "a/first.py": data["audits"]["a/first.py"],
                         "b/middle.py": data["audits"]["b/middle.py"],
@@ -235,6 +236,39 @@ class FileFormatTest(support.RepoTestCase):
         type_rows = conn.execute("SELECT audit_type FROM audit_type_state").fetchall()
         self.assertTrue(all(not r["audit_type"].startswith("_") for r in type_rows))
 
+    def test_concurrent_writers_do_not_drop_distinct_paths(self) -> None:
+        def write_one(index: int) -> None:
+            records.write_record(
+                "code-quality",
+                f"app/path-{index}.py",
+                last_audited_at=f"t{index}",
+                last_audit_commit=f"c{index}",
+                notes=None,
+            )
+
+        with ThreadPoolExecutor(max_workers=12) as pool:
+            list(pool.map(write_one, range(40)))
+        data = json.loads(
+            (self.records_dir / "code-quality.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(len(data["audits"]), 40)
+
+    def test_failed_atomic_replace_preserves_previous_file(self) -> None:
+        records.write_record(
+            "code-quality", "app/kept.py", last_audited_at="t", last_audit_commit="c",
+            notes=None,
+        )
+        before = (self.records_dir / "code-quality.json").read_bytes()
+        with mock.patch.object(records.os, "replace", side_effect=OSError("no replace")):
+            with self.assertRaises(OSError):
+                records.write_record(
+                    "code-quality", "app/new.py", last_audited_at="t2",
+                    last_audit_commit="c2", notes=None,
+                )
+        self.assertEqual(
+            (self.records_dir / "code-quality.json").read_bytes(), before
+        )
+
 
 class RefreshStateTest(support.RepoTestCase):
     """Refresh state round-trips beside the cache and survives missing reads."""
@@ -279,7 +313,7 @@ class RefreshStateTest(support.RepoTestCase):
 class DoneWritesJsonTest(support.RepoTestCase):
     """``queries.done()`` writes through to the JSON source of truth."""
 
-    # 11. done persists the record and advances the pick counter -------------
+    # 11. done persists the record without merge-prone global state ----------
     def test_done_persists_record_in_json(self) -> None:
         conn = self.conn()
         seed_applicability(conn, [("app/foo.py", "code-quality")])
@@ -289,7 +323,7 @@ class DoneWritesJsonTest(support.RepoTestCase):
         data = json.loads((self.records_dir / "code-quality.json").read_text(encoding="utf-8"))
         self.assertEqual(data["audits"]["app/foo.py"]["last_audit_commit"], "abc123")
         self.assertEqual(data["audits"]["app/foo.py"]["notes"], "first pass")
-        self.assertEqual(data["pick_counter"], 1)
+        self.assertNotIn("pick_counter", data)
 
     # 12. re-auditing without a note preserves the stored one ----------------
     def test_done_preserves_existing_note_when_none_passed(self) -> None:

@@ -55,12 +55,13 @@ def _applicable_types(path: str, rules_for_kind: list[tuple[str, TargetRule]]) -
 def refresh(conn: sqlite3.Connection, config: Config) -> RefreshSummary:
     """Reconcile paths and applicability against the git tree. Returns counts."""
     now = datetime.now(UTC).isoformat()
-    # Submodule-owned paths are dropped here rather than excluded per-type in
-    # audits.yaml: globs match paths, but what makes these paths upstream-owned
-    # is their link target, which no filename pattern can see. Dropping before
-    # _derive_directories keeps a submodule root from contributing directories
-    # nothing local lives in.
-    owned = git_utils.submodule_owned_paths()
+    # Submodule-owned paths and every tracked symlink are dropped here rather
+    # than excluded per-type in config: globs cannot see ownership or index
+    # mode. Even a local symlink is unsafe because staleness follows the link
+    # blob rather than its target. Dropping before _derive_directories keeps
+    # excluded entries from contributing directories nothing auditable lives
+    # in.
+    owned = git_utils.submodule_owned_paths() | git_utils.symlink_paths()
     files = [path for path in git_utils.ls_files() if path not in owned]
     directories = _derive_directories(files)
 

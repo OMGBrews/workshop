@@ -5,7 +5,7 @@ The caller-facing command everywhere — this skill's SKILL.md, ``audit-next``,
 ``audit-done``, and pia-maker's audit-queue runner — is exactly that spelling,
 run from the consumer repo root. No ``PYTHONPATH`` and no venv: this launcher
 bootstraps ``sys.path`` from its own **physical** location (``resolve()``
-follows the consumer's ``.claude/skills`` bridge into the pinned workshop
+follows the consumer's ``.agents/skills`` link into the pinned Workshop
 mount, where the package actually lives), asserts the Python floor, and
 disables bytecode writing.
 

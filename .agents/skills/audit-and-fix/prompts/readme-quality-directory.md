@@ -1,6 +1,8 @@
 # readme-quality × directory
 
-Eight lenses to fan out in parallel against a directory's `README.md`. The audited artifact is `<subject>/README.md`.
+Lens definitions for reviewers auditing a directory's `README.md`. Load this
+file after `audit-and-fix` selects a `readme-quality` directory subject; the
+audited artifact is `<subject>/README.md`.
 
 Each lens prompt ends with: "Prioritize the top five issues."
 
@@ -10,7 +12,7 @@ The audited artifact is the single file `<subject>/README.md`. The surrounding d
 
 1. Critique `<subject>/README.md`.
 2. Identify dead or stale content within `<subject>/README.md` — claims that no longer match the current contents of `<subject>`.
-3. Read the appropriate style guideline document, then identify style guideline violations within `<subject>/README.md`.
+3. Read the README and documentation style sources at `<style-guide>`, then identify violations within `<subject>/README.md`.
 4. Locate the tests that exercise `<subject>` (search `tests/` and any colocated `*.test.*` files for files referencing this module). Identify behaviors the tests verify that `<subject>/README.md` doesn't mention, claims in the README that the tests would invalidate, and examples in the README that wouldn't survive contact with the test suite. If `<subject>` has no tests, say so plainly and stop — don't invent filler.
 5. Does `<subject>/README.md` serve its purpose of orienting readers to `<subject>`? If not, identify what should be improved.
 6. Evaluate `<subject>/README.md` for consistency with peer READMEs in sibling directories.

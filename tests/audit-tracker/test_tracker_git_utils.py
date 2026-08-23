@@ -19,6 +19,7 @@ real template file here would cite a planning path from test code.
 import support
 
 import os
+import subprocess
 import unittest
 
 from audit_tracker import git_utils
@@ -162,6 +163,7 @@ class NoSubmodulesTest(support.RepoTestCase):
         (self.repo / "link.py").symlink_to("app/main.py")
         support.run_git(self.repo, "add", "app", "link.py")
         self.assertEqual(git_utils.submodule_owned_paths(), set())
+        self.assertEqual(git_utils.symlink_paths(), {"link.py"})
 
 
 class RepoRootCachingTest(support.RepoTestCase):
@@ -186,6 +188,85 @@ class RepoRootCachingTest(support.RepoTestCase):
         git_utils.reset_repo_root_cache()
         with self.assertRaises(git_utils.NotARepositoryError):
             git_utils.repo_root()
+
+
+class BatchHistoryTest(support.RepoTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        support.run_git(self.repo, "config", "user.email", "test@example.com")
+        support.run_git(self.repo, "config", "user.name", "Test")
+
+    def commit(self, message: str) -> str:
+        support.run_git(self.repo, "add", "-A")
+        support.run_git(self.repo, "commit", "-qm", message)
+        return subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=self.repo,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+    def test_many_counts_match_one_path_git_queries_for_multiple_shas(self) -> None:
+        support.write_file(self.repo / "a.py", "a0\n")
+        support.write_file(self.repo / "b.py", "b0\n")
+        support.write_file(self.repo / "pkg/c.py", "c0\n")
+        first = self.commit("first")
+        support.write_file(self.repo / "a.py", "a1\n")
+        support.write_file(self.repo / "pkg/c.py", "c1\n")
+        second = self.commit("second")
+        support.write_file(self.repo / "b.py", "b1\n")
+        support.write_file(self.repo / "pkg/c.py", "c2\n")
+        self.commit("third")
+
+        paths = ["a.py", "b.py", "pkg", "pkg/c.py"]
+        all_batched = git_utils.commits_since_many_by_sha(
+            {first: paths, second: paths}
+        )
+        for sha in (first, second):
+            with self.subTest(sha=sha):
+                batched = git_utils.commits_since_many(sha, paths)
+                individual = {
+                    path: git_utils.commits_since(sha, path) for path in paths
+                }
+                self.assertEqual(batched, individual)
+                self.assertEqual(all_batched[sha], individual)
+
+    def test_index_fingerprint_is_read_only_and_tracks_staging(self) -> None:
+        support.write_file(self.repo / "a.py", "a0\n")
+        support.run_git(self.repo, "add", "a.py")
+        before = git_utils.index_fingerprint()
+        object_count_before = subprocess.run(
+            ["git", "count-objects", "-v"], cwd=self.repo, check=True,
+            capture_output=True, text=True,
+        ).stdout
+        support.write_file(self.repo / "a.py", "unstaged\n")
+        self.assertEqual(git_utils.index_fingerprint(), before)
+        support.run_git(self.repo, "add", "a.py")
+        self.assertNotEqual(git_utils.index_fingerprint(), before)
+        object_count_after = subprocess.run(
+            ["git", "count-objects", "-v"], cwd=self.repo, check=True,
+            capture_output=True, text=True,
+        ).stdout
+        # ``git add`` creates the changed blob; fingerprinting itself creates
+        # no tree. A second fingerprint therefore leaves object counts stable.
+        git_utils.index_fingerprint()
+        self.assertEqual(
+            subprocess.run(
+                ["git", "count-objects", "-v"], cwd=self.repo, check=True,
+                capture_output=True, text=True,
+            ).stdout,
+            object_count_after,
+        )
+        self.assertNotEqual(object_count_before, object_count_after)
+
+
+class NulSafePathsTest(support.RepoTestCase):
+    def test_ls_files_preserves_newline_in_tracked_filename(self) -> None:
+        unusual = "odd\nname.py"
+        support.write_file(self.repo / unusual)
+        support.run_git(self.repo, "add", unusual)
+        self.assertIn(unusual, git_utils.ls_files())
 
 
 if __name__ == "__main__":

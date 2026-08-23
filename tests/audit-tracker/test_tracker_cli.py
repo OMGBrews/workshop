@@ -14,6 +14,7 @@ import support
 
 import contextlib
 import io
+import json
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -167,6 +168,38 @@ class AutoRefreshTest(CliTestBase):
         self.assertEqual(spy.calls, 1)
         self.assertIn("auto-refresh (first-run)", err)
 
+    def test_auto_refreshes_when_config_content_changes(self) -> None:
+        fake = self.fake_git()
+        fake.files = ["a.py"]
+        fake.head = "SAME_HEAD"
+        spy = RefreshSpy(fake)
+        with mock.patch.object(cli, "refresh", spy), contextlib.redirect_stdout(io.StringIO()):
+            self.run_main("list-types")
+            self.audit_config.write_text(
+                CONFIG_TOML.replace('include = ["*.py"]', 'include = ["src/*.py"]'),
+                encoding="utf-8",
+            )
+            code, err = self.run_main("list-types")
+
+        self.assertEqual(code, 0)
+        self.assertEqual(spy.calls, 2)
+        self.assertIn("auto-refresh (config-changed)", err)
+
+    def test_auto_refreshes_when_git_index_changes(self) -> None:
+        fake = self.fake_git()
+        fake.files = ["a.py"]
+        fake.head = "SAME_HEAD"
+        spy = RefreshSpy(fake)
+        with mock.patch.object(cli, "refresh", spy), contextlib.redirect_stdout(io.StringIO()):
+            self.run_main("list-types")
+            support.write_file(self.repo / "staged.py")
+            support.run_git(self.repo, "add", "staged.py")
+            code, err = self.run_main("list-types")
+
+        self.assertEqual(code, 0)
+        self.assertEqual(spy.calls, 2)
+        self.assertIn("auto-refresh (index-changed)", err)
+
 
 class NotConfiguredTest(support.RepoTestCase):
     """No docs/work/audits/config.toml and no --config → exit 4, nothing made."""
@@ -221,6 +254,107 @@ class NotConfiguredTest(support.RepoTestCase):
         with contextlib.redirect_stderr(err), contextlib.redirect_stdout(out):
             code = cli.main(["--db", str(self.tmp / "x.db"), "--config", str(config), "list-types"])
         self.assertEqual(code, 0)
+
+    def test_next_json_reports_not_configured_without_error(self) -> None:
+        out = io.StringIO()
+        err = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = cli.main(["next", "code-quality", "--format", "json"])
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(out.getvalue()), {"outcome": "not-configured"})
+        self.assertIn("not opted in", err.getvalue())
+        self.assert_nothing_created()
+
+    def test_next_json_rejects_unknown_type_even_when_unconfigured(self) -> None:
+        out = io.StringIO()
+        err = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = cli.main(["next", "typo", "--format", "json"])
+        self.assertEqual(code, 2)
+        self.assertEqual(out.getvalue(), "")
+        self.assertIn("unknown shipped audit type", err.getvalue())
+        self.assert_nothing_created()
+
+    def test_validate_path_works_without_tracker_config_or_cache(self) -> None:
+        support.write_file(self.repo / "app/main.py")
+        support.run_git(self.repo, "add", "app/main.py")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            code = cli.main(
+                ["validate-path", "./app/main.py", "code-quality", "--format", "json"]
+            )
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            json.loads(out.getvalue()),
+            {
+                "outcome": "valid",
+                "path": "app/main.py",
+                "kind": "file",
+                "audit_type": "code-quality",
+                "configured": False,
+            },
+        )
+        self.assertFalse(self.cache.exists())
+
+
+class StructuredCliTest(CliTestBase):
+    def setUp(self) -> None:
+        super().setUp()
+        support.write_file(self.repo / "target.py")
+        support.run_git(self.repo, "add", "target.py")
+        support.run_git(
+            self.repo,
+            "-c", "user.email=test@example.com",
+            "-c", "user.name=Test",
+            "commit", "-qm", "initial",
+        )
+
+    def run_captured(self, *args: str) -> tuple[int, str, str]:
+        out = io.StringIO()
+        err = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = cli.main([*self.cli_args, *args])
+        return code, out.getvalue(), err.getvalue()
+
+    def test_next_json_has_stable_machine_fields(self) -> None:
+        code, out, _err = self.run_captured("next", "code-quality", "--format", "json")
+        self.assertEqual(code, 0)
+        payload = json.loads(out)
+        self.assertEqual(payload["outcome"], "selected")
+        self.assertEqual(payload["candidates"][0]["path"], "target.py")
+        self.assertEqual(payload["candidates"][0]["reason"], "never-audited")
+
+    def test_unknown_audit_type_is_an_error_not_empty(self) -> None:
+        code, out, err = self.run_captured("next", "typo", "--format", "json")
+        self.assertEqual(code, 2)
+        self.assertEqual(out, "")
+        self.assertIn("unknown audit type", err)
+
+    def test_validate_path_canonicalizes_absolute_path(self) -> None:
+        code, out, _err = self.run_captured(
+            "validate-path",
+            str((self.repo / "target.py").resolve()),
+            "code-quality",
+            "--format",
+            "json",
+        )
+        self.assertEqual(code, 0)
+        payload = json.loads(out)
+        self.assertEqual(payload["path"], "target.py")
+        self.assertTrue(payload["configured"])
+
+    def test_next_never_selects_local_or_external_symlinks(self) -> None:
+        outside = support.write_file(self.tmp / "outside.py")
+        (self.repo / "local-link.py").symlink_to("target.py")
+        (self.repo / "external-link.py").symlink_to(outside)
+        support.run_git(self.repo, "add", "local-link.py", "external-link.py")
+
+        code, out, _err = self.run_captured(
+            "next", "code-quality", "-n", "10", "--format", "json"
+        )
+        self.assertEqual(code, 0)
+        paths = {candidate["path"] for candidate in json.loads(out)["candidates"]}
+        self.assertEqual(paths, {"target.py"})
 
 
 if __name__ == "__main__":

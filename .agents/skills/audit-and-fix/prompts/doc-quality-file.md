@@ -1,6 +1,7 @@
 # doc-quality × file
 
-Seven lenses to fan out in parallel against a documentation file.
+Lens definitions for reviewers auditing one documentation file. Load this file
+after `audit-and-fix` selects a `doc-quality` file subject.
 
 Each lens prompt ends with: "Prioritize the top five issues."
 
@@ -9,7 +10,7 @@ Each lens is file-scoped: findings must be about `<subject>` itself, even when c
 ## Lenses
 
 1. Critique `<subject>`.
-2. Read the appropriate style guideline document, then identify style guideline violations within `<subject>`.
+2. Read the documentation style sources at `<style-guide>`, then identify violations within `<subject>`.
 3. Verify that every command, code snippet, and procedure in `<subject>` actually works as written. Mentally (or actually) execute each one against the current codebase and configuration, and flag anything that would fail, error, produce unexpected output, or leave the reader stuck.
 4. Identify factual inaccuracies and contradictions involving `<subject>`. For every claim — file paths, symbol names, default values, version requirements, behaviors, architecture, referenced standards, external specs — verify against the authoritative source (current code, configuration, sibling documents) and flag mismatches. A finding is in scope only if `<subject>` makes a claim; gaps or errors in sibling documents that don't touch `<subject>` are out of scope.
 5. Identify missing information within `<subject>` — things a reader (human or AI agent) would reasonably expect to find but don't.

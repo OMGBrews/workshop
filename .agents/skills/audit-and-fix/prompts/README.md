@@ -1,6 +1,9 @@
 # audit-and-fix prompts
 
-Lens prompt files consumed by `/audit-and-fix`. One file per `<audit-type>-<kind>` combination. The parent [`SKILL.md`](../SKILL.md) picks the right file based on the Step 1 subject.
+Maintainer reference for the lens prompt files consumed by `audit-and-fix`, one
+file per `<audit-type>-<kind>` combination. Read this when adding or changing a
+combination; an audit run should load only the prompt selected by
+[`SKILL.md`](../SKILL.md).
 
 ## Layout
 
@@ -22,11 +25,11 @@ The `code-test-coverage` subject is a *source* path, not a test path; lens promp
 
 ## Conventions
 
-Each file contains an optional scope-framing paragraph and seven lens prompts to fan out in parallel. The lenses are **deliberately vague** — write open-ended questions, not checklists. The orchestrator (SKILL.md Step 2) adds the operational wrapping (subject path, closing "Prioritize the top five issues.", anti-filler clause).
+Each file contains an optional scope-framing paragraph and a numbered lens list. That list defines how many independent reviews the orchestrator runs; do not duplicate a global count elsewhere. The lenses are **deliberately vague** — write open-ended questions, not checklists. The orchestrator (SKILL.md Step 2) adds the operational wrapping (subject path, closing "Prioritize the top five issues.", anti-filler clause).
 
 ### Scope-framing paragraph
 
-Optionally place a single paragraph between the preamble and the `## Lenses` heading. Use it to set scope for all seven lenses: what kind of issues this audit should surface, which sibling audit handles out-of-scope findings, and (if useful) one sentence on how to reframe adjacent-scope findings rather than suppress them. The orchestrator includes this paragraph in every subagent prompt.
+Optionally place a single paragraph between the preamble and the `## Lenses` heading. Use it to set scope for all lenses: what kind of issues this audit should surface, which sibling audit handles out-of-scope findings, and (if useful) one sentence on how to reframe adjacent-scope findings rather than suppress them. The orchestrator includes this paragraph in every delegated prompt.
 
 A scope paragraph is especially valuable for `directory` variants, where lens agents otherwise default to file-internal findings that duplicate the sibling `file` audit.
 
@@ -39,11 +42,11 @@ A scope paragraph is especially valuable for `directory` variants, where lens ag
 
 ### Style-guideline lens
 
-When a prompt includes a style-guideline lens, phrase it as: `Read the appropriate style guideline document, then identify style guideline violations within <subject>.` This directs only the one subagent to consult the style guide, rather than every lens duplicating that effort.
+When a prompt includes a style-guideline lens, use the `<style-guide>` placeholder for its source path. The orchestrator resolves exact repo-relative convention-source paths before fan-out and substitutes them only into this lens, rather than making every reviewer duplicate or guess that work.
 
 ## Adding a new combination
 
-1. Create `prompts/<audit-type>-<kind>.md` with the seven lenses.
+1. Create `prompts/<audit-type>-<kind>.md` with the independent lenses that combination needs.
 2. Add a row to the table in [`SKILL.md`](../SKILL.md) Step 2.
 3. Update each adopting repo's audit config (`docs/work/audits/config.toml`) if the combination needs tracker support. The shipped prompt set is the closed vocabulary of audit types: a config naming a type/kind with no prompt file here is rejected. Adding a type is a Workshop contribution (PR + pin bump), never a per-repo prompt fork.
 

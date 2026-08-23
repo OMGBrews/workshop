@@ -41,6 +41,107 @@ class AuditTypeStatus:
     stale: int
 
 
+@dataclass(frozen=True)
+class ValidatedPath:
+    """Canonical, repo-owned path accepted for an explicit audit."""
+
+    path: str
+    kind: PathKind
+
+
+def canonicalize_explicit_path(raw: str) -> tuple[str, Path]:
+    """Return canonical repo-relative POSIX spelling and its lexical path.
+
+    Absolute paths are accepted only when their lexical path is inside the
+    repository. Target resolution and ownership checks belong to
+    :func:`validate_explicit_path`.
+    """
+    cleaned = raw.strip()
+    if not cleaned:
+        raise ValueError("path must not be empty")
+    root = git_utils.repo_root().resolve()
+    supplied = Path(cleaned)
+    lexical = supplied if supplied.is_absolute() else root / supplied
+    lexical = Path(lexical.absolute())
+    try:
+        relative = lexical.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(f"path is outside the repository: {raw!r}") from exc
+    if relative == Path("."):
+        raise ValueError("the repository root is not an auditable tracked path")
+    if any(part == ".." for part in relative.parts):
+        raise ValueError(f"path is outside the repository: {raw!r}")
+    return relative.as_posix(), lexical
+
+
+def validate_explicit_path(
+    raw: str,
+    *,
+    conn: sqlite3.Connection | None = None,
+    audit_type: str | None = None,
+    expected_kind: PathKind | None = None,
+) -> ValidatedPath:
+    """Validate and canonicalize a user-supplied audit path.
+
+    With ``conn=None`` this is the unconfigured path-only mode: ownership and
+    tracking come directly from Git and no cache is created. With a connection,
+    the refreshed path table is authoritative and ``audit_type`` additionally
+    has to be applicable.
+    """
+    canonical, lexical = canonicalize_explicit_path(raw)
+    if canonical in git_utils.symlink_paths():
+        raise ValueError(
+            f"path {canonical!r} is a tracked symlink; audit its tracked target instead"
+        )
+    root = git_utils.repo_root().resolve()
+    try:
+        lexical.resolve(strict=False).relative_to(root)
+    except ValueError as exc:
+        raise ValueError(f"path resolves outside the repository: {raw!r}") from exc
+    if not lexical.exists():
+        raise ValueError(f"path does not exist: {canonical!r}")
+
+    if conn is None:
+        owned = git_utils.submodule_owned_paths() | git_utils.symlink_paths()
+        files = set(git_utils.ls_files()) - owned
+        directories: set[str] = set()
+        for file_path in files:
+            parts = file_path.split("/")
+            directories.update("/".join(parts[:depth]) for depth in range(1, len(parts)))
+        if canonical in files:
+            kind: PathKind = "file"
+        elif canonical in directories:
+            kind = "directory"
+        else:
+            raise ValueError(
+                f"path {canonical!r} is not a tracked, repository-owned file or directory"
+            )
+    else:
+        row = conn.execute(
+            "SELECT kind FROM paths WHERE path = ?", (canonical,)
+        ).fetchone()
+        if row is None:
+            raise ValueError(
+                f"path {canonical!r} is not a tracked, repository-owned file or directory"
+            )
+        kind = row["kind"]
+        if audit_type is not None:
+            applicable = conn.execute(
+                "SELECT 1 FROM path_audit_applicability WHERE path = ? AND audit_type = ?",
+                (canonical, audit_type),
+            ).fetchone()
+            if applicable is None:
+                raise ValueError(
+                    f"path {canonical!r} is not applicable for audit type {audit_type!r}"
+                )
+
+    if expected_kind is not None and kind != expected_kind:
+        raise ValueError(
+            f"path {canonical!r} is a {kind}, not the requested {expected_kind}"
+        )
+    return ValidatedPath(path=canonical, kind=kind)
+
+
 def normalize_path_prefix(raw: str) -> str:
     """Normalize a user-supplied path prefix for subtree filtering.
 
@@ -109,20 +210,19 @@ def _stable_hash(s: str) -> str:
 
 
 def _round_robin_by_parent_dir(
-    candidates: list[NextCandidate], start_offset: int = 0
+    candidates: list[NextCandidate],
 ) -> list[NextCandidate]:
     """Interleave candidates so consecutive picks come from different parent dirs.
 
-    Ordering is deterministic (same path set + same ``start_offset`` → same
-    output) but uniform: both the rotation of directories and the order of
+    Ordering is deterministic (same path set → same output) but uniform:
+    both the rotation of directories and the order of
     files within a directory use ``sha256(path)`` as the sort key, avoiding
     alphabetical clustering (e.g. ``__init__.py`` always landing first
     because ``_`` sorts before letters).
 
-    ``start_offset`` rotates the hash-sorted directory list by that many
-    positions before draining. Callers pass the per-audit-type pick counter
-    so that back-to-back ``next_paths(limit=1)`` calls land in different
-    parent dirs across sessions, not just within one call.
+    Completing a selected path removes it from the never-audited bucket, so
+    the next deterministic ordering naturally advances without shared mutable
+    rotation state.
     """
     grouped: dict[str, list[NextCandidate]] = defaultdict(list)
     for candidate in candidates:
@@ -134,12 +234,7 @@ def _round_robin_by_parent_dir(
         directory: deque(group) for directory, group in grouped.items()
     }
     dirs_sorted = sorted(queues.keys(), key=_stable_hash)
-    if dirs_sorted:
-        offset = start_offset % len(dirs_sorted)
-        dirs_rotated = dirs_sorted[offset:] + dirs_sorted[:offset]
-    else:
-        dirs_rotated = dirs_sorted
-    rotation: deque[str] = deque(dirs_rotated)
+    rotation: deque[str] = deque(dirs_sorted)
     interleaved: list[NextCandidate] = []
     while rotation:
         directory = rotation.popleft()
@@ -149,78 +244,87 @@ def _round_robin_by_parent_dir(
     return interleaved
 
 
-def _pick_counter(conn: sqlite3.Connection, audit_type: str) -> int:
-    """Read the rotation counter for ``audit_type`` (0 if never set)."""
-    row = conn.execute(
-        "SELECT pick_counter FROM audit_type_state WHERE audit_type = ?",
-        (audit_type,),
-    ).fetchone()
-    return int(row["pick_counter"]) if row is not None else 0
-
-
 _UNKNOWN_COMMIT = -1
 """Sentinel stored in the ``commits_since`` cache when the recorded SHA is
 no longer present in the repo. Classified as stale so the path re-surfaces
 for re-audit — we cannot prove the prior audit is current."""
 
 
-def _classify_row(
-    row: sqlite3.Row,
-    commits_cache: dict[tuple[str, str], int],
-) -> tuple[AuditReason, NextCandidate]:
-    """Bucket one applicable row as never-audited, stale, or clean.
+def _classify_audited_rows(
+    conn: sqlite3.Connection, rows: list[sqlite3.Row]
+) -> list[tuple[AuditReason, NextCandidate]]:
+    """Classify audited rows with one Git history walk per recorded SHA."""
+    grouped: dict[str, list[sqlite3.Row]] = defaultdict(list)
+    classified: list[tuple[AuditReason, NextCandidate]] = []
+    for row in rows:
+        if not row["last_audit_commit"]:
+            classified.append(
+                (
+                    "stale",
+                    NextCandidate(
+                        path=row["path"],
+                        kind=row["kind"],
+                        last_audited_at=row["last_audited_at"],
+                        commits_since_audit=0,
+                        reason="stale",
+                    ),
+                )
+            )
+        else:
+            grouped[row["last_audit_commit"]].append(row)
 
-    A row is **stale** when its recorded commit is NULL, missing from the
-    repo (rebased/GC'd), or strictly older than HEAD on the given path —
-    in every case we can't prove the audit is current. ``commits_cache``
-    memoises ``(sha, path) -> commits_since`` so we never fork ``git``
-    twice for the same pair within one query.
-    """
-    last_at = row["last_audited_at"]
-    last_sha = row["last_audit_commit"]
-    path = row["path"]
-    kind = row["kind"]
+    head = git_utils.head_sha()
+    cached_rows = conn.execute(
+        "SELECT audit_commit, path, commits_since FROM staleness_cache WHERE head_commit = ?",
+        (head,),
+    ).fetchall()
+    cached = {
+        (row["audit_commit"], row["path"]): row["commits_since"]
+        for row in cached_rows
+    }
+    missing = {
+        sha: [row["path"] for row in sha_rows if (sha, row["path"]) not in cached]
+        for sha, sha_rows in grouped.items()
+    }
+    missing = {sha: paths for sha, paths in missing.items() if paths}
+    computed = git_utils.commits_since_many_by_sha(missing) if missing else {}
+    cache_writes: list[tuple[str, str, str, int]] = []
+    for sha, paths in missing.items():
+        counts = computed.get(sha)
+        for path in paths:
+            value = counts[path] if counts is not None else _UNKNOWN_COMMIT
+            cached[(sha, path)] = value
+            cache_writes.append((head, sha, path, value))
+    if cache_writes:
+        with conn:
+            conn.executemany(
+                "INSERT OR REPLACE INTO staleness_cache "
+                "(head_commit, audit_commit, path, commits_since) VALUES (?, ?, ?, ?)",
+                cache_writes,
+            )
+            conn.execute("DELETE FROM staleness_cache WHERE head_commit <> ?", (head,))
 
-    if last_at is None:
-        return "never-audited", NextCandidate(
-            path=path,
-            kind=kind,
-            last_audited_at=None,
-            commits_since_audit=0,
-            reason="never-audited",
-        )
-    if not last_sha:
-        return "stale", NextCandidate(
-            path=path,
-            kind=kind,
-            last_audited_at=last_at,
-            commits_since_audit=0,
-            reason="stale",
-        )
-
-    cache_key = (last_sha, path)
-    if cache_key not in commits_cache:
-        try:
-            commits_cache[cache_key] = git_utils.commits_since(last_sha, path)
-        except git_utils.UnknownCommitError:
-            commits_cache[cache_key] = _UNKNOWN_COMMIT
-    commits = commits_cache[cache_key]
-
-    if commits == _UNKNOWN_COMMIT or commits > 0:
-        return "stale", NextCandidate(
-            path=path,
-            kind=kind,
-            last_audited_at=last_at,
-            commits_since_audit=max(commits, 0),
-            reason="stale",
-        )
-    return "clean", NextCandidate(
-        path=path,
-        kind=kind,
-        last_audited_at=last_at,
-        commits_since_audit=0,
-        reason="clean",
-    )
+    for sha, sha_rows in grouped.items():
+        paths = [row["path"] for row in sha_rows]
+        counts = {path: cached[(sha, path)] for path in paths}
+        for row in sha_rows:
+            commits = counts[row["path"]]
+            reason: AuditReason = (
+                "stale" if commits == _UNKNOWN_COMMIT or commits > 0 else "clean"
+            )
+            classified.append(
+                (
+                    reason,
+                    NextCandidate(
+                        path=row["path"],
+                        kind=row["kind"],
+                        last_audited_at=row["last_audited_at"],
+                        commits_since_audit=max(commits, 0),
+                        reason=reason,
+                    ),
+                )
+            )
+    return classified
 
 
 def next_paths(
@@ -254,22 +358,33 @@ def next_paths(
     negative ``limit`` returns every candidate.
     """
     rows = _applicable_rows(conn, audit_type, kind=kind, path_prefix=path_prefix)
-    commits_cache: dict[tuple[str, str], int] = {}
+    never = [
+        NextCandidate(
+            path=row["path"],
+            kind=row["kind"],
+            last_audited_at=None,
+            commits_since_audit=0,
+            reason="never-audited",
+        )
+        for row in rows
+        if row["last_audited_at"] is None
+    ]
+    never = _round_robin_by_parent_dir(never)
 
-    never: list[NextCandidate] = []
+    # The default queue always prefers never-audited paths. If that bucket can
+    # satisfy the requested limit, do not inspect Git history for thousands of
+    # audited rows that cannot affect the answer.
+    if only_never:
+        return never[:limit] if limit >= 0 else never
+    if not only_stale and limit >= 0 and len(never) >= limit:
+        return never[:limit]
+
     stale: list[NextCandidate] = []
     audited_clean: list[NextCandidate] = []
-    buckets: dict[AuditReason, list[NextCandidate]] = {
-        "never-audited": never,
-        "stale": stale,
-        "clean": audited_clean,
-    }
+    audited_rows = [row for row in rows if row["last_audited_at"] is not None]
+    for reason, candidate in _classify_audited_rows(conn, audited_rows):
+        (stale if reason == "stale" else audited_clean).append(candidate)
 
-    for row in rows:
-        reason, candidate = _classify_row(row, commits_cache)
-        buckets[reason].append(candidate)
-
-    never = _round_robin_by_parent_dir(never, start_offset=_pick_counter(conn, audit_type))
     stale.sort(key=lambda c: (-c.commits_since_audit, c.path))
     audited_clean.sort(key=lambda c: (c.last_audited_at or "", c.path))
 
@@ -312,8 +427,6 @@ def done(
         )
     sha = commit or git_utils.head_sha()
     now = datetime.now(UTC).isoformat()
-    next_counter = _pick_counter(conn, audit_type) + 1
-
     # Records are the source of truth; write them first so a crash between
     # writes leaves the cache stale-but-rebuildable rather than the
     # source missing a recorded audit.
@@ -323,7 +436,6 @@ def done(
         last_audited_at=now,
         last_audit_commit=sha,
         notes=note,
-        pick_counter=next_counter,
         records_dir=records_dir,
     )
     with conn:
@@ -337,15 +449,6 @@ def done(
               notes = COALESCE(excluded.notes, audits.notes)
             """,
             (path, audit_type, now, sha, note),
-        )
-        conn.execute(
-            """
-            INSERT INTO audit_type_state (audit_type, pick_counter)
-            VALUES (?, ?)
-            ON CONFLICT(audit_type) DO UPDATE SET
-              pick_counter = excluded.pick_counter
-            """,
-            (audit_type, next_counter),
         )
 
 
@@ -362,21 +465,19 @@ def status(
     restricts to a subtree (the path itself plus descendants).
     """
     rows = _applicable_rows(conn, audit_type, kind=kind, path_prefix=path_prefix)
-    commits_cache: dict[tuple[str, str], int] = {}
     total = len(rows)
-    audited = 0
+    never = sum(row["last_audited_at"] is None for row in rows)
+    audited_rows = [row for row in rows if row["last_audited_at"] is not None]
+    audited = len(audited_rows)
     stale = 0
-    for row in rows:
-        reason, _ = _classify_row(row, commits_cache)
-        if reason != "never-audited":
-            audited += 1
+    for reason, _ in _classify_audited_rows(conn, audited_rows):
         if reason == "stale":
             stale += 1
     return AuditTypeStatus(
         audit_type=audit_type,
         total=total,
         audited=audited,
-        never=total - audited,
+        never=never,
         stale=stale,
     )
 

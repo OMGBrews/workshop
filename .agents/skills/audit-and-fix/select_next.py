@@ -15,9 +15,9 @@ process rather than of whoever is watching it:
 1. run the tracker once, in the foreground, capturing both streams so neither
    reaches our own stdout/stderr while the child is alive;
 2. check the child's exit status *before* looking at its stdout;
-3. accept only the two stdout shapes ``_cmd_next`` actually produces — its
-   ``No candidates for ...`` sentence, or exactly one
-   ``<path>\\t[<kind>]\\t<reason>`` record;
+3. ask for the tracker's native JSON and accept only its documented
+   ``selected`` / ``empty`` / ``not-configured`` shapes (with exactly one
+   candidate for ``selected``);
 4. print one JSON object, only once all of the above holds.
 
 A tracker failure and unexpected output are reported by a **non-zero exit**,
@@ -32,17 +32,14 @@ Stdlib-only on purpose: the skill invokes it with plain ``python3``, with no
 venv guarantee — and the tracker child it spawns is stdlib-only too, via the
 launcher at ``tracker.py`` beside this file.
 
-The tracker's dedicated "not opted in" exit (4, no config in the consumer
-repo) is translated into a success-shaped ``{"outcome": "not-configured"}``:
-a repo that never adopted tracked audits must get a distinct, honest answer,
-not an error and not "empty".
+The tracker's native JSON reports an unconfigured repo distinctly. Exit 4 is
+still accepted for compatibility with an older tracker launcher.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import re
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -64,17 +61,6 @@ EXIT_OK = 0
 EXIT_TRACKER_FAILED = 1
 EXIT_MALFORMED_OUTPUT = 3
 EXIT_TRACKER_NOT_CONFIGURED = 4
-
-# ``_cmd_next`` renders the empty case as ``f"No candidates for {audit_type!r}{scope}."``
-# with ``scope`` being ``f" under {prefix!r}"``. ``repr`` picks the quote
-# character, so accept either. Anchored end-to-end: a sentence with anything
-# appended is not the sentinel.
-_NO_CANDIDATES_RE = re.compile(
-    r"^No candidates for (?:'[^']*'|\"[^\"]*\")(?: under (?:'[^']*'|\"[^\"]*\"))?\.$"
-)
-
-_KIND_FIELDS = {"[file]": "file", "[directory]": "directory"}
-
 
 class SelectedResult(TypedDict):
     """A validated tracker candidate."""
@@ -167,6 +153,8 @@ def build_command(audit_type: str, kind: str | None, under: str | None) -> list[
         audit_type,
         "-n",
         "1",
+        "--format",
+        "json",
     ]
     if kind is not None:
         command += ["--kind", kind]
@@ -216,39 +204,58 @@ def interpret(run: TrackerRun) -> SelectionResult:
             diagnostics,
         )
 
-    lines = [line for line in run.stdout.splitlines() if line.strip()]
-    if len(lines) != 1:
-        # Zero lines lands here deliberately. Silence is the one thing that must
-        # never mean "no candidates" — only the sentence below may.
+    try:
+        payload = json.loads(run.stdout)
+    except json.JSONDecodeError as exc:
         raise SelectorError(
-            f"expected exactly one line on stdout, got {len(lines)}",
+            f"tracker stdout is not one JSON document: {exc}",
             EXIT_MALFORMED_OUTPUT,
             diagnostics,
+        ) from exc
+    if not isinstance(payload, dict):
+        raise SelectorError(
+            "tracker JSON must be an object", EXIT_MALFORMED_OUTPUT, diagnostics
         )
 
-    line = lines[0].rstrip()
-    if _NO_CANDIDATES_RE.match(line):
+    outcome = payload.get("outcome")
+    if outcome == "not-configured":
+        return NotConfiguredResult(outcome="not-configured", diagnostics=diagnostics)
+    if outcome == "empty":
+        if payload.get("candidates") != []:
+            raise SelectorError(
+                "empty tracker result must contain candidates=[]",
+                EXIT_MALFORMED_OUTPUT,
+                diagnostics,
+            )
         return EmptyResult(outcome="empty", diagnostics=diagnostics)
-
-    fields = [field.strip() for field in line.split("\t")]
-    if len(fields) != 3:
+    if outcome != "selected":
         raise SelectorError(
-            f"expected 3 tab-separated fields on stdout, got {len(fields)}",
+            f"unknown tracker JSON outcome: {outcome!r}",
             EXIT_MALFORMED_OUTPUT,
             diagnostics,
         )
-
-    path, kind_field, reason = fields
-    kind = _KIND_FIELDS.get(kind_field)
-    if kind is None:
+    candidates = payload.get("candidates")
+    if not isinstance(candidates, list) or len(candidates) != 1:
         raise SelectorError(
-            f"expected '[file]' or '[directory]' in field 2, got {kind_field!r}",
+            "selected tracker result must contain exactly one candidate",
             EXIT_MALFORMED_OUTPUT,
             diagnostics,
         )
-    if not path:
+    candidate = candidates[0]
+    if not isinstance(candidate, dict):
+        raise SelectorError("candidate must be an object", EXIT_MALFORMED_OUTPUT, diagnostics)
+    path = candidate.get("path")
+    kind = candidate.get("kind")
+    reason = candidate.get("reason")
+    if not isinstance(path, str) or not path:
         raise SelectorError("candidate path is empty", EXIT_MALFORMED_OUTPUT, diagnostics)
-    if not reason:
+    if kind not in ("file", "directory"):
+        raise SelectorError(
+            f"candidate kind must be 'file' or 'directory', got {kind!r}",
+            EXIT_MALFORMED_OUTPUT,
+            diagnostics,
+        )
+    if not isinstance(reason, str) or not reason:
         raise SelectorError("candidate reason is empty", EXIT_MALFORMED_OUTPUT, diagnostics)
 
     return SelectedResult(

@@ -1,6 +1,7 @@
 # test-quality × directory
 
-Seven lenses to fan out in parallel against a directory of tests.
+Lens definitions for reviewers auditing one directory of tests. Load this file
+after `audit-and-fix` selects a `test-quality` directory subject.
 
 Each lens prompt ends with: "Prioritize the top five issues."
 
@@ -12,6 +13,6 @@ Each lens should surface issues visible at the directory scope — how the test 
 2. Evaluate how the test files within `<subject>` are organized, named, and grouped.
 3. Evaluate how fixtures, helpers, and shared utilities are architected across `<subject>`.
 4. Evaluate `<subject>` for internal consistency across its test files, and for consistency with peer test directories.
-5. Read the appropriate style guideline document, then identify style or convention violations within `<subject>`.
+5. Read the test style and convention sources at `<style-guide>`, then identify violations within `<subject>`.
 6. Identify dead, redundant, or orphaned tests and fixtures within `<subject>`.
 7. Identify test-quality debt accumulated across `<subject>`.

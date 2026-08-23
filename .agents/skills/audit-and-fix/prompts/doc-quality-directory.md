@@ -1,6 +1,7 @@
 # doc-quality × directory
 
-Seven lenses to fan out in parallel against a documentation directory.
+Lens definitions for reviewers auditing one documentation directory. Load this
+file after `audit-and-fix` selects a `doc-quality` directory subject.
 
 Each lens prompt ends with: "Prioritize the top five issues."
 
@@ -12,6 +13,6 @@ Each lens should surface issues visible at the directory scope — how the docum
 2. Evaluate how the documents within `<subject>` are organized, named, and grouped.
 3. Evaluate the information architecture of `<subject>` — coverage, navigation, and how its documents relate to each other.
 4. Evaluate `<subject>` for internal consistency across its documents, and for consistency with peer documentation directories. Flag body content duplicated across documents (within `<subject>` or against a peer directory) that should have a single home with cross-links — overlapping narration of the same topic in two places drifts apart over time.
-5. Read the appropriate style guideline document, then identify style guideline violations within `<subject>`.
+5. Read the documentation style sources at `<style-guide>`, then identify violations within `<subject>`.
 6. Identify dead, stale, or orphaned documents within `<subject>`.
 7. Identify documentation debt accumulated across `<subject>`.

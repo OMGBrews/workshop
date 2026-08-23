@@ -1,17 +1,17 @@
 """Tests for next/done/status/list_types queries.
 
-Full port of pia-maker's ``test_queries.py``: ordering, round-robin rotation
-driven by the pick counter, stale classification, and the kind + prefix
-filters. pytest fixtures become helper methods; ``parametrize`` becomes
-``subTest``.
+Full port of pia-maker's ``test_queries.py``: deterministic round-robin
+ordering, stale classification, and the kind + prefix filters. pytest fixtures
+become helper methods; ``parametrize`` becomes ``subTest``.
 """
 
 
 import support
 
 import unittest
+from unittest import mock
 
-from audit_tracker import queries
+from audit_tracker import git_utils, queries
 from audit_tracker.refresh import refresh
 
 
@@ -236,7 +236,7 @@ class LimitTest(QueriesTestBase):
 
 
 class RotationTest(support.RepoTestCase):
-    """The pick counter rotates back-to-back single picks across parents."""
+    """Completing work advances deterministic picks without shared state."""
 
     def _setup(self, fake: support.FakeGit, files: list[str]):
         fake.files = files
@@ -266,7 +266,7 @@ class RotationTest(support.RepoTestCase):
 
     # 17. next() alone does not advance the cursor; done() does ---------------
     def test_next_is_stable_without_done(self) -> None:
-        """The pick cursor advances on done(), not on next()."""
+        """Reading the queue alone does not mutate its ordering."""
         fake = self.fake_git()
         conn = self._setup(fake, ["app/a/x.py", "app/b/y.py", "app/c/z.py"])
 
@@ -290,6 +290,18 @@ class StatusAndTypesTest(QueriesTestBase):
         self.assertEqual(stats.audited, 2)
         self.assertEqual(stats.never, 1)
         self.assertEqual(stats.stale, 1)
+
+    def test_status_reuses_staleness_cache_at_same_head(self) -> None:
+        fake = self.fake_git()
+        conn = self.seeded(fake)
+        queries.done(conn, "a.py", "code", commit="SHA_A")
+        original = git_utils.commits_since_many_by_sha
+        with mock.patch.object(
+            git_utils, "commits_since_many_by_sha", wraps=original
+        ) as batch:
+            queries.status(conn, "code")
+            queries.status(conn, "code")
+        self.assertEqual(batch.call_count, 1)
 
     # 19. list_types names types that have applicable paths --------------------
     def test_list_types_returns_audit_types_with_paths(self) -> None:
@@ -486,6 +498,58 @@ class NormalizePathPrefixTest(unittest.TestCase):
             with self.subTest(raw=raw):
                 with self.assertRaises(ValueError):
                     queries.normalize_path_prefix(raw)
+
+
+class ExplicitPathValidationTest(support.RepoTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        support.write_file(self.repo / "app/main.py")
+        support.run_git(self.repo, "add", "app/main.py")
+
+    def test_normalizes_relative_and_absolute_in_repo_paths(self) -> None:
+        self.assertEqual(
+            queries.validate_explicit_path("./app/main.py").path, "app/main.py"
+        )
+        self.assertEqual(
+            queries.validate_explicit_path(str(self.repo / "app/main.py")).path,
+            "app/main.py",
+        )
+
+    def test_rejects_outside_and_untracked_paths(self) -> None:
+        outside = support.write_file(self.tmp / "outside.py")
+        with self.assertRaisesRegex(ValueError, "outside the repository"):
+            queries.validate_explicit_path(str(outside))
+        support.write_file(self.repo / "untracked.py")
+        with self.assertRaisesRegex(ValueError, "not a tracked"):
+            queries.validate_explicit_path("untracked.py")
+
+    def test_rejects_all_tracked_symlinks(self) -> None:
+        outside = support.write_file(self.tmp / "outside.py")
+        (self.repo / "escape.py").symlink_to(outside)
+        (self.repo / "local.py").symlink_to("app/main.py")
+        support.run_git(self.repo, "add", "escape.py", "local.py")
+        with self.assertRaisesRegex(ValueError, "tracked symlink"):
+            queries.validate_explicit_path("escape.py")
+        with self.assertRaisesRegex(ValueError, "tracked symlink"):
+            queries.validate_explicit_path("local.py")
+
+    def test_rejects_wrong_kind_and_non_applicable_configured_path(self) -> None:
+        with self.assertRaisesRegex(ValueError, "is a directory"):
+            queries.validate_explicit_path("app", expected_kind="file")
+
+        conn = self.conn()
+        conn.executemany(
+            "INSERT INTO paths (path, kind, first_seen_at, last_seen_at) VALUES (?, ?, 't', 't')",
+            [("app", "directory"), ("app/main.py", "file")],
+        )
+        conn.execute(
+            "INSERT INTO path_audit_applicability (path, audit_type) VALUES (?, ?)",
+            ("app/main.py", "code-quality"),
+        )
+        with self.assertRaisesRegex(ValueError, "not applicable"):
+            queries.validate_explicit_path(
+                "app", conn=conn, audit_type="code-quality"
+            )
 
 
 if __name__ == "__main__":

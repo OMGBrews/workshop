@@ -19,16 +19,15 @@ config.
   `file` or `directory`. Includes/excludes are gitignore-style globs (`**`
   spans whole segments and needs at least one).
 - **Paths** are every tracked file (from `git ls-files`) plus every parent
-  directory, regardless of audit type — **except paths owned by a submodule**,
-  which are dropped before anything else runs. Git tracks a symlink as an
-  ordinary file, so fleet-shared skills and files that reach into a submodule
-  through a link would otherwise look local and be offered for audit. A fix
-  written for one of them would land in the submodule's working tree, go
-  unstaged by an ordinary `git add` here, and be overwritten by the next
-  upstream publish. `git_utils.submodule_owned_paths()` resolves each tracked
-  symlink fully (not lexically — some chains pass through a directory symlink)
-  and drops anything landing inside a gitlink root, along with the roots
-  themselves.
+  directory, regardless of audit type — **except paths owned by a submodule
+  and all tracked symlinks**, which are dropped before anything else runs. Git
+  history for a symlink follows the link blob rather than changes to the target
+  an auditor reads, so even an in-repo link would produce misleading staleness.
+  A link into a submodule is worse: fixes land in the submodule's working tree,
+  go unstaged by an ordinary `git add` here, and can be overwritten by the next
+  upstream publish. `git_utils.submodule_owned_paths()` resolves tracked links
+  fully (including chains through directory symlinks) and drops anything
+  landing inside a gitlink root, along with the roots themselves.
 - **Applicability** is a per-type filter: a `(path, audit_type)` row exists
   iff the path matches one of the type's rules — **except that empty files are
   withheld from every type**. Auditing a zero-byte file can only ever conclude
@@ -45,10 +44,11 @@ config.
 - **Audits** are one row per `(path, audit_type)` — the last time you audited
   that path for that type, at which commit, with an optional note.
 
-Staleness is computed on the fly from git: `git rev-list --count
-<last_audit_commit>..HEAD -- <path>`. A directory audit is considered stale if
-any file under the tree has changed since the audit commit — git handles the
-recursion natively.
+Staleness is computed on the fly from Git. Paths sharing an audit commit are
+classified by one `git log --name-only` history walk rather than two Git
+processes per path. Exact results are cached under the current HEAD in the
+derived SQLite database, so repeated `status` and `next --stale` calls do not
+walk history again. A directory audit is stale if any file below it changed.
 
 ## CLI
 
@@ -64,6 +64,9 @@ python3 .agents/skills/audit-and-fix/tracker.py next code-quality
 python3 .agents/skills/audit-and-fix/tracker.py next doc-quality -n 5
 python3 .agents/skills/audit-and-fix/tracker.py next readme-quality --never
 
+# Stable machine output: selected/empty/not-configured are distinct outcomes
+python3 .agents/skills/audit-and-fix/tracker.py next code-quality --format json
+
 # Restrict to files or directories only
 python3 .agents/skills/audit-and-fix/tracker.py next code-quality --kind file
 
@@ -74,6 +77,10 @@ python3 .agents/skills/audit-and-fix/tracker.py next code-quality --under app/fe
 python3 .agents/skills/audit-and-fix/tracker.py status code-quality
 python3 .agents/skills/audit-and-fix/tracker.py list-types
 
+# Canonicalize and prove an explicit path is tracked, owned, and applicable
+python3 .agents/skills/audit-and-fix/tracker.py validate-path ./app/features code-quality
+python3 .agents/skills/audit-and-fix/tracker.py validate-path /absolute/path/in/repo code-quality --format json
+
 # Mark something as audited (records current HEAD)
 python3 .agents/skills/audit-and-fix/tracker.py done app/features/suggestions/engine.py code-quality
 python3 .agents/skills/audit-and-fix/tracker.py done docs/architecture doc-quality --note "swept structure"
@@ -83,10 +90,10 @@ python3 .agents/skills/audit-and-fix/tracker.py done docs/architecture doc-quali
 
 | Code | Meaning |
 |------|---------|
-| 0 | success (including "No candidates for …") |
+| 0 | success (including `empty` and JSON `not-configured` outcomes) |
 | 1 | `done` refused: path not applicable for that type |
 | 2 | bad arguments, or config missing on disk but explicitly passed / invalid |
-| 4 | **not opted in**: no `docs/work/audits/config.toml`. Nothing was touched; create the config to adopt tracked audits. |
+| 4 | **not opted in** in legacy text mode. JSON `next` reports `{"outcome":"not-configured"}` with exit 0; `validate-path` remains available without config. |
 
 ### Filters on `next`
 
@@ -98,6 +105,20 @@ python3 .agents/skills/audit-and-fix/tracker.py done docs/architecture doc-quali
   `./` and trailing `/` are stripped, and absolute paths or `..` segments are
   rejected.
 - `-n / --limit` — number of candidates to return (default `1`, must be `>= 1`).
+- `--format json` — emit one structured result. `selected` contains a
+  `candidates` array; `empty` contains an empty one; an unconfigured repo gets
+  the distinct `not-configured` outcome. Errors stay non-zero and never emit a
+  success-shaped object.
+
+### Explicit path validation
+
+`validate-path <path> <type>` accepts `./` spellings and absolute paths inside
+the repo, then prints the canonical repo-relative POSIX path. It rejects paths
+outside the repo, every tracked symlink, untracked paths, submodule-owned
+paths, kind mismatches, unknown audit types, and—when configured—paths outside
+that type's applicability rules. Without a tracker config it performs the Git
+ownership checks directly and verifies the shipped type/kind prompt without
+creating a cache; JSON output marks this as `"configured": false`.
 
 ### Global options
 
@@ -118,8 +139,10 @@ Both come before the subcommand:
   `<repo>/docs/work/audits/records/<audit-type>.json` — one file per audit
   type, committed.
 - **Refresh state:** `<git-dir>/audit-tracker/refresh-state.json` —
-  `last_refreshed_at` + `last_refresh_commit`, written every time `refresh()`
-  runs (explicit or implicit bootstrap). Lives under the git dir, so it is
+  timestamp/commit plus config-content and Git-index fingerprints, written
+  every time `refresh()` runs (explicit or implicit bootstrap). The extra
+  fingerprints invalidate staged path/config changes before HEAD moves. It
+  lives under the git dir, so it is
   never committed and never conflicts: when it lived beside the records as a
   tracked sibling, concurrent workers conflicted on it every iteration;
   gitignoring it still left a chore per consumer. The derived SQLite cache
@@ -139,7 +162,9 @@ written with sorted keys and a fixed indent, so:
 
 The CLI reloads `records/*.json` into the SQLite cache on every invocation, so
 manual edits or merge resolutions are picked up automatically without a sync
-step.
+step. Writers take a per-type advisory lock around the read-modify-write cycle
+and atomically replace the JSON file, preventing lost updates and partial reads
+when processes in the same clone finish together.
 
 ## Merging audit records
 
@@ -147,7 +172,6 @@ step.
 
 | Conflict marker is on… | Resolve to… |
 |------------------------|-------------|
-| `"pick_counter"` | the **larger** value |
 | Same `(path, audit_type)` audited twice | the **later** `last_audited_at` (unless one branch obviously did a deeper review) |
 | Sort order rewritten by hand | accept either side; next CLI write rewrites in sorted order |
 
@@ -168,27 +192,7 @@ When you merge a branch that ran audits, expect the following:
 
 ### What conflicts (and what to do)
 
-**1. `pick_counter` conflicts whenever both sides ran any `done`.**
-
-Both branches start at `N`, both increment to `N+k` and `N+m`. Git can't pick.
-Resolve by **taking the larger of the two values** — that's the count that
-reflects the merged audit history most accurately. (The counter only seeds the
-round-robin starting directory; any value is valid, but the larger one keeps
-`next` rotation moving forward as expected.)
-
-```json
-<<<<<<< HEAD
-{
-  "pick_counter": 195,
-=======
-{
-  "pick_counter": 198,
->>>>>>> feature-branch
-```
-
-→ Resolve to `"pick_counter": 198`.
-
-**2. Same `(path, audit_type)` audited on both sides.**
+**1. Same `(path, audit_type)` audited on both sides.**
 
 This is rare and almost always means two people parallel-audited the same
 file. Pick whichever audit reflects the deeper review — usually the **later
@@ -200,7 +204,7 @@ After accepting either side, the path will probably show up as stale on
 history, so the recorded `last_audit_commit` is necessarily older than HEAD on
 the audited path. A re-audit pass will resolve it cleanly.
 
-**3. Same path appears in different sorted positions (shouldn't happen).**
+**2. Same path appears in different sorted positions (shouldn't happen).**
 
 Records files are always written sorted by path; if a hand-edit broke sorting
 on one side, you'll see a conflict that looks like the file was rewritten.
@@ -233,10 +237,11 @@ git diff main..feature-branch -- docs/work/audits/records/
 - The config lists what's *auditable*, not what's *audited*. Adding or
   removing an audit type only changes applicability — existing audit rows are
   preserved.
-- `pick_counter` is per-audit-type and advances on every `done()`. It seeds
-  the round-robin starting directory in `next` so consecutive picks across
-  sessions land in different parent dirs. After a merge, taking the larger
-  value keeps the rotation advancing.
+- Legacy records may still contain `pick_counter`. The tracker reads and
+  preserves that field but no longer advances or creates it. Candidate order
+  is deterministic, while completing an audit naturally moves that path behind
+  older work. Removing the shared mutation prevents otherwise independent
+  branch audits from conflicting at the top of every records file.
 - **Don't hand-edit records to break sort order.** The CLI rewrites in sorted
   order on every `done()`, but a manual unsorted edit lingers until the next
   write to that file and produces noisy diffs in the meantime.

@@ -13,8 +13,8 @@ issue.
 
 ## Use in another project
 
-Mount Workshop as a pinned submodule, usually at `workshop/`, then link the
-skills a project needs:
+Mount Workshop as a pinned submodule, usually at `workshop/`, then link its
+shared skill roster:
 
 ```bash
 git submodule add https://github.com/OMGBrewmaster/workshop.git workshop
@@ -22,8 +22,10 @@ bash workshop/Tools/sync-skill-symlinks.sh .
 ```
 
 The sync command creates one link per shared skill on `.agents/skills/` and
-the Claude-specific bridge beside it. The tool discovers the actual mount name,
-so `workshop/` is a convention rather than a requirement.
+the Claude-specific bridge beside it. Linking the complete roster preserves
+dependencies between skill families, including `audit-next` and `audit-done`'s
+dependency on the engine inside `audit-and-fix`. The tool discovers the actual
+mount name, so `workshop/` is a convention rather than a requirement.
 
 ## Checks and releases
 

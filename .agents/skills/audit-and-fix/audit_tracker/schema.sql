@@ -28,11 +28,21 @@ CREATE TABLE IF NOT EXISTS audits (
 CREATE INDEX IF NOT EXISTS idx_audits_by_type
   ON audits(audit_type, last_audited_at);
 
--- Per-audit-type rotation state. `pick_counter` is a monotonic integer
--- advanced by done(); next_paths() uses `counter % len(dirs)` to rotate the
--- round-robin starting directory across sessions, so back-to-back audits
--- don't all land in the same parent directory.
+-- Compatibility cache for legacy records carrying `pick_counter`. New
+-- tracker versions neither create nor advance the counter; the derived table
+-- remains so an old records file can be loaded without a schema migration.
 CREATE TABLE IF NOT EXISTS audit_type_state (
   audit_type TEXT PRIMARY KEY,
   pick_counter INTEGER NOT NULL DEFAULT 0
+);
+
+-- Derived staleness results. History classification can require a sizeable
+-- Git walk, so repeated status/next calls at the same HEAD reuse exact
+-- (audit commit, path) counts. Old HEAD rows are pruned on the next query.
+CREATE TABLE IF NOT EXISTS staleness_cache (
+  head_commit TEXT NOT NULL,
+  audit_commit TEXT NOT NULL,
+  path TEXT NOT NULL,
+  commits_since INTEGER NOT NULL,
+  PRIMARY KEY (head_commit, audit_commit, path)
 );

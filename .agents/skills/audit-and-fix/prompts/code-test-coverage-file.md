@@ -1,6 +1,7 @@
 # code-test-coverage × file
 
-Seven lenses to fan out in parallel against a source code file, asking whether the code is adequately tested.
+Lens definitions for reviewers auditing test coverage of one source code file.
+Load this file after `audit-and-fix` selects a `code-test-coverage` file subject.
 
 Each lens prompt ends with: "Prioritize the top five issues."
 

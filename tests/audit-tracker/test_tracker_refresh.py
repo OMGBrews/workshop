@@ -138,6 +138,24 @@ class RefreshTest(support.RepoTestCase):
         self.assertIn(("devtools/scripts/local.py", "code"), app)
         self.assertNotIn(("devtools/scripts/format_ci_failure.py", "code"), app)
 
+    def test_refresh_excludes_all_tracked_symlinks(self) -> None:
+        fake = self.fake_git()
+        fake.files = ["app/real.py", "app/local-link.py", "app/external-link.py"]
+        fake.symlink_files = {"app/local-link.py", "app/external-link.py"}
+        config = support.make_config(
+            {
+                "audit_types": {
+                    "code": {"targets": [{"kind": "file", "include": ["app/*.py"]}]}
+                }
+            }
+        )
+        conn = self.conn()
+        refresh(conn, config)
+
+        self.assertIn(("app/real.py", "code"), applicability(conn))
+        self.assertNotIn("app/local-link.py", all_paths(conn))
+        self.assertNotIn("app/external-link.py", all_paths(conn))
+
     # 4. submodule exclusion happens before directory derivation --------------
     def test_refresh_derives_no_directories_from_submodule_owned_paths(self) -> None:
         """Exclusion happens before directory derivation, not after.
