@@ -11,6 +11,14 @@ It lists each gate's command, its pass condition, and the surface it applies to.
 with no automated gates says so in one line; that is an answer. A *missing* file is the
 only real gap, and it is the one thing to report rather than work around.
 
+**And that file's scope is the gates, nothing more.** It carries the gates table, the
+`DOCS-ONLY` block where the repo declares one, and the minimum prose needed to run each
+gate correctly — the invocation, the pass condition, any caveat that changes how you run
+it. A gate's rationale, its policy history, and the standing constraints behind it are
+repo description: link them, never restate them. This file is read at the moment someone
+needs a command, and every paragraph that is not about running a gate moves that command
+further away.
+
 Satisfy the gates **whose surface your change actually touches** — every gate names that
 surface, and running the rest is waste rather than rigour. Name the ones you skipped and
 why, because afterwards a silent skip and a satisfied gate look identical. Task briefs
