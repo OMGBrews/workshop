@@ -69,36 +69,11 @@ fail()   { printf 'FAIL %-2s %s\n' "$1" "$2"; failures=$((failures + 1)); }
 absent() { printf 'absent %-2s %s\n' "$1" "$2"; }
 note()   { printf 'note  %-2s %s\n' "$1" "$2"; notes=$((notes + 1)); }
 
-# Fully resolve a symlink chain to a canonical absolute path: follow the leaf
-# with readlink (macOS readlink has no -f), then let `cd -P` resolve every
-# intermediate symlinked directory. Exit 1 when the chain dangles — either a
-# directory in the chain that cannot be entered, or a final target that does
-# not exist.
-resolve_chain() {
-    local p="$1" dir base hops=0
-    while [ -L "$p" ]; do
-        hops=$((hops + 1))
-        [ "$hops" -lt 16 ] || return 1
-        dir=$(dirname "$p")
-        p=$(readlink "$p")
-        case "$p" in
-            /*) ;;
-            *) p="$dir/$p" ;;
-        esac
-    done
-    if dir=$(cd -P "$(dirname "$p")" 2>/dev/null && pwd -P); then
-        base=$(basename "$p")
-        [ -e "$dir/$base" ] || return 1
-        printf '%s/%s\n' "$dir" "$base"
-        return 0
-    fi
-    return 1
-}
 
 # Validate one ordinary task brief through task-finalize's shared parser.
 # It deliberately does not ask for the full handoff verdict: human-bucket
 # drafts may have open questions and no finalized-at stamp.  The command runs
-# under set -e, so capture exit 1 explicitly and let clause 12 aggregate every
+# under set -e, so capture exit 1 explicitly and let clause 11 aggregate every
 # malformed brief into its stable FAIL record.
 #   $1 = brief path, $2 = human or queued finalized-at policy.
 validate_brief() {
@@ -315,86 +290,45 @@ else
     fi
 fi
 
-# --- 9: the _TEMPLATE.md symlink (required for task-system repos) -------------
-# A symlink, never a copy; non-dangling; resolving into this repo's own
-# .agents/skills/task-create/ (the devtools source-repo shape), into this
-# repo's devtools or workshop checkout (the mirror consumers mount; the
-# pre-rename placeholder mount name was retired once every consumer migrated),
-# or into the Workshop nested in a workshop-dev wrapper clone at the repo root
-# (the fleet-operations repo shape — hq mounts no workshop/ of its own).
-# All checkout cases are matched by exact file, not by directory prefix: a
-# repo-local directory that merely happens to be named devtools/ (pia-maker's
-# devtools/ Python package) must not satisfy the clause.
-if [ "$tasks_active" -eq 0 ]; then
-    absent 9 "no task system — no tasks root to hold the template symlink"
-elif [ ! -L docs/work/tasks/_TEMPLATE.md ]; then
-    if [ -e docs/work/tasks/_TEMPLATE.md ]; then
-        fail 9 "docs/work/tasks/_TEMPLATE.md is a real file, not a symlink — the template must be a symlink into the task-create skill, never a copy"
-    else
-        fail 9 "docs/work/tasks/_TEMPLATE.md is missing — the task template must be reachable through a symlink into the task-create skill"
-    fi
-else
-    if resolved=$(resolve_chain docs/work/tasks/_TEMPLATE.md); then
-        root_abs=$(pwd -P)
-        case "$resolved" in
-            "$root_abs"/.agents/skills/task-create/_TEMPLATE.md)
-                pass 9 "docs/work/tasks/_TEMPLATE.md resolves into this repo's own skill tree (.agents/skills/task-create/_TEMPLATE.md — the devtools source-repo shape)"
-                ;;
-            "$root_abs"/devtools/.agents/skills/task-create/_TEMPLATE.md | "$root_abs"/workshop/.agents/skills/task-create/_TEMPLATE.md)
-                rel="${resolved#"$root_abs"/}"
-                pass 9 "docs/work/tasks/_TEMPLATE.md resolves into this repo's own devtools checkout ($rel)"
-                ;;
-            "$root_abs"/workshop-dev/workshop/.agents/skills/task-create/_TEMPLATE.md)
-                rel="${resolved#"$root_abs"/}"
-                pass 9 "docs/work/tasks/_TEMPLATE.md resolves into the nested Workshop of this repo's wrapper clone ($rel)"
-                ;;
-            *)
-                fail 9 "docs/work/tasks/_TEMPLATE.md resolves outside this repo's devtools or workshop checkout: $resolved"
-                ;;
-        esac
-    else
-        fail 9 "docs/work/tasks/_TEMPLATE.md is a dangling symlink — it must resolve into this repo's devtools or workshop checkout"
-    fi
-fi
 
-# --- 10: focus.md (opt-in) -----------------------------------------------------
+# --- 9: focus.md (opt-in) -----------------------------------------------------
 if [ "$tasks_active" -eq 0 ]; then
-    absent 10 "no task system — no tasks root to hold a focus document"
+    absent 9 "no task system — no tasks root to hold a focus document"
 elif [ -f docs/work/tasks/focus.md ] && [ -s docs/work/tasks/focus.md ]; then
-    pass 10 "docs/work/tasks/focus.md present — its format is owned by task-reprioritize/ranking-rubric.md, not re-validated here"
+    pass 9 "docs/work/tasks/focus.md present — its format is owned by task-reprioritize/ranking-rubric.md, not re-validated here"
 elif [ -e docs/work/tasks/focus.md ]; then
-    fail 10 "docs/work/tasks/focus.md is empty or unreadable — a focus document must state the owner's direction in prose"
+    fail 9 "docs/work/tasks/focus.md is empty or unreadable — a focus document must state the owner's direction in prose"
 else
-    absent 10 "no focus document — ranking runs on mechanics alone"
+    absent 9 "no focus document — ranking runs on mechanics alone"
 fi
 
-# --- 11: queued/README.md (required alongside the queue opt-in) ---------------
+# --- 10: queued/README.md (required alongside the queue opt-in) ---------------
 # The queue is an opt-in: its presence enables the autonomous runner, and the
 # README is what keeps the empty directory alive in git.
 if [ "$tasks_active" -eq 0 ]; then
-    absent 11 "no task system — no queue to keep alive"
+    absent 10 "no task system — no queue to keep alive"
 elif [ -d docs/work/tasks/queued ]; then
     if [ -f docs/work/tasks/queued/README.md ]; then
-        pass 11 "docs/work/tasks/queued/README.md present — the queue directory is opted in and kept alive in git"
+        pass 10 "docs/work/tasks/queued/README.md present — the queue directory is opted in and kept alive in git"
     else
-        fail 11 "docs/work/tasks/queued/ exists but docs/work/tasks/queued/README.md is missing — the README is what keeps the empty queue directory alive in git"
+        fail 10 "docs/work/tasks/queued/ exists but docs/work/tasks/queued/README.md is missing — the README is what keeps the empty queue directory alive in git"
     fi
 else
-    absent 11 "no queued/ directory — the autonomous runner is not opted in"
+    absent 10 "no queued/ directory — the autonomous runner is not opted in"
 fi
 
-# --- 12: the document-format contract (required for task documents) -----------
+# --- 11: the document-format contract (required for task documents) -----------
 # Ordinary briefs in the four human buckets need the four author-required
 # frontmatter values and the AC sentinels; finalized-at is not required there.
 # Briefs in queued/ and queued/blocked/ additionally need a valid finalized-at
 # commit, because queue admission already requires readiness. Reserved support
-# documents (README.md, _TEMPLATE.md, focus.md) and the runner's forensic
+# documents (README.md, focus.md) and the runner's forensic
 # markers (the .crashed / .merge-failed / .abandoned-wip / .dispatch-failed /
 # .ci-stuck / .partial shapes the runner commits) are not briefs.
 if [ "$tasks_active" -eq 0 ]; then
-    absent 12 "no task system — no briefs to validate"
+    absent 11 "no task system — no briefs to validate"
 elif [ ! -d docs/work/tasks ]; then
-    note 12 "cannot validate brief format — docs/work/tasks/ is missing (clause 1 owns that failure)"
+    note 11 "cannot validate brief format — docs/work/tasks/ is missing (clause 1 owns that failure)"
 else
     checked=0
     brief_problems=""
@@ -413,31 +347,31 @@ else
                 brief_problems="${brief_problems}${f}: $(printf '%s' "$v" | tr '\n' '; ')"
             fi
         done < <(find "docs/work/tasks/$bucket" -maxdepth 1 -type f -name '*.md' \
-                     ! -name 'README.md' ! -name '_TEMPLATE.md' ! -name 'focus.md' \
+                     ! -name 'README.md' ! -name 'focus.md' \
                      ! -name '*.crashed.*.md' ! -name '*.merge-failed.*.md' \
                      ! -name '*.abandoned-wip.*.md' ! -name '*.dispatch-failed.*.md' \
                      ! -name '*.ci-stuck.*.md' ! -name '*.partial.*.md')
     done < <(printf 'now\nsoon\nlater\nnever\nqueued\nqueued/blocked\n')
 
     if [ -n "$brief_problems" ]; then
-        fail 12 "$brief_problems"
+        fail 11 "$brief_problems"
     elif [ "$checked" -eq 0 ]; then
-        pass 12 "no ordinary briefs to validate (the buckets hold only support documents)"
+        pass 11 "no ordinary briefs to validate (the buckets hold only support documents)"
     else
-        pass 12 "$checked brief(s) validated — four author-required frontmatter fields, AC sentinels, and finalized-at in the queue"
+        pass 11 "$checked brief(s) validated — four author-required frontmatter fields, AC sentinels, and finalized-at in the queue"
     fi
 fi
 
-# --- 13-16: audited-only rows (reported, not reimplemented) -------------------
+# --- 12-15: audited-only rows (reported, not reimplemented) -------------------
 # These rows sit outside the contract's jurisdiction and are owned by other
 # checks; each stays visible so no registry row silently vanishes.
 
-note 13 "AGENTS.md / CLAUDE.md are outside this contract — audited by Tools/check-agent-surfaces.sh"
-note 14 "README.md files and the docs/README.md index are curation with an accuracy-only obligation — audit-and-fix's readme-quality lens plus Tools/check-markdown-links.sh own them"
-note 15 "docs/style-guides/ and procedures are repo-local taste — owned by the style guide and instruction-file discovery"
-note 16 "scripts/repair_doc_links.py is opt-in and owned by the repo that keeps it — not a shared-conformance concern"
+note 12 "AGENTS.md / CLAUDE.md are outside this contract — audited by Tools/check-agent-surfaces.sh"
+note 13 "README.md files and the docs/README.md index are curation with an accuracy-only obligation — audit-and-fix's readme-quality lens plus Tools/check-markdown-links.sh own them"
+note 14 "docs/style-guides/ and procedures are repo-local taste — owned by the style guide and instruction-file discovery"
+note 15 "scripts/repair_doc_links.py is opt-in and owned by the repo that keeps it — not a shared-conformance concern"
 
-# --- 17: the audit-state directory (opt-in via the declaring config) ----------
+# --- 16: the audit-state directory (opt-in via the declaring config) ----------
 # docs/work/audits/ holds the shared audit tracker's per-consumer state. The
 # config file IS the opt-in ("declared, not assumed"): a directory without it
 # is a half-adopted tree the tracker refuses to serve rather than silently
@@ -445,11 +379,11 @@ note 16 "scripts/repair_doc_links.py is opt-in and owned by the repo that keeps 
 # Record files must stay parseable JSON — the tracker re-reads them on every
 # invocation.
 if [ ! -d docs/work/audits ]; then
-    absent 17 "docs/work/audits/ not opted in — no tracked-audit state"
+    absent 16 "docs/work/audits/ not opted in — no tracked-audit state"
 elif [ ! -s docs/work/audits/config.toml ]; then
-    fail 17 "docs/work/audits/config.toml is missing or empty — the declaring config is the opt-in"
+    fail 16 "docs/work/audits/config.toml is missing or empty — the declaring config is the opt-in"
 elif [ ! -d docs/work/audits/records ]; then
-    fail 17 "docs/work/audits/records/ does not exist — the tracker writes records there"
+    fail 16 "docs/work/audits/records/ does not exist — the tracker writes records there"
 else
     bad_json=""
     for f in docs/work/audits/records/*.json; do
@@ -459,9 +393,9 @@ else
         fi
     done
     if [ -n "$bad_json" ]; then
-        fail 17 "audit record file(s) not valid JSON:$bad_json"
+        fail 16 "audit record file(s) not valid JSON:$bad_json"
     else
-        pass 17 "docs/work/audits/ with its declaring config and parseable records"
+        pass 16 "docs/work/audits/ with its declaring config and parseable records"
     fi
 fi
 

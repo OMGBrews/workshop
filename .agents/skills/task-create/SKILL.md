@@ -19,38 +19,24 @@ Create a new task document in this repo's tasks directory.
 ## The template is single-source
 
 The canonical task template is [`_TEMPLATE.md`](_TEMPLATE.md), the file next to this
-one. Each repo exposes it at the familiar path as a **symlink**, never a copy:
+one — the only copy. Repos carry **no** `<tasks>/_TEMPLATE.md` at all: a task is
+created by reading this file and copying it into `<tasks>/{bucket}/` (Phase 3). A
+tasks-root copy is what let the template drift into seven per-repo variants before
+the 2026-07-26 convergence; the symlink that held the convergence in place, and the
+gates that demanded it, were retired together, leaving the canonical file here alone.
 
-```
-<tasks>/_TEMPLATE.md -> <relative path back to repo root>/.claude/skills/task-create/_TEMPLATE.md
-```
-
-(From `docs/work/tasks/` that is
-`../../../.claude/skills/task-create/_TEMPLATE.md` — the `../` count is the tasks
-root's depth below the repo root.)
-
-The `.claude/skills/` paths on this page are the subject matter — the symlink convention this skill
-exists to maintain, and the Claude Code bridge into the canonical `.agents/skills/` tree.
-
-`.claude/skills/task-create/` is itself shared from `devtools/`, so one edit there
-reaches every repo — the same way the skill body does. A copy would drift; a symlink
-cannot. If you find a *regular file* at `<tasks>/_TEMPLATE.md`, that repo has fallen
-out of the shared system — replace it with the symlink rather than editing it in
-place (the devtools tree's `Tools/migrate-task-format.sh` does this, among other things).
+Resolve this file from the skill's **physical** directory per
+[`skill-path-resolution.md`](../../../docs/skill-path-resolution.md) — never through a
+consumer's `.claude/` bridge. Prose pointers elsewhere in the fleet name the canonical
+surface, `.agents/skills/task-create/_TEMPLATE.md`.
 
 ## Phase 1 — Check Structure
 
 If no tasks root exists at all, offer to create one at `docs/work/tasks/` (the
 machine-owned location):
-- `docs/work/tasks/` with a `README.md`, plus `_TEMPLATE.md` created as a symlink:
-
-  ```bash
-  ln -s ../../../.claude/skills/task-create/_TEMPLATE.md docs/work/tasks/_TEMPLATE.md
-  ```
-
-  Verify it resolves (`cat docs/work/tasks/_TEMPLATE.md`) before continuing — a dangling
-  link means the shared skills are not available in this repo.
-- `docs/work/tasks/now/`, `docs/work/tasks/soon/`, `docs/work/tasks/later/`, `docs/work/tasks/never/` each with a one-liner `README.md`. Write each one-liner from [`bucket-definitions.md`](bucket-definitions.md) and point at it for the definition of record — the one-liner is a courtesy summary, not a second definition. Write that pointer as the repo-root-relative path in prose (`.agents/skills/task-create/bucket-definitions.md` — the repo's own canonical skills surface, whatever the devtools tree is mounted as, per [`skill-path-resolution.md`](../../../docs/skill-path-resolution.md)), **not** a markdown relative link: the tree sits outside the tasks tree, so a `../../..` hyperlink renders broken on GitHub even where it resolves on disk. (Do **not** create `queued/` — an autonomous queue is a deliberate per-repo opt-in, not scaffolding.)
+- `docs/work/tasks/` with a `README.md` — the template is not copied or linked into
+  the tasks root; Phase 3 reads the canonical file from inside this skill.
+- `docs/work/tasks/now/`, `docs/work/tasks/soon/`, `docs/work/tasks/later/`, `docs/work/tasks/never/` each with a one-liner `README.md`. Write each one-liner from [`bucket-definitions.md`](bucket-definitions.md) and point at it for the definition of record — the one-liner is a courtesy summary, not a second definition. Write that pointer as the repo-root-relative path in prose (`.agents/skills/task-create/bucket-definitions.md` — the repo's own canonical skills surface, whatever the devtools tree is mounted as, per [`skill-path-resolution.md`](../../../docs/skill-path-resolution.md)), **not** a markdown relative link: the tree sits outside the tasks tree, so a `../../..` hyperlink renders broken on GitHub even where it resolves on disk. (Do **not** create `q…ueued/` — an autonomous queue is a deliberate per-repo opt-in, not scaffolding.)
 
 If the user declines, stop.
 
@@ -64,7 +50,10 @@ If the user declines, stop.
 
 ## Phase 3 — Create File
 
-1. Read `<tasks>/_TEMPLATE.md` (the symlink resolves to this skill's `_TEMPLATE.md`).
+1. Read this skill's own `_TEMPLATE.md` — the file next to this one, resolved from the
+   skill's **physical** directory per
+   [`skill-path-resolution.md`](../../../docs/skill-path-resolution.md), never through a
+   consumer's `.claude/` bridge.
 2. Copy it to `<tasks>/{bucket}/{task-name}.md`.
 3. Fill in:
    - Replace `# Task Title` with `# {title}` (derived from task-name, converting kebab-case to sentence case — capitalize only the first word and proper nouns, per the doc style guide).

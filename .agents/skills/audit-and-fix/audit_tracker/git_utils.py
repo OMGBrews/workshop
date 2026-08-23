@@ -178,7 +178,8 @@ def submodule_owned_paths() -> set[str]:
     handful of files that look local, reach this repo.
 
     Resolution is deliberately **full** (:meth:`Path.resolve`), not lexical.
-    ``docs/work/tasks/_TEMPLATE.md`` points at
+    A symlink's link text can look local while its target lives in a
+    submodule: ``handbook/briefs/_TEMPLATE.md`` points at
     ``.claude/skills/task-create/_TEMPLATE.md``, whose *first* component is
     itself a symlink into the submodule. Normalizing the link text would see
     a local-looking path and let the file through, which is the failure this

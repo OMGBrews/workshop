@@ -320,7 +320,7 @@ should_stop() {
 
 # ---- Frontmatter-driven eligibility ----------------------------------
 # Task briefs carry a YAML frontmatter block (status / effort / priority /
-# dependencies — see the tasks root's _TEMPLATE.md). The claim path
+# dependencies — see the canonical template, .agents/skills/task-create/_TEMPLATE.md). The claim path
 # reads two of those fields:
 #   priority:      high | medium | low — claim order (default medium when
 #                  absent or unrecognised, so a malformed brief is still

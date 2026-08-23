@@ -65,10 +65,7 @@ Exercise the document-format contract.
 EOF
 }
 
-# A repo whose docs/work/ conforms to the contract. Deliberately mirrors the
-# real three-hop template symlink shape: docs/work/tasks/_TEMPLATE.md ->
-# ../../../.claude/skills/task-create/_TEMPLATE.md -> ../../.agents/... ->
-# ../../devtools/..., so full resolution has to walk every hop.
+# A repo whose docs/work/ conforms to the contract.
 make_conformant() {
     git_init "$1"
     mkdir -p "$1/docs/work/tasks/now" "$1/docs/work/tasks/soon" \
@@ -82,13 +79,6 @@ The gates a change to this repo must pass.
 |------|---------|----------------|
 | Tests | bash tests/run-tests.sh | Exit 0 |
 EOF
-    mkdir -p "$1/devtools/.agents/skills/task-create"
-    cp "$DEVTOOLS_ROOT/.agents/skills/task-create/_TEMPLATE.md" \
-       "$1/devtools/.agents/skills/task-create/_TEMPLATE.md"
-    mkdir -p "$1/.agents/skills" "$1/.claude/skills"
-    ln -s ../../devtools/.agents/skills/task-create "$1/.agents/skills/task-create"
-    ln -s ../../.agents/skills/task-create "$1/.claude/skills/task-create"
-    ln -s ../../../.claude/skills/task-create/_TEMPLATE.md "$1/docs/work/tasks/_TEMPLATE.md"
     write_brief "$1/docs/work/tasks/now" "a-fixture-task"
     write_brief "$1/docs/work/tasks/soon" "b-fixture-task"
     write_brief "$1/docs/work/tasks/later" "c-fixture-task"
@@ -185,8 +175,6 @@ printf '%s\n' "$out" | grep -Fq "docs/work/tasks/ does not exist" || fail "unmig
 printf '%s\n' "$out" | grep -Fq "legacy tasks root docs/tasks/ remains" || fail "unmigrated: no legacy-root message"
 printf '%s\n' "$out" | grep -Fq "FAIL 6" || fail "unmigrated: no clause-6 failure"
 printf '%s\n' "$out" | grep -Fq "definition-of-done.md is missing" || fail "unmigrated: no migrate-gates message"
-printf '%s\n' "$out" | grep -Fq "FAIL 9" || fail "unmigrated: no clause-9 failure"
-printf '%s\n' "$out" | grep -Fq "_TEMPLATE.md is missing" || fail "unmigrated: no template message"
 
 # --- the complete target is GREEN, with a verdict for every registry row ------
 d="$TMP/conformant"
@@ -194,7 +182,7 @@ rm -rf "$d"
 make_conformant "$d"
 out=$(bash "$SCRIPT" "$d" 2>&1) && rc=0 || rc=$?
 [ "$rc" -eq 0 ] || fail "conformant fixture: exit $rc, wanted 0"
-for n in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17; do
+for n in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do
     printf '%s\n' "$out" | grep -Eq "(^| )$n " || fail "conformant: no verdict for clause $n"
 done
 
@@ -257,82 +245,15 @@ consumed_twin() {
 expect "legacy consumed-by retained beside the migrated copy" 1 consumed_twin \
     "FAIL 8" "legacy docs/consumed-by.md remains"
 
-template_real_file() {
-    rm "$1/docs/work/tasks/_TEMPLATE.md"
-    cp "$DEVTOOLS_ROOT/.agents/skills/task-create/_TEMPLATE.md" "$1/docs/work/tasks/_TEMPLATE.md"
-}
-expect "template copied instead of symlinked" 1 template_real_file \
-    "FAIL 9" "real file, not a symlink"
-
-template_dangling() {
-    rm "$1/docs/work/tasks/_TEMPLATE.md"
-    ln -s ../../../devtools/.agents/skills/task-create/nope.md "$1/docs/work/tasks/_TEMPLATE.md"
-}
-expect "dangling template symlink" 1 template_dangling "FAIL 9" "dangling symlink"
-
-template_outside() {
-    rm "$1/docs/work/tasks/_TEMPLATE.md"
-    mkdir -p "$1/vendor"
-    echo x >"$1/vendor/t.md"
-    ln -s ../../../vendor/t.md "$1/docs/work/tasks/_TEMPLATE.md"
-}
-expect "template resolving outside devtools" 1 template_outside \
-    "FAIL 9" "outside this repo's devtools or workshop checkout"
-
-template_source_repo() {
-    # The devtools source-repo shape: the template resolves into the repo's
-    # own .agents/skills/task-create/, with no devtools checkout at all. The
-    # conformant fixture's .agents/skills and .claude/skills bridges must go
-    # first — they would otherwise redirect the chain into devtools/.
-    rm "$1/docs/work/tasks/_TEMPLATE.md"
-    rm -rf "$1/.agents/skills" "$1/.claude/skills"
-    mkdir -p "$1/.agents/skills/task-create"
-    cp "$DEVTOOLS_ROOT/.agents/skills/task-create/_TEMPLATE.md" \
-       "$1/.agents/skills/task-create/_TEMPLATE.md"
-    ln -s ../../../.agents/skills/task-create/_TEMPLATE.md "$1/docs/work/tasks/_TEMPLATE.md"
-}
-expect "template resolving into the repo's own skill tree" 0 template_source_repo \
-    "own skill tree" ".agents/skills/task-create/_TEMPLATE.md"
-
-template_nested_wrapper() {
-    # The fleet-operations repo shape (hq): no workshop/ mount of its own —
-    # Workshop sits nested inside a workshop-dev wrapper clone at the root,
-    # so the chain resolves to workshop-dev/workshop/.agents/... . The
-    # conformant fixture's bridges go first, as in template_source_repo.
-    rm "$1/docs/work/tasks/_TEMPLATE.md"
-    rm -rf "$1/.agents/skills" "$1/.claude/skills"
-    mkdir -p "$1/workshop-dev/workshop/.agents/skills/task-create"
-    cp "$DEVTOOLS_ROOT/.agents/skills/task-create/_TEMPLATE.md" \
-       "$1/workshop-dev/workshop/.agents/skills/task-create/_TEMPLATE.md"
-    mkdir -p "$1/.agents/skills" "$1/.claude/skills"
-    ln -s ../../workshop-dev/workshop/.agents/skills/task-create "$1/.agents/skills/task-create"
-    ln -s ../../.agents/skills/task-create "$1/.claude/skills/task-create"
-    ln -s ../../../.claude/skills/task-create/_TEMPLATE.md "$1/docs/work/tasks/_TEMPLATE.md"
-}
-expect "template resolving through a nested wrapper clone (hq shape)" 0 template_nested_wrapper \
-    "nested Workshop" "workshop-dev/workshop/.agents/skills/task-create/_TEMPLATE.md"
-
-template_devtools_impostor() {
-    # A repo-local directory named devtools/ that is NOT a devtools checkout
-    # (pia-maker's devtools/ Python package): the exact-file match must not
-    # let it satisfy the clause.
-    rm "$1/docs/work/tasks/_TEMPLATE.md"
-    mkdir -p "$1/devtools"
-    echo x >"$1/devtools/pyproject.toml"
-    ln -s ../../../devtools/pyproject.toml "$1/docs/work/tasks/_TEMPLATE.md"
-}
-expect "template resolving into a devtools/ impostor directory" 1 template_devtools_impostor \
-    "FAIL 9" "outside this repo's devtools or workshop checkout"
-
 add_focus() { printf '# Focus\n\nShip the thing.\n' >"$1/docs/work/tasks/focus.md"; }
 expect "focus document present" 0 add_focus "focus.md present" "ranking-rubric"
 
 empty_focus() { : >"$1/docs/work/tasks/focus.md"; }
-expect "empty focus document" 1 empty_focus "FAIL 10" "empty or unreadable"
+expect "empty focus document" 1 empty_focus "FAIL 9" "empty or unreadable"
 
 add_queue() { mkdir -p "$1/docs/work/tasks/queued"; }
 expect "queue opted in without its README" 1 add_queue \
-    "FAIL 11" "queued/README.md is missing"
+    "FAIL 10" "queued/README.md is missing"
 
 queue_conformant() {
     mkdir -p "$1/docs/work/tasks/queued"
@@ -351,7 +272,7 @@ queue_no_finalized() {
     write_brief "$1/docs/work/tasks/queued" "queued-task"
 }
 expect "queued brief without finalized-at" 1 queue_no_finalized \
-    "FAIL 12" "missing finalized-at"
+    "FAIL 11" "missing finalized-at"
 
 queue_bad_sha() {
     mkdir -p "$1/docs/work/tasks/queued"
@@ -360,36 +281,36 @@ queue_bad_sha() {
         "finalized-at: 0123456789abcdef0123456789abcdef01234567"
 }
 expect "queued brief with a nonexistent finalized-at commit" 1 queue_bad_sha \
-    "FAIL 12" "does not name a commit"
+    "FAIL 11" "does not name a commit"
 
 brief_missing_status() {
     grep -v '^status:' "$1/docs/work/tasks/now/a-fixture-task.md" >"$1/t" \
         && mv "$1/t" "$1/docs/work/tasks/now/a-fixture-task.md"
 }
 expect "brief missing the status field" 1 brief_missing_status \
-    "FAIL 12" "missing frontmatter field: status"
+    "FAIL 11" "missing frontmatter field: status"
 
 brief_status_done() {
     sed 's/^status: not-started/status: done/' "$1/docs/work/tasks/now/a-fixture-task.md" \
         >"$1/t" && mv "$1/t" "$1/docs/work/tasks/now/a-fixture-task.md"
 }
-expect "brief with status: done" 1 brief_status_done "FAIL 12" "status: done is rejected"
+expect "brief with status: done" 1 brief_status_done "FAIL 11" "status: done is rejected"
 
 brief_bad_effort() {
     sed 's/^effort: small/effort: huge/' "$1/docs/work/tasks/now/a-fixture-task.md" \
         >"$1/t" && mv "$1/t" "$1/docs/work/tasks/now/a-fixture-task.md"
 }
 expect "brief with an invalid effort value" 1 brief_bad_effort \
-    "FAIL 12" "effort: invalid value"
+    "FAIL 11" "effort: invalid value"
 
 brief_no_sentinels() {
     grep -v 'AC:BEGIN' "$1/docs/work/tasks/now/a-fixture-task.md" >"$1/t" \
         && mv "$1/t" "$1/docs/work/tasks/now/a-fixture-task.md"
 }
 expect "brief missing the AC:BEGIN sentinel" 1 brief_no_sentinels \
-    "FAIL 12" "missing AC:BEGIN sentinel"
+    "FAIL 11" "missing AC:BEGIN sentinel"
 
-# Clause 12 delegates its format parser to task-finalize's bundled checker.
+# Clause 11 delegates its format parser to task-finalize's bundled checker.
 # A human-bucket draft remains valid before finalization, and the queue's
 # inline parser already supports this block-list spelling, so the shared parser
 # must accept it here as well.
@@ -402,14 +323,14 @@ expect "human brief with block dependencies through the shared parser" 0 \
     brief_block_dependencies
 
 # The delegated checker returns exit 1 for a malformed brief, but the caller
-# runs under set -e and still has to aggregate every bad brief into clause 12's
+# runs under set -e and still has to aggregate every bad brief into clause 11's
 # stable output rather than aborting at its first failure.
 brief_multiple_format_problems() {
     grep -v -e '^status:' -e 'AC:BEGIN' "$1/docs/work/tasks/now/a-fixture-task.md" \
         >"$1/t" && mv "$1/t" "$1/docs/work/tasks/now/a-fixture-task.md"
 }
 expect "multiple brief-format failures are aggregated" 1 brief_multiple_format_problems \
-    "FAIL 12" "missing frontmatter field: status" "missing AC:BEGIN sentinel"
+    "FAIL 11" "missing frontmatter field: status" "missing AC:BEGIN sentinel"
 
 kaizen_legacy() {
     mkdir -p "$1/docs/kaizen/journal/2026-08" "$1/docs/kaizen/patterns"
@@ -514,17 +435,17 @@ consumed_migrated() {
 }
 expect "migrated consumed-by declaration is green" 0 consumed_migrated "declares: fleet"
 
-# --- clause 17: docs/work/audits/ (opt-in via the declaring config) -----------
+# --- clause 16: docs/work/audits/ (opt-in via the declaring config) -----------
 audits_dir_only() { mkdir -p "$1/docs/work/audits"; }
 expect "audits directory without its declaring config" 1 audits_dir_only \
-    "FAIL 17" "config.toml is missing or empty"
+    "FAIL 16" "config.toml is missing or empty"
 
 audits_config_without_records() {
     mkdir -p "$1/docs/work/audits"
     printf '[audit_types.code-quality]\ndescription = "x"\n' >"$1/docs/work/audits/config.toml"
 }
 expect "audits config without a records directory" 1 audits_config_without_records \
-    "FAIL 17" "records/ does not exist"
+    "FAIL 16" "records/ does not exist"
 
 audits_green() {
     mkdir -p "$1/docs/work/audits/records"
@@ -540,12 +461,12 @@ audits_bad_record() {
     printf 'not json at all\n' >"$1/docs/work/audits/records/code-quality.json"
 }
 expect "unparseable audit record named" 1 audits_bad_record \
-    "FAIL 17" "not valid JSON"
+    "FAIL 16" "not valid JSON"
 
-# Absent is a verdict too: an unopted-in repo must still print clause 17's line.
+# Absent is a verdict too: an unopted-in repo must still print clause 16's line.
 audits_absent_visible() { :; }
-expect "unopted-in repo reports clause 17 as absent" 0 audits_absent_visible \
-    "absent 17"
+expect "unopted-in repo reports clause 16 as absent" 0 audits_absent_visible \
+    "absent 16"
 
 if [ "$failures" -ne 0 ]; then
     echo "$failures assertion(s) failed" >&2

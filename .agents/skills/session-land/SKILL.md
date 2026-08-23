@@ -151,8 +151,10 @@ Two constraints on the calls themselves:
 A task stalled on a decision that is not really part of it stays stalled forever. Move the
 decision into its own task, and the original becomes closeable:
 
-1. Create the new task from `<tasks>/_TEMPLATE.md`, scoped to the decision alone, carrying
-   the Landed-call recommendation from Phase 2.
+1. Create the new task from the canonical template, `../task-create/_TEMPLATE.md` — the
+   file next to this skill's sibling, resolved from this skill's physical directory per
+   [`skill-path-resolution.md`](../../../docs/skill-path-resolution.md) — scoped to the
+   decision alone, carrying the Landed-call recommendation from Phase 2.
 2. Edit the original to reference it and drop the dependency, so what remains is
    completable work.
 
