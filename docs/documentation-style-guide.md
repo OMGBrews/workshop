@@ -860,7 +860,7 @@ Current third-party libraries used in the project. Maintained by `/update-librar
 - Update docs when changing related code
 - Review documentation during code reviews
 - Delete obsolete documentation rather than leaving stale content
-- Use `/docs-audit` to periodically verify accuracy across the project
+- Use `/audit-and-fix doc-quality` to periodically verify accuracy across the project — with `--path docs` in repos without tracker opt-in, and `Tools/check-markdown-links.sh` for link integrity
 
 ### What to check during review
 
