@@ -10,4 +10,11 @@ What "done" requires, and where each repo says so — read before claiming any c
 
 **A red gate is fixed, not weakened** — not with a new baseline, a broadened suppression, or a relaxed config. Where a gate genuinely cannot be satisfied, stop and say so.
 
-Run every gate so its complete output and exit status survive to be read — the trimmed-verdict rule in [`signal-hygiene.md`](signal-hygiene.md), which is also how to read what a gate says.
+**How finished work lands** is a standing rule of its own, and it lives beside
+this one: run the gates, then push directly from an authorized local session
+where the default branch permits it, or open a pull request where the session
+or repository requires one — and neither route grants consent by itself. A
+docs-only diff changes gate scoping, never delivery or consent: ask
+`Tools/docs-only-diff.sh <base>` (exit 0 = the repo's declared docs lane; 1 or
+2 = the normal gate path). The full convention, adoption and exceptions
+included: [`shipping-conventions.md`](shipping-conventions.md).

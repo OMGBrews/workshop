@@ -90,20 +90,43 @@ If the user picks Yes, hand off to `task-finalize <path-to-new-task>`. If No, st
 
 ## Phase 6 — Ship it (docs-only fast path)
 
-Runs only when Phase 5 ended with "No — leave it here" (a finalize hand-off
-reaches the same offer through `task-finalize`'s own closing phase). If the
-repo's AGENTS.md documents a docs-only shipping convention (a "Shipping
-docs-only changes" section naming a predicate script), offer to ship the new
-task now:
+Runs when a committed task file exists and nothing after it does:
 
-- **Local session** (pushes to the default branch are not blocked): confirm
-  `git status --short` shows only this task file, commit it on the default
-  branch, then run the predicate script against the remote default branch
-  (e.g. `scripts/docs-only-diff.sh origin/main`). Exit 0 → push, and read the
-  push's own output as the verification. Any other exit → do **not** push:
-  name what else the outgoing range carries and leave the commit local.
-- **Cloud session** (git proxy, PR flow): note that the `ship` skill carries docs-only
-  PRs to merge without a review pause under the maintainer's standing
-  delegation (2026-07-29).
+- Phase 5 ended with "No — leave it here" — offer the ship now.
+- Phase 5 handed off to `task-finalize` — resume this phase only when
+  finalization actually **committed** the new task. If it returned with the
+  authored content staged for review, stop there: shipping is for the
+  committed task, and that review is not over.
 
-No such AGENTS.md section → stop; shipping stays the session's normal flow.
+The rules are the repo's adopted shipping convention, never a repo-local
+heading: resolve the Workshop tree from this skill's **physical** directory
+(per
+[`../../../docs/skill-path-resolution.md`](../../../docs/skill-path-resolution.md)),
+ask its predicate, and apply the convention's local-versus-PR rule.
+
+1. Resolve the tree root — `readlink -f` follows every symlink, so either
+   skill surface resolves:
+
+   ```bash
+   TREE_ROOT="$(dirname "$(readlink -f .agents/skills/task-create/SKILL.md)")/../../.."
+   ```
+
+2. Confirm `git status --short` shows only this task file (staged or
+   committed), and commit it on the default branch.
+3. Run the predicate from the repo root against the remote default branch:
+
+   ```bash
+   bash "$TREE_ROOT/Tools/docs-only-diff.sh" origin/main; echo "EXIT=$?"
+   ```
+
+   Exit 0 → the docs lane: offer to push now, and read the push's own output
+   as the verification. Any other exit → do **not** push: name the paths that
+   fall outside the declared surface and leave the commit local for the
+   normal flow. Exit 2 means the repo declared no prose surface — no fast
+   lane exists, which is an answer, not a failure to read.
+
+Neither exit grants consent: the offer is the ask, and the user's acceptance
+of the offer is the authorization. In a cloud session or a PR-required repo,
+neither this skill nor any other public task skill opens or merges a PR and
+none assumes the private `ship` skill is installed — report that the committed
+change is ready and hand off to the repository's documented PR workflow.

@@ -3,6 +3,11 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- Shipped the fleet's public shipping convention: `docs/shipping-conventions.md`
+  states how finished code and docs land — gates first, direct push from an
+  authorized local session or a PR where one is required, consent never implied
+  — and is summarized in the standing `docs/definition-of-done.md` so every
+  standing-rule importer receives it through its existing Workshop mount.
 - Retired the legacy whole-tree documentation audit skill. Its judgment half is owned by the
   `audit-and-fix` skill's `doc-quality` and `readme-quality` lenses, and
   whole-tree link integrity by `Tools/check-markdown-links.sh`; the auto-fix
