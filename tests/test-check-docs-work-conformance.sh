@@ -194,7 +194,7 @@ rm -rf "$d"
 make_conformant "$d"
 out=$(bash "$SCRIPT" "$d" 2>&1) && rc=0 || rc=$?
 [ "$rc" -eq 0 ] || fail "conformant fixture: exit $rc, wanted 0"
-for n in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do
+for n in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17; do
     printf '%s\n' "$out" | grep -Eq "(^| )$n " || fail "conformant: no verdict for clause $n"
 done
 
@@ -495,6 +495,39 @@ consumed_migrated() {
         >"$1/docs/work/consumed-by.md"
 }
 expect "migrated consumed-by declaration is green" 0 consumed_migrated "declares: fleet"
+
+# --- clause 17: docs/work/audits/ (opt-in via the declaring config) -----------
+audits_dir_only() { mkdir -p "$1/docs/work/audits"; }
+expect "audits directory without its declaring config" 1 audits_dir_only \
+    "FAIL 17" "config.toml is missing or empty"
+
+audits_config_without_records() {
+    mkdir -p "$1/docs/work/audits"
+    printf '[audit_types.code-quality]\ndescription = "x"\n' >"$1/docs/work/audits/config.toml"
+}
+expect "audits config without a records directory" 1 audits_config_without_records \
+    "FAIL 17" "records/ does not exist"
+
+audits_green() {
+    mkdir -p "$1/docs/work/audits/records"
+    printf '[audit_types.code-quality]\ndescription = "x"\n' >"$1/docs/work/audits/config.toml"
+    printf '{"pick_counter": 0, "audits": {}}\n' >"$1/docs/work/audits/records/code-quality.json"
+}
+expect "opted-in audits tree is green" 0 audits_green \
+    "declaring config and parseable records"
+
+audits_bad_record() {
+    mkdir -p "$1/docs/work/audits/records"
+    printf '[audit_types.code-quality]\n' >"$1/docs/work/audits/config.toml"
+    printf 'not json at all\n' >"$1/docs/work/audits/records/code-quality.json"
+}
+expect "unparseable audit record named" 1 audits_bad_record \
+    "FAIL 17" "not valid JSON"
+
+# Absent is a verdict too: an unopted-in repo must still print clause 17's line.
+audits_absent_visible() { :; }
+expect "unopted-in repo reports clause 17 as absent" 0 audits_absent_visible \
+    "absent 17"
 
 if [ "$failures" -ne 0 ]; then
     echo "$failures assertion(s) failed" >&2

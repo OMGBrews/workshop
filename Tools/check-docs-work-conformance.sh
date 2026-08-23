@@ -431,6 +431,34 @@ note 14 "README.md files and the docs/README.md index are curation with an accur
 note 15 "docs/style-guides/ and procedures are repo-local taste — owned by the docs-audit skill and the style guide"
 note 16 "scripts/repair_doc_links.py is opt-in and owned by the repo that keeps it — not a shared-conformance concern"
 
+# --- 17: the audit-state directory (opt-in via the declaring config) ----------
+# docs/work/audits/ holds the shared audit tracker's per-consumer state. The
+# config file IS the opt-in ("declared, not assumed"): a directory without it
+# is a half-adopted tree the tracker refuses to serve rather than silently
+# treat as empty, and records/ is where its text-mergeable records land.
+# Record files must stay parseable JSON — the tracker re-reads them on every
+# invocation.
+if [ ! -d docs/work/audits ]; then
+    absent 17 "docs/work/audits/ not opted in — no tracked-audit state"
+elif [ ! -s docs/work/audits/config.toml ]; then
+    fail 17 "docs/work/audits/config.toml is missing or empty — the declaring config is the opt-in"
+elif [ ! -d docs/work/audits/records ]; then
+    fail 17 "docs/work/audits/records/ does not exist — the tracker writes records there"
+else
+    bad_json=""
+    for f in docs/work/audits/records/*.json; do
+        [ -e "$f" ] || continue
+        if ! python3 -m json.tool "$f" >/dev/null 2>&1; then
+            bad_json="$bad_json $f"
+        fi
+    done
+    if [ -n "$bad_json" ]; then
+        fail 17 "audit record file(s) not valid JSON:$bad_json"
+    else
+        pass 17 "docs/work/audits/ with its declaring config and parseable records"
+    fi
+fi
+
 # --- verdict ------------------------------------------------------------------
 echo
 if [ "$failures" -ne 0 ]; then

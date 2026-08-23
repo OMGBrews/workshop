@@ -12,9 +12,9 @@ and every change must satisfy the public gates in
 
 ## Working in a project that vendors Workshop
 
-- Link selected skills from `workshop/.agents/skills/` into a project's
-  `.agents/skills/`; `bash workshop/Tools/sync-skill-symlinks.sh .` maintains
-  both the canonical surface and the Claude bridge.
+- Link Workshop's shared skill roster into a project's `.agents/skills/`;
+  `bash workshop/Tools/sync-skill-symlinks.sh .` maintains both the canonical
+  surface and the Claude bridge while preserving project-local collisions.
 - Read [docs/signal-hygiene.md](docs/signal-hygiene.md) and
   [docs/definition-of-done.md](docs/definition-of-done.md) before claiming a
   check or task complete.
