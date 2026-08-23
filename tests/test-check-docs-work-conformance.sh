@@ -294,6 +294,24 @@ template_source_repo() {
 expect "template resolving into the repo's own skill tree" 0 template_source_repo \
     "own skill tree" ".agents/skills/task-create/_TEMPLATE.md"
 
+template_nested_wrapper() {
+    # The fleet-operations repo shape (hq): no workshop/ mount of its own —
+    # Workshop sits nested inside a workshop-dev wrapper clone at the root,
+    # so the chain resolves to workshop-dev/workshop/.agents/... . The
+    # conformant fixture's bridges go first, as in template_source_repo.
+    rm "$1/docs/work/tasks/_TEMPLATE.md"
+    rm -rf "$1/.agents/skills" "$1/.claude/skills"
+    mkdir -p "$1/workshop-dev/workshop/.agents/skills/task-create"
+    cp "$DEVTOOLS_ROOT/.agents/skills/task-create/_TEMPLATE.md" \
+       "$1/workshop-dev/workshop/.agents/skills/task-create/_TEMPLATE.md"
+    mkdir -p "$1/.agents/skills" "$1/.claude/skills"
+    ln -s ../../workshop-dev/workshop/.agents/skills/task-create "$1/.agents/skills/task-create"
+    ln -s ../../.agents/skills/task-create "$1/.claude/skills/task-create"
+    ln -s ../../../.claude/skills/task-create/_TEMPLATE.md "$1/docs/work/tasks/_TEMPLATE.md"
+}
+expect "template resolving through a nested wrapper clone (hq shape)" 0 template_nested_wrapper \
+    "nested Workshop" "workshop-dev/workshop/.agents/skills/task-create/_TEMPLATE.md"
+
 template_devtools_impostor() {
     # A repo-local directory named devtools/ that is NOT a devtools checkout
     # (pia-maker's devtools/ Python package): the exact-file match must not

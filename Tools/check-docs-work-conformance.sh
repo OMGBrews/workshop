@@ -317,12 +317,14 @@ fi
 
 # --- 9: the _TEMPLATE.md symlink (required for task-system repos) -------------
 # A symlink, never a copy; non-dangling; resolving into this repo's own
-# .agents/skills/task-create/ (the devtools source-repo shape), or into this
+# .agents/skills/task-create/ (the devtools source-repo shape), into this
 # repo's devtools or workshop checkout (the mirror consumers mount; the
-# pre-rename placeholder mount name was retired once every consumer migrated).
-# The devtools/ and workshop/ cases are matched by exact file, not by
-# directory prefix: a repo-local directory that merely happens to be named
-# devtools/ (pia-maker's devtools/ Python package) must not satisfy the clause.
+# pre-rename placeholder mount name was retired once every consumer migrated),
+# or into the Workshop nested in a workshop-dev wrapper clone at the repo root
+# (the fleet-operations repo shape — hq mounts no workshop/ of its own).
+# All checkout cases are matched by exact file, not by directory prefix: a
+# repo-local directory that merely happens to be named devtools/ (pia-maker's
+# devtools/ Python package) must not satisfy the clause.
 if [ "$tasks_active" -eq 0 ]; then
     absent 9 "no task system — no tasks root to hold the template symlink"
 elif [ ! -L docs/work/tasks/_TEMPLATE.md ]; then
@@ -341,6 +343,10 @@ else
             "$root_abs"/devtools/.agents/skills/task-create/_TEMPLATE.md | "$root_abs"/workshop/.agents/skills/task-create/_TEMPLATE.md)
                 rel="${resolved#"$root_abs"/}"
                 pass 9 "docs/work/tasks/_TEMPLATE.md resolves into this repo's own devtools checkout ($rel)"
+                ;;
+            "$root_abs"/workshop-dev/workshop/.agents/skills/task-create/_TEMPLATE.md)
+                rel="${resolved#"$root_abs"/}"
+                pass 9 "docs/work/tasks/_TEMPLATE.md resolves into the nested Workshop of this repo's wrapper clone ($rel)"
                 ;;
             *)
                 fail 9 "docs/work/tasks/_TEMPLATE.md resolves outside this repo's devtools or workshop checkout: $resolved"
