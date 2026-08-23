@@ -23,8 +23,10 @@
 #      entry heading (title, intro, and the template comment that itself
 #      contains a specimen heading) is preamble, and is discarded.
 #   2. Each entry becomes journal/YYYY-MM/YYYY-MM-DD-<slug>.md. The heading is
-#      rewritten to `# <title>` — the date lives in the filename — and the body
-#      is copied verbatim with trailing blank lines trimmed.
+#      rewritten to `# <title>` — the date lives in the filename — and body
+#      bytes are preserved with trailing blank lines trimmed, except that
+#      supported relative Markdown link targets are rebased to the same resolved
+#      destination. A tool that relocates a document owns that rebasing.
 #   3. Slug: the title after the first " — ", lowercased, every run of
 #      non-[a-z0-9] bytes replaced by "-", collapsed, edge-trimmed, and
 #      truncated to 60 bytes at a hyphen boundary. An empty result becomes
@@ -58,6 +60,8 @@
 set -euo pipefail
 
 REPO_ROOT="${1:-$PWD}"
+SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REWRITER="$SCRIPT_DIR/rewrite-moved-markdown-links.sh"
 
 err() { printf 'error: %s\n' "$1" >&2; exit 1; }
 
@@ -217,7 +221,6 @@ if (( do_patterns )); then
   pattern_entries="$(wc -l < "$STAGE/patterns/manifest.tsv")"
 fi
 
-# ---- write ----
 # Split a manifest line by hand rather than with `read -r a b c`: tab is IFS
 # *whitespace*, so read collapses the two tabs of an empty date field and the
 # date variable swallows the title.
@@ -226,6 +229,27 @@ read_manifest_line() { # <line> -> sets m_idx, m_date, m_title
   m_idx="${line%%$'\t'*}"; rest="${line#*$'\t'}"
   m_date="${rest%%$'\t'*}"; m_title="${rest#*$'\t'}"
 }
+
+# Link rebasing is deliberately complete before the first repository write.
+# The helper is located beside this migrator, not from the consumer's CWD:
+# /kaizen-init invokes this mounted tool while CWD remains the consumer root.
+if (( do_journal )); then
+  while IFS= read -r line; do
+    read_manifest_line "$line"
+    bash "$REWRITER" "$REPO_ROOT" "$KAIZEN_REL/journal.md" \
+      "$KAIZEN_REL/journal/${m_date:0:7}/$m_date-$(slugify "$m_title").md" \
+      "$STAGE/journal/$m_idx.body"
+  done < "$STAGE/journal/manifest.tsv"
+fi
+if (( do_patterns )); then
+  while IFS= read -r line; do
+    read_manifest_line "$line"
+    bash "$REWRITER" "$REPO_ROOT" "$KAIZEN_REL/patterns.md" \
+      "$KAIZEN_REL/patterns/$(slugify "$m_title").md" "$STAGE/patterns/$m_idx.body"
+  done < "$STAGE/patterns/manifest.tsv"
+fi
+
+# ---- write ----
 
 if (( do_journal )); then
   while IFS= read -r line; do

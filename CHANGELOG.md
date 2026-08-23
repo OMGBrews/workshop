@@ -3,6 +3,12 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- `migrate-kaizen-journal.sh` now rebases supported relative Markdown links as
+  it relocates entries, with an atomic refusal for ambiguous active link syntax.
+  `check-markdown-links.sh` shares that bounded grammar, skips and names
+  repository-escaping targets and unavailable submodule mounts, and validates
+  populated submodule targets.
+
 - Shipped the fleet's public shipping convention: `docs/shipping-conventions.md`
   states how finished code and docs land — gates first, direct push from an
   authorized local session or a PR where one is required, consent never implied
