@@ -741,7 +741,7 @@ Tasks define the **problem and desired outcome** — not the implementation plan
 
 #### The template lives inside the task-create skill
 
-The canonical task template is `.agents/skills/task-create/_TEMPLATE.md`; repos carry no `docs/work/tasks/_TEMPLATE.md` of their own. `/task-create` reads the file from inside the skill and copies it into the tasks root, so one edit there reaches every repo on the next pointer bump.
+The canonical task template is `.agents/skills/task-create/_TEMPLATE.md`; repos carry no tasks-root copy. `/task-create` reads the file from inside the skill and copies it into the tasks root, so one edit there reaches every repo on the next pointer bump.
 
 **This guide therefore does not reproduce the template.** A copy here would be a second source competing with the live one, and that is not hypothetical: the template drifted into seven variants before the 2026-07-26 convergence. The tasks-root symlink that held the convergence in place — and hq's `verify-task-template-single-source.sh`, the gate that enforced it — has since been retired; only the canonical file remains. Read it for the authoritative shape; what follows is the structure and the rules that govern it.
 
