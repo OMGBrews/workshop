@@ -3,7 +3,8 @@
 #
 # The script's contract, asserted here:
 #   1. splits a journal into journal/YYYY-MM/YYYY-MM-DD-<slug>.md, rewriting the
-#      dated heading to `# <title>` and copying the body verbatim;
+#      dated heading to `# <title>` and preserving body bytes except for
+#      relative Markdown targets rebased to the same destination;
 #   2. files each entry by the date in its OWN heading, not by file order — real
 #      journals grow out-of-order tails from merges and bulk backfills;
 #   3. ignores the specimen heading inside the template's HTML comment (the
@@ -18,11 +19,14 @@
 #      would destroy it, and the run would still look orderly;
 #   8. converts a freshly-scaffolded (entry-less) repo to empty directories;
 #   9. splits real patterns out of patterns.md;
-#  10. exits non-zero on a docs/work/kaizen with neither documents nor directories.
+#  10. exits non-zero on a docs/work/kaizen with neither documents nor directories;
+#  11. rebases journal and pattern links before moving either document, and the
+#      shared link checker distinguishes the broken verbatim negative control.
 set -euo pipefail
 
 DEVTOOLS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MIGRATE="$DEVTOOLS_ROOT/Tools/migrate-kaizen-journal.sh"
+CHECK_LINKS="$DEVTOOLS_ROOT/Tools/check-markdown-links.sh"
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -213,3 +217,49 @@ rc=$?
 set -e
 [[ "$rc" -ne 0 ]] || fail "exited 0 on a docs/work/kaizen with no documents and no directories"
 echo "ok 10 - exits non-zero when there is nothing to migrate"
+
+# --- 11. moved bodies retain their resolved Markdown destinations ------------
+R="$(new_repo link_rewrite)"
+mkdir -p "$R/docs/targets"
+printf '# Kaizen\n' > "$R/docs/work/kaizen/README.md"
+printf 'journal target\n' > "$R/docs/targets/journal.md"
+printf 'pattern target\n' > "$R/docs/targets/pattern.md"
+{ preamble
+  entry 2026-07-27 'Journal link destination' link
+  printf '[journal target](../../targets/journal.md)\n'
+} > "$R/docs/work/kaizen/journal.md"
+printf '# Kaizen patterns\n\n## Pattern link destination\n\n[pattern target](../../targets/pattern.md)\n' \
+  > "$R/docs/work/kaizen/patterns.md"
+git -C "$R" init -q
+git -C "$R" add -A
+git -C "$R" -c user.name=test -c user.email=test@example.com commit -qm source
+
+# A verbatim deep copy reproduces the llmkit-dev class: the original target is
+# valid from kaizen/, but broken from journal/YYYY-MM/. It must be tracked, or
+# the checker would never inspect it.
+negative="$R/docs/work/kaizen/journal/2026-07/2026-07-27-journal-link-destination.md"
+mkdir -p "$(dirname "$negative")"
+printf '# Journal link destination\n\n[journal target](../../targets/journal.md)\n' > "$negative"
+git -C "$R" add -A
+git -C "$R" -c user.name=test -c user.email=test@example.com commit -qm negative
+set +e
+negative_output="$(bash "$CHECK_LINKS" "$R" 2>&1)"
+negative_rc=$?
+set -e
+[[ "$negative_rc" -eq 1 ]] || fail "verbatim negative control exited $negative_rc, expected 1: $negative_output"
+grep -q '2026-07-27-journal-link-destination.md -> ../../targets/journal.md' <<< "$negative_output" \
+  || fail "negative control did not name the broken source and target: $negative_output"
+rm -f "$negative"
+git -C "$R" add -u
+git -C "$R" -c user.name=test -c user.email=test@example.com commit -qm remove-negative
+
+bash "$MIGRATE" "$R" > /dev/null 2>&1 || fail "migrate failed on link fixture"
+git -C "$R" add -A
+check_output="$(bash "$CHECK_LINKS" "$R" 2>&1)" || fail "rewritten migration did not pass the shared link checker: $check_output"
+journal_link="$R/docs/work/kaizen/journal/2026-07/2026-07-27-journal-link-destination.md"
+pattern_link="$R/docs/work/kaizen/patterns/pattern-link-destination.md"
+grep -q '(../../../../targets/journal.md)' "$journal_link" || fail "journal target was not rebased two levels"
+grep -q '(../../../targets/pattern.md)' "$pattern_link" || fail "pattern target was not rebased one level"
+[[ -f "$(dirname "$journal_link")/../../../../targets/journal.md" ]] || fail "journal target no longer resolves"
+[[ -f "$(dirname "$pattern_link")/../../../targets/pattern.md" ]] || fail "pattern target no longer resolves"
+echo "ok 11 - rewrites moved links; tracked verbatim negative control fails the checker"
