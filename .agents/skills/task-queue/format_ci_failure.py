@@ -11,8 +11,8 @@ pipes it to this script on stdin, and selects the output with ``--emit``:
   strips ANSI codes, timestamps, hex addresses, and digit runs so that
   re-runs of the *same* failure (shifted line numbers, new timestamps)
   fingerprint identically.
-- ``--emit brief`` — a queue-ready task brief (markdown, conforming to
-  ``docs/work/tasks/_TEMPLATE.md``)
+- ``--emit brief`` — a queue-ready task brief (markdown, conforming to the
+  canonical template, ``.agents/skills/task-create/_TEMPLATE.md``)
   instructing a worker to fix the failure.
 
 CI log output is untrusted input — log lines can contain anything, including

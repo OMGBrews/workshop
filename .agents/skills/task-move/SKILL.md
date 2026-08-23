@@ -72,21 +72,36 @@ If the target was `queued/`, also print: "The task-queue runner will pick this u
 
 ## Phase 6 — Ship it (docs-only fast path)
 
-If the repo's AGENTS.md documents a docs-only shipping convention (a "Shipping
-docs-only changes" section naming a predicate script), offer to ship the move
-immediately after Phase 5 — task moves are the exact churn that convention
-exists for:
+Offer to ship the move immediately after Phase 5 — task moves are the exact
+churn the docs-only fast lane exists for. The rules are the repo's adopted
+shipping convention, never a repo-local heading: resolve the Workshop tree
+from this skill's **physical** directory (per
+[`../../../docs/skill-path-resolution.md`](../../../docs/skill-path-resolution.md)),
+ask its predicate, and apply the convention's local-versus-PR rule.
 
-- **Local session** (pushes to the default branch are not blocked): confirm
-  `git status --short` shows only this move staged, commit it on the default
-  branch, then run the predicate script against the remote default branch
-  (e.g. `scripts/docs-only-diff.sh origin/main`). Exit 0 → push, and read the
-  push's own output as the verification. Any other exit → do **not** push:
-  the outgoing range carries non-docs changes, so name them and leave the
-  commit local for the normal flow.
-- **Cloud session** (git proxy, PR flow): nothing to do here — note that
-  the `ship` skill carries docs-only PRs to merge without a review pause under the
-  maintainer's standing delegation (2026-07-29).
+1. Resolve the tree root — `readlink -f` follows every symlink, so either
+   skill surface resolves:
 
-No such AGENTS.md section → stop at Phase 5; shipping stays the session's
-normal flow.
+   ```bash
+   TREE_ROOT="$(dirname "$(readlink -f .agents/skills/task-move/SKILL.md)")/../../.."
+   ```
+
+2. Confirm `git status --short` shows only this move staged, and commit it on
+   the default branch.
+3. Run the predicate from the repo root against the remote default branch:
+
+   ```bash
+   bash "$TREE_ROOT/Tools/docs-only-diff.sh" origin/main; echo "EXIT=$?"
+   ```
+
+   Exit 0 → the docs lane: offer to push now, and read the push's own output
+   as the verification. Any other exit → do **not** push: name the paths that
+   fall outside the declared surface and leave the commit local for the
+   normal flow. Exit 2 means the repo declared no prose surface — no fast
+   lane exists, which is an answer, not a failure to read.
+
+Neither exit grants consent: the offer is the ask, and the user's acceptance
+of the offer is the authorization. In a cloud session or a PR-required repo,
+neither this skill nor any other public task skill opens or merges a PR and
+none assumes the private `ship` skill is installed — report that the committed
+change is ready and hand off to the repository's documented PR workflow.

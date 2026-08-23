@@ -85,7 +85,6 @@ docs/
     ├── definition-of-done.md   [required; DOCS-ONLY block optional within it]
     ├── consumed-by.md          [required where a parent mounts the repo]
     ├── tasks/                  [required for repos on the task system]
-    │   ├── _TEMPLATE.md → symlink into the task-create skill
     │   ├── README.md           [optional curation]
     │   ├── focus.md            [opt-in]
     │   ├── now/ soon/ later/ never/
@@ -740,11 +739,11 @@ Located in `docs/work/tasks/`, organized into time-horizon buckets: `now/`, `soo
 
 Tasks define the **problem and desired outcome** — not the implementation plan. Leave architectural decisions and step-by-step instructions for plan mode, or for `/task-finalize`, which writes a `## Recommended solution` while its analysis is fresh.
 
-#### The template is a symlink, not a copy
+#### The template lives inside the task-create skill
 
-Each repo's `docs/work/tasks/_TEMPLATE.md` is a **symlink** to the canonical file inside the shared skill, `.claude/skills/task-create/_TEMPLATE.md`, which is itself symlinked into `devtools/`. Edit it once there and it reaches every repo on the next pointer bump.
+The canonical task template is `.agents/skills/task-create/_TEMPLATE.md`; repos carry no tasks-root copy. `/task-create` reads the file from inside the skill and copies it into the tasks root, so one edit there reaches every repo on the next pointer bump.
 
-**This guide therefore does not reproduce the template.** A copy here would be a second source competing with the live one, and that is not hypothetical: the template drifted into seven variants before the 2026-07-26 convergence, which is why it became a symlink and why hq's `tests/verify-task-template-single-source.sh` enforces it. Read the canonical file for the authoritative shape; what follows is the structure and the rules that govern it.
+**This guide therefore does not reproduce the template.** A copy here would be a second source competing with the live one, and that is not hypothetical: the template drifted into seven variants before the 2026-07-26 convergence. The tasks-root symlink that held the convergence in place — and hq's `verify-task-template-single-source.sh`, the gate that enforced it — has since been retired; only the canonical file remains. Read it for the authoritative shape; what follows is the structure and the rules that govern it.
 
 #### Structure
 

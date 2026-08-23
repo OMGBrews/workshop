@@ -57,7 +57,7 @@ Content moves from Draft through Review to Approved, then Published.
 
 ## Task document format
 
-Tasks live in `docs/work/tasks/` in time-horizon buckets (`now/`, `soon/`, `later/`, `never/`), plus the opt-in `queued/` where the repo runs the autonomous task-queue runner. Each follows `_TEMPLATE.md`, which is a **symlink** to the canonical file inside the `task-create` skill. Never replace that symlink with a copy: that is how the template drifted into seven variants before the 2026-07-26 convergence.
+Tasks live in `docs/work/tasks/` in time-horizon buckets (`now/`, `soon/`, `later/`, `never/`), plus the opt-in `queued/` where the repo runs the autonomous task-queue runner. Each follows the canonical `_TEMPLATE.md` inside the `task-create` skill — repos carry no tasks-root copy. The template once sat at `<tasks>/_TEMPLATE.md` behind a symlink, and that copy-point is how it drifted into seven variants before the 2026-07-26 convergence; the canonical file inside the skill alone is what holds the convergence in place now.
 
 Metadata is YAML frontmatter, not bold lines:
 
