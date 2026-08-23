@@ -249,6 +249,13 @@ The most portable surface, and it needs no bridge: a command is a command.
 
 - Every repo names its gates in `docs/work/definition-of-done.md` (see
   [`definition-of-done.md`](definition-of-done.md)).
+- That file's scope is the gates, nothing more: the gates table, the `DOCS-ONLY` block
+  where the repo declares one (the paths no gate there reads), and the minimum prose
+  needed to run each gate correctly — the invocation, the pass condition, any caveat
+  that changes how you run it. A gate's rationale, its policy history, and the standing
+  constraints behind it are repo description: link them, never restate them. The file
+  is read at the moment someone needs a command, and every paragraph that is not about
+  running a gate moves that command further away.
 - Gates are invoked as plain commands (`make check`), never through a harness feature.
 - The doc is linked from `AGENTS.md` as well as imported into `CLAUDE.md`.
 
