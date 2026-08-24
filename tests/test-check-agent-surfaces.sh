@@ -179,6 +179,25 @@ expect 'slash token inside a fenced block is documentation' 0 slash_in_fence "ok
 # as Claude-only. One root cause, two statements of it.
 expect 'Claude-only frontmatter key' 1 nonspec_frontmatter "FAIL 13"
 
+# --- a plain file on a skills surface is not a skill -------------------------
+# `sync-skill-symlinks.sh` generates .claude/skills/README.md, the signpost
+# saying the folder is symlinks and skills are authored in .agents/skills/.
+# Checks 7 and 8 walk that directory, and before they learned to skip regular
+# files the signpost itself read as a bridge entry with no canonical twin — the
+# gate failed in every repo that carried one, and the sentence explaining the
+# rule was the thing breaking the rule's own gate.
+bridge_readme()    { echo '# bridge' > .claude/skills/README.md; }
+canonical_readme() { echo '# canonical' > .agents/skills/README.md; }
+surface_readmes()  { bridge_readme; canonical_readme; }
+
+expect 'a README beside the bridge links is not counted as a skill' \
+    0 bridge_readme ".agents/skills/ holds 1 skill(s), .claude/skills/ bridges 1"
+expect 'a README beside the bridge links is not link-checked' \
+    0 bridge_readme "ok   8" "README.md"
+expect 'a README on either surface leaves the gate green' 0 surface_readmes
+expect 'a README on the canonical surface is not validated as a skill' \
+    0 surface_readmes "ok   9" "README.md"
+
 # --- the skipped band ---------------------------------------------------------
 # A consumer's CI may check a repo out WITHOUT submodules on purpose (devtools/ is
 # private), so the shared skills and the standing-rules import are both unreadable

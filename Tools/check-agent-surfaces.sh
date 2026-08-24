@@ -266,9 +266,27 @@ fi
 # --- 7: the canonical skills surface is not smaller than the bridged one ------
 # A count comparison, not "the directory exists": an empty .agents/skills/ and a
 # fully populated one both exist.
+# A skills surface may carry plain files beside the skills — the generated
+# .claude/skills/README.md, signposting that the folder is a bridge and that
+# skills are authored in .agents/skills/, is the one this fleet writes. A skill
+# is a DIRECTORY, so a regular file is not one: it is neither counted here nor
+# link-checked below, where it would otherwise be reported as a skill only one
+# harness can run.
+#
+# Symlinks stay in scope whether or not they resolve. Filtering on -d instead
+# would drop every skill whose target is an uninitialized submodule, turning
+# the exact breakage check 8 exists to catch into a green "no skills".
+is_skill_entry() {
+    [ -L "$1" ] || [ -d "$1" ]
+}
 count_entries() {
     [ -d "$1" ] || { echo 0; return; }
-    find "$1" -mindepth 1 -maxdepth 1 ! -name '.*' | wc -l | tr -d ' '
+    local n=0 entry
+    while IFS= read -r entry; do
+        [ -n "$entry" ] || continue
+        if is_skill_entry "$entry"; then n=$((n + 1)); fi
+    done < <(find "$1" -mindepth 1 -maxdepth 1 ! -name '.*')
+    echo "$n"
 }
 canon=$(count_entries .agents/skills)
 bridge=$(count_entries .claude/skills)
@@ -295,6 +313,7 @@ else
     bad_link=""; bad_body=""; unreadable=""; ok_bodies=0
     while IFS= read -r entry; do
         [ -n "$entry" ] || continue
+        is_skill_entry "$entry" || continue
         name=$(basename "$entry")
         if [ -L "$entry" ]; then
             want="../../.agents/skills/$name"
@@ -336,6 +355,7 @@ else
     bad9=""; checked9=0; skipped9=0
     while IFS= read -r d; do
         [ -n "$d" ] || continue
+        is_skill_entry "$d" || continue
         name=$(basename "$d")
         skill="$d/SKILL.md"
         if [ ! -r "$skill" ]; then
@@ -399,6 +419,7 @@ else
     bad13=""; checked13=0; skipped13=0; noted13=0
     while IFS= read -r d; do
         [ -n "$d" ] || continue
+        is_skill_entry "$d" || continue
         name=$(basename "$d")
         skill="$d/SKILL.md"
         if [ ! -r "$skill" ]; then

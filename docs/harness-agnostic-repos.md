@@ -122,6 +122,7 @@ a directory containing `SKILL.md` (YAML frontmatter + Markdown), plus optional
 ```text
 .agents/skills/<name>/SKILL.md              # canonical — the standard's discovery path
 .claude/skills/<name> -> ../../.agents/skills/<name>   # per-skill symlink, tracked in git
+.claude/skills/README.md                    # generated signpost — see the rules below
 ```
 
 ### Shared reference files inside skills
@@ -154,6 +155,12 @@ instead.
   canonical tree. Per-skill links also leave room for real project-local skills beside
   shared ones.
 - **Symlinks are tracked in git and use relative targets**, so they survive a clone.
+- **`.claude/skills/README.md` says all of that in the folder where the mistake is
+  made.** Someone adding a skill opens the vendor directory first — it is the one they
+  have heard of — and a rule stated only here is a rule they never read. The file is
+  written by `sync-skill-symlinks.sh` rather than by hand, and rewritten on every run: one
+  text for the whole fleet, and an edited copy heals at the next sync instead of forking.
+  It is a plain file, not a skill, so checks 7 and 8 skip it.
 - **Shared skills vendored from `devtools/` follow the same rule** — the real directory
   belongs in `devtools/.agents/skills/`, and each consumer links to it.
 - **Regenerate shared links with `Tools/sync-skill-symlinks.sh`.** It converts the
@@ -284,7 +291,10 @@ check, because it ends the investigation.
 
 Checks 1–9 and 13 are mechanizable and belong in `make check` as a single stage. Note the shape
 of check 7: a count comparison, not "the directory exists" — an empty `.agents/skills/`
-and a fully-populated one both exist.
+and a fully-populated one both exist. Both 7 and 8 count *skills*, meaning directories
+and the symlinks standing in for them; a plain file on either surface — the generated
+`README.md` above — is not a skill and is skipped. A dangling symlink still counts, since
+that is the breakage check 8 exists to name.
 
 > **Status:** checks 1–9 and 13 are implemented as the shared gate
 > [`Tools/check-agent-surfaces.sh`](../Tools/check-agent-surfaces.sh) — a harness-agnostic

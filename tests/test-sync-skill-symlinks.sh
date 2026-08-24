@@ -187,10 +187,12 @@ cp "$DEVTOOLS_ROOT/Tools/check-skill-roster-freshness.sh" "$PROJ6/wrapper/nested
 out="$(bash "$PROJ6/wrapper/nested/Tools/sync-skill-symlinks.sh" "$PROJ6" 2>&1)" \
   || fail "sync failed for a nested tree: $out"
 
-# The count assertion that a self-emptying run cannot satisfy.
+# The count assertion that a self-emptying run cannot satisfy. Skills only —
+# the bridge also carries the generated README.md, and counting that would let
+# a run that emptied one surface pass on the signpost it left behind.
 for surface in .agents/skills .claude/skills; do
-  n="$(find "$PROJ6/$surface" -mindepth 1 -maxdepth 1 | wc -l)"
-  [ "$n" -eq 3 ] || fail "$surface holds $n entries, expected 3 (alpha, beta, wrapper-owned): $out"
+  n="$(find "$PROJ6/$surface" -mindepth 1 -maxdepth 1 \( -type l -o -type d \) | wc -l)"
+  [ "$n" -eq 3 ] || fail "$surface holds $n skill entries, expected 3 (alpha, beta, wrapper-owned): $out"
 done
 
 # Every target names the mount the consumer has, never the nested tree.
@@ -220,3 +222,40 @@ out="$(bash "$PROJ6/wrapper/nested/Tools/sync-skill-symlinks.sh" "$PROJ6" 2>&1)"
 [ "$(grep -c '0 linked, 3 already current' <<< "$out")" = 2 ] \
   || fail "nested run not idempotent on both surfaces: $out"
 echo "ok 8 - a nested tree links through the mount, not the tree, and is idempotent"
+
+# --- 9. the generated bridge README -----------------------------------------
+# The signpost that stops the next reader authoring a skill in the vendor
+# folder. Three properties, none of which a hand-written file would have: it
+# lands on the bridge ONLY (the canonical surface is the real thing and needs no
+# sign pointing at itself), it names the tree as actually mounted rather than a
+# guess, and it is restored on the next run — a copy edited in place is a fork
+# of fleet-wide text, so the generator overwrites rather than preserves.
+README="$PROJ/.claude/skills/README.md"
+[ -f "$README" ] || fail "no README.md written to the bridge surface"
+if [ -e "$PROJ/.agents/skills/README.md" ]; then
+  fail "a README was written to the canonical surface, which is not a bridge"
+fi
+grep -q "^bash $MOUNT_NAME/Tools/sync-skill-symlinks\.sh \.$" "$README" \
+  || fail "README does not name the discovered tree: $(cat "$README")"
+if grep -q '@TREE@' "$README"; then
+  fail "README placeholder left unsubstituted: $(cat "$README")"
+fi
+
+echo 'hand-edited' > "$README"
+out="$(bash "$SYNC" "$PROJ" 2>&1)" || fail "sync failed over a hand-edited README: $out"
+if grep -q 'hand-edited' "$README"; then
+  fail "a hand-edited README survived the next sync"
+fi
+echo "$out" | grep -q "wrote bridge README.md" || fail "README rewrite not reported: $out"
+
+out="$(bash "$SYNC" "$PROJ" 2>&1)" || fail "sync failed on an already-current README: $out"
+echo "$out" | grep -q "bridge README.md already current" \
+  || fail "an unchanged README was not reported as current: $out"
+
+# The nested-tree fixture is the case a mount name cannot serve: the consumer
+# mounts `wrapper/`, but the script it runs lives at `wrapper/nested/Tools/`.
+# The command the README prints has to be the one that works (this is hq's
+# shape, where the tree is workshop-dev/workshop under a workshop-dev mount).
+grep -q "^bash wrapper/nested/Tools/sync-skill-symlinks\.sh \.$" "$PROJ6/.claude/skills/README.md" \
+  || fail "nested README names the mount instead of the tree: $(cat "$PROJ6/.claude/skills/README.md")"
+echo "ok 9 - bridge README is generated, bridge-only, tree-aware, and self-healing"
