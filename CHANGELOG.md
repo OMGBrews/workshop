@@ -3,6 +3,12 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- The devcontainer build kit now gives Claude Code, Codex, and Oh My Pi the
+  same prompt-entry behavior: `Enter` inserts a newline and `Shift+Enter`
+  submits. Existing harness configuration is preserved, startup validation
+  checks the mappings, and the devcontainer guide documents live application
+  plus VS Code's one-time host-terminal binding.
+
 - `sync-skill-symlinks.sh` now generates `.claude/skills/README.md` in each
   consumer, the signpost saying that folder is symlinks and that skills are
   authored in `.agents/skills/`. It names the shared tree as actually mounted

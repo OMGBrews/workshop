@@ -59,6 +59,100 @@ harness_alias() {
     done < <(harness_rcfiles)
 }
 
+# harness_upsert_toml_key <file> <section> <key> <TOML value>
+#
+# Replace one key in one TOML table without taking ownership of the rest of the file.
+# Harness config is user config too: setup.sh is safe to re-run in a live container, so
+# overwriting config.toml to install one shared default would destroy model, provider,
+# MCP, and UI preferences that have nothing to do with the build kit.
+harness_upsert_toml_key() {
+    local file="$1" section="$2" key="$3" value="$4" tmp
+    mkdir -p "$(dirname "$file")"
+    [ -e "$file" ] || : > "$file"
+    tmp="$(mktemp)"
+    awk -v section="$section" -v key="$key" -v value="$value" '
+        function emit_key() {
+            if (!key_emitted) {
+                print key " = " value
+                key_emitted = 1
+            }
+        }
+
+        /^[[:space:]]*\[[^][]+\][[:space:]]*(#.*)?$/ {
+            if (in_section) emit_key()
+            header = $0
+            sub(/^[[:space:]]*\[/, "", header)
+            sub(/\][[:space:]]*(#.*)?$/, "", header)
+            in_section = (header == section)
+            if (in_section) section_seen = 1
+            print
+            next
+        }
+
+        {
+            candidate = $0
+            sub(/^[[:space:]]*/, "", candidate)
+            if (in_section && substr(candidate, 1, length(key)) == key) {
+                suffix = substr(candidate, length(key) + 1)
+                if (suffix ~ /^[[:space:]]*=/) {
+                    emit_key()
+                    next
+                }
+            }
+            print
+        }
+
+        END {
+            if (in_section) emit_key()
+            if (!section_seen) {
+                if (NR > 0) print ""
+                print "[" section "]"
+                print key " = " value
+            }
+        }
+    ' "$file" > "$tmp"
+    mv -f "$tmp" "$file"
+}
+
+# harness_upsert_flat_yaml_key <file> <key> <YAML value>
+#
+# OMP's keybindings file is a flat YAML map. Support both its documented inline values
+# and a user's block-style value, removing the old indented block when replacing a key.
+harness_upsert_flat_yaml_key() {
+    local file="$1" key="$2" value="$3" tmp
+    mkdir -p "$(dirname "$file")"
+    [ -e "$file" ] || : > "$file"
+    tmp="$(mktemp)"
+    awk -v key="$key" -v value="$value" '
+        function is_target(line,    candidate, suffix) {
+            candidate = line
+            sub(/^[[:space:]]*/, "", candidate)
+            if (substr(candidate, 1, length(key)) != key) return 0
+            suffix = substr(candidate, length(key) + 1)
+            return suffix ~ /^[[:space:]]*:/
+        }
+
+        skipping && /^[[:space:]]+/ { next }
+        skipping { skipping = 0 }
+
+        is_target($0) {
+            if (!key_emitted) {
+                print key ": " value
+                key_emitted = 1
+            }
+            skipping = 1
+            next
+        }
+
+        { print }
+
+        END {
+            if (!key_emitted) print key ": " value
+        }
+    ' "$file" > "$tmp"
+    mv -f "$tmp" "$file"
+}
+
 # harness_locate <binary> — is this harness CLI installed? Prints its path if so.
 #
 # Not a bare `command -v`. Every one of these installers drops its binary in a user-local
