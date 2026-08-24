@@ -102,4 +102,22 @@ echo "$out" | grep -q 'SKILL ROSTER CHANGED' || fail "post-merge hook did not fi
 echo "$out" | grep -q '^+ .claude/skills: epsilon' || fail "merge-added skill not named: $out"
 echo "ok 5 - post-merge hook warns inside the merge's own output"
 
+# --- 6. a plain file on a skills surface is not a roster entry --------------
+# `sync-skill-symlinks.sh` drops a generated README.md into .claude/skills/.
+# No skill name changes when it lands, so a session's roster is not stale and
+# the operator must not be sent to /reload-skills over it — a warning that
+# cries wolf on a signpost is a warning nobody reads on the real rename.
+check_in baseline
+echo '# bridge' > "$PROJ/.claude/skills/README.md"
+out="$(check_in check)" || fail "check exited non-zero after a README landed"
+[ -z "$out" ] || fail "a generated README was reported as a roster change: $out"
+# The same surface must still speak up for an actual skill.
+ln -s "../../devtools/.agents/skills/zeta" "$PROJ/.claude/skills/zeta"
+out="$(check_in check)" || fail "check exited non-zero on a real change beside a README"
+echo "$out" | grep -q '^+ .claude/skills: zeta' || fail "real addition not named: $out"
+if echo "$out" | grep -q 'README'; then
+  fail "the README appeared in the roster diff: $out"
+fi
+echo "ok 6 - a generated README is not a roster entry, and does not mask real ones"
+
 echo "all roster-freshness tests passed"

@@ -57,7 +57,13 @@ LAST="$gitdir/skills-roster-last"
 # may read either: Claude Code reads .claude/skills, other harnesses read
 # .agents/skills, and the transition moves or retargets names between them.
 # Dangling links count as entries — a dangling name is itself a
-# roster-relevant state — so -L is tested alongside -e.
+# roster-relevant state — so -L is tested first and stands alone.
+#
+# Skills only: a skill is a directory, so a plain file on either surface is not
+# a roster entry. The generated .claude/skills/README.md is the one this fleet
+# writes, and counting it would announce a stale roster — sending the operator
+# to /reload-skills — on the sync that merely dropped a signpost in, with no
+# skill name changed at all.
 fingerprint() {
   (
     cd "$repo_root" || return 1
@@ -65,7 +71,7 @@ fingerprint() {
       if [ -d "$d" ]; then
         printf '%s:' "$d"
         for e in "$d"/*; do
-          { [ -e "$e" ] || [ -L "$e" ]; } && printf ' %s' "${e##*/}"
+          { [ -L "$e" ] || [ -d "$e" ]; } && printf ' %s' "${e##*/}"
         done
         printf '\n'
       fi

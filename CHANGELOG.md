@@ -3,6 +3,15 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- `sync-skill-symlinks.sh` now generates `.claude/skills/README.md` in each
+  consumer, the signpost saying that folder is symlinks and that skills are
+  authored in `.agents/skills/`. It names the shared tree as actually mounted
+  and is rewritten on every run, so the text cannot drift between repos.
+  `check-agent-surfaces.sh` and `check-skill-roster-freshness.sh` now count
+  skills — directories and the symlinks standing in for them — so a plain file
+  on either surface is neither reported as a broken bridge link nor announced
+  as a stale skill roster.
+
 - `migrate-kaizen-journal.sh` now rebases supported relative Markdown links as
   it relocates entries, with an atomic refusal for ambiguous active link syntax.
   `check-markdown-links.sh` shares that bounded grammar, skips and names
