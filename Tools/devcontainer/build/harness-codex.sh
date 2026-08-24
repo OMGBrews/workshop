@@ -21,7 +21,19 @@ source "$BUILD_DIR/lib.sh"
 # the same shape as the other two harnesses' installs.
 harness_install_via_curl codex https://chatgpt.com/codex/install.sh "Codex CLI"
 
-# 2. 'cx' — launch Codex with approvals and sandboxing bypassed.
+# 2. Codex keybindings: Enter inserts a newline; Shift+Enter submits.
+#
+# Context-specific bindings keep Enter's ordinary confirm behavior in lists and approval
+# prompts. Retain Ctrl+J as the terminal-portable newline fallback. Upsert the two keys
+# rather than replacing config.toml: Codex keeps model, provider, MCP, and other personal
+# settings in the same file, and this script is deliberately safe to re-run live.
+CODEX_DIR="${CODEX_HOME:-$HOME/.codex}"
+CODEX_CONFIG="$CODEX_DIR/config.toml"
+harness_upsert_toml_key "$CODEX_CONFIG" "tui.keymap.editor" "insert_newline" '["enter", "ctrl-j"]'
+harness_upsert_toml_key "$CODEX_CONFIG" "tui.keymap.composer" "submit" '["shift-enter"]'
+echo "  Codex keybindings configured"
+
+# 3. 'cx' — launch Codex with approvals and sandboxing bypassed.
 #
 # The flag's own help text says it is "intended solely for running in environments that
 # are externally sandboxed", which is exactly what a devcontainer is. This is the direct
@@ -34,7 +46,7 @@ harness_install_via_curl codex https://chatgpt.com/codex/install.sh "Codex CLI"
 harness_alias cx 'alias cx="codex --dangerously-bypass-approvals-and-sandbox"'
 echo "  'cx' alias configured"
 
-# 3. Authentication is deliberately not attempted here.
+# 4. Authentication is deliberately not attempted here.
 #
 # `~/.codex/auth.json` is per-user state that an image cannot bake — the same is true of
 # Claude's and omp's credentials. "Installed" and "signed in" are separate claims, and

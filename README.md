@@ -27,6 +27,11 @@ dependencies between skill families, including `audit-next` and `audit-done`'s
 dependency on the engine inside `audit-and-fix`. The tool discovers the actual
 mount name, so `workshop/` is a convention rather than a requirement.
 
+Projects that consume Workshop's devcontainer build kit can give Claude Code,
+Codex, and Oh My Pi shared prompt-entry behavior. See
+[the devcontainer harness keybindings guide](docs/devcontainer-harness-keybindings.md)
+for the image-build path, the live-apply command, and the host-terminal prerequisite.
+
 ## Checks and releases
 
 Run `make check` from a standalone clone to execute Workshop's complete public

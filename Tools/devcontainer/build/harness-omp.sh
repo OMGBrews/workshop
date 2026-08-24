@@ -17,7 +17,18 @@ source "$BUILD_DIR/lib.sh"
 # 1. Oh My Pi CLI, from its official standalone installer.
 harness_install_via_curl omp https://omp.sh/install "Oh My Pi (omp)"
 
-# 2. No alias, on purpose.
+# 2. OMP keybindings: Enter inserts a newline; Shift+Enter submits.
+#
+# The file is a flat YAML action map, separate from config.yml. Ctrl+J remains the
+# portable newline fallback. Do not remap app.message.followUp: its current Ctrl+Enter
+# default does not collide with Shift+Enter and remains useful while a task is running.
+OMP_AGENT_DIR="${PI_CODING_AGENT_DIR:-$HOME/.omp/agent}"
+OMP_KEYBINDINGS="$OMP_AGENT_DIR/keybindings.yml"
+harness_upsert_flat_yaml_key "$OMP_KEYBINDINGS" "tui.input.newLine" '[Enter, Ctrl+J]'
+harness_upsert_flat_yaml_key "$OMP_KEYBINDINGS" "tui.input.submit" '[Shift+Enter]'
+echo "  Oh My Pi keybindings configured"
+
+# 3. No alias, on purpose.
 #
 # `cc` and `cx` exist because Claude Code and Codex both prompt for approval by default,
 # so a shortcut is needed to launch them in the always-approve mode a sandboxed container

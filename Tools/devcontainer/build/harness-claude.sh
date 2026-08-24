@@ -73,16 +73,51 @@ else
     echo "  Claude settings configured"
 fi
 
-# 3. Claude Code keybindings (Shift+Enter → newline for Devin/remote terminals)
-cat > "$CLAUDE_DIR/keybindings.json" << 'EOF'
-[
-  {
-    "key": "shift+enter",
-    "command": "newline"
-  }
-]
-EOF
-echo "  Claude keybindings configured"
+# 3. Claude Code keybindings: Enter inserts a newline; Shift+Enter submits.
+#
+# Claude Code 2.1.18+ uses the context/action schema below. The old flat array this kit
+# installed (`command: newline`) predates that schema, so a valid legacy array is
+# intentionally replaced. A current-format object is merged instead: unrelated contexts
+# and Chat bindings remain the user's, while these two fleet defaults stay durable.
+KEYBINDINGS="$CLAUDE_DIR/keybindings.json"
+# shellcheck disable=SC2016 # $schema/$docs are literal JSON property names.
+DESIRED_KEYBINDINGS='{
+  "$schema": "https://www.schemastore.org/claude-code-keybindings.json",
+  "$docs": "https://code.claude.com/docs/en/keybindings",
+  "bindings": [
+    {
+      "context": "Chat",
+      "bindings": {
+        "enter": "chat:newline",
+        "shift+enter": "chat:submit"
+      }
+    }
+  ]
+}'
+
+if [ -s "$KEYBINDINGS" ] \
+   && jq -e 'type == "object" and (.bindings | type == "array")' "$KEYBINDINGS" >/dev/null 2>&1; then
+    tmp="$(mktemp)"
+    jq --argjson desired "$DESIRED_KEYBINDINGS" '
+      .["$schema"] //= $desired["$schema"]
+      | .["$docs"] //= $desired["$docs"]
+      | .bindings = (
+          [(.bindings[] | select(.context != "Chat"))]
+          + [{
+              "context": "Chat",
+              "bindings": (
+                reduce (.bindings[] | select(.context == "Chat") | (.bindings // {})) as $bindings
+                  ({}; . * $bindings)
+                | . * $desired.bindings[0].bindings
+              )
+            }]
+        )
+    ' "$KEYBINDINGS" > "$tmp" && mv -f "$tmp" "$KEYBINDINGS"
+    echo "  Claude keybindings merged (existing bindings preserved)"
+else
+    printf '%s\n' "$DESIRED_KEYBINDINGS" > "$KEYBINDINGS"
+    echo "  Claude keybindings configured"
+fi
 
 # 4. Claude Code status line.
 #

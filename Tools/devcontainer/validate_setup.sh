@@ -110,18 +110,34 @@ validate_claude() {
     check "Claude settings has permissions" grep -q '"allow"' "$HOME/.claude/settings.json"
     check "Claude status line script installed" test -x "$HOME/.claude/statusline.sh"
     check "Claude status line wired into settings" grep -q '"statusLine"' "$HOME/.claude/settings.json"
+    check "Claude Enter inserts newline" jq -e '.bindings[] | select(.context == "Chat") | .bindings.enter == "chat:newline"' "$HOME/.claude/keybindings.json"
+    check "Claude Shift+Enter submits" jq -e '.bindings[] | select(.context == "Chat") | .bindings["shift+enter"] == "chat:submit"' "$HOME/.claude/keybindings.json"
     check "Claude Code CLI installed" harness_locate claude
     check "'cc' alias in bashrc and zshrc" check_alias_both_rcfiles cc
 }
 
 validate_omp() {
     check "Oh My Pi (omp) installed" harness_locate omp
+    check "Oh My Pi Enter inserts newline" grep -qxF 'tui.input.newLine: [Enter, Ctrl+J]' "${PI_CODING_AGENT_DIR:-$HOME/.omp/agent}/keybindings.yml"
+    check "Oh My Pi Shift+Enter submits" grep -qxF 'tui.input.submit: [Shift+Enter]' "${PI_CODING_AGENT_DIR:-$HOME/.omp/agent}/keybindings.yml"
     # No alias check: omp deliberately has none — its sessions already default to the
     # always-approve mode `cc` and `cx` exist to reach. See build/harness-omp.sh.
 }
 
 validate_codex() {
     check "Codex CLI installed" harness_locate codex
+    check "Codex Enter inserts newline" awk '
+        /^\[tui\.keymap\.editor\]$/ { in_editor = 1; next }
+        /^\[/ { in_editor = 0 }
+        in_editor && /^insert_newline[[:space:]]*=[[:space:]]*\[[^]]*"enter"/ { found = 1 }
+        END { exit !found }
+    ' "${CODEX_HOME:-$HOME/.codex}/config.toml"
+    check "Codex Shift+Enter submits" awk '
+        /^\[tui\.keymap\.composer\]$/ { in_composer = 1; next }
+        /^\[/ { in_composer = 0 }
+        in_composer && /^submit[[:space:]]*=[[:space:]]*\[[^]]*"shift-enter"/ { found = 1 }
+        END { exit !found }
+    ' "${CODEX_HOME:-$HOME/.codex}/config.toml"
     check "'cx' alias in bashrc and zshrc" check_alias_both_rcfiles cx
 }
 
