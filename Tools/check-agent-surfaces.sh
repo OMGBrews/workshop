@@ -2,18 +2,18 @@
 # check-agent-surfaces.sh — does this repo still satisfy the harness-agnostic
 # conformance checklist?
 #
-# Mechanizes checks 1-9 and 13 of workshop/docs/harness-agnostic-repos.md
+# Mechanizes checks 1-9 and 13-14 of workshop/docs/harness-agnostic-repos.md
 # ("Conformance checklist"). Checks 10 (bootstrap reachable as a plain command)
 # and 11 (root sentinels probe AGENTS.md) are deliberately absent: both are
 # judgments about whether a script's *body* does the right thing, and the
 # mechanical forms of them ("a file named session-start.sh exists", "the string
 # AGENTS.md appears in a script") pass on a stub. Check 12 is mechanizable but
 # repo-local — the translation seam's path is per-repo knowledge — so it lives
-# in each consumer's own gate, not here; the standard's Status block says why.
+# in each consumer's own verification suite, not here; the standard's Status block says why.
 #
 # Usage: bash Tools/check-agent-surfaces.sh <repo-root>
 # The repo-root argument is REQUIRED: from this location a default would resolve
-# to the devtools tree itself, silently auditing the wrong repo. A gate that can
+# to the devtools tree itself, silently auditing the wrong repo. A check that can
 # audit the wrong tree is a signal-hygiene violation — every caller passes its
 # own root explicitly (this repo: `bash devtools/Tools/check-agent-surfaces.sh .`).
 # Exit 0 -> every evaluated assertion holds.  Exit 1 -> at least one failed, and
@@ -70,7 +70,7 @@ note() { printf 'note %-2s %s\n' "$1" "$2"; }
 bytes() { wc -c < "$1" | tr -d ' '; }
 
 # Collapse '.' and '..' textually, without touching the filesystem. Pure shell
-# because `realpath --relative-to` is GNU-only and this gate has to give the same
+# because `realpath --relative-to` is GNU-only and this check has to give the same
 # answer on a maintainer's macOS checkout as it does in the Linux devcontainer.
 norm_path() {
     local out="" seg
@@ -191,6 +191,41 @@ else
         pass 3 "all $n non-root import(s) are linked from AGENTS.md"
     else
         fail 3 "imported but not linked from AGENTS.md: $missing"
+    fi
+fi
+
+# --- 14: Workshop standing rules include the terminology sibling ------------
+# Adoption is detected from the two pre-existing standing-rule imports rather
+# than from a hardcoded mount name. Generic users of this checker that import
+# neither Workshop rule remain outside the Workshop instruction contract.
+sig_imports=$(printf '%s\n' "$imports" | grep -E '(^|/)docs/signal-hygiene\.md$' || true)
+dod_imports=$(printf '%s\n' "$imports" | grep -E '(^|/)docs/definition-of-done\.md$' || true)
+sig_count=$(printf '%s\n' "$sig_imports" | grep -c . || true)
+dod_count=$(printf '%s\n' "$dod_imports" | grep -c . || true)
+
+if [ "$sig_count" -eq 0 ] && [ "$dod_count" -eq 0 ]; then
+    pass 14 "no Workshop standing-rule route detected — terminology delivery not applicable"
+elif [ "$sig_count" -ne 1 ] || [ "$dod_count" -ne 1 ]; then
+    fail 14 "Workshop adopter needs exactly one signal-hygiene and one definition-of-done import (found $sig_count and $dod_count)"
+else
+    sig_import=$sig_imports
+    dod_import=$dod_imports
+    sig_prefix=${sig_import%signal-hygiene.md}
+    dod_prefix=${dod_import%definition-of-done.md}
+    if [ "$sig_prefix" != "$dod_prefix" ]; then
+        fail 14 "Workshop standing rules use different routes: $sig_import and $dod_import"
+    else
+        terminology_import="${sig_prefix}verification-terminology.md"
+        missing14=""
+        printf '%s\n' "$imports" | grep -Fxq "$terminology_import" \
+            || missing14="${missing14}CLAUDE.md import "
+        grep -qF "]($terminology_import)" AGENTS.md 2>/dev/null \
+            || missing14="${missing14}AGENTS.md link "
+        if [ -z "$missing14" ]; then
+            pass 14 "Workshop terminology delivered through $terminology_import"
+        else
+            fail 14 "Workshop adopter missing ${missing14}for $terminology_import"
+        fi
     fi
 fi
 

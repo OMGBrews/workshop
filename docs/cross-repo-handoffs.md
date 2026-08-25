@@ -136,7 +136,7 @@ those, and do not expect the sweep to care about them.
 
 ## See also
 
-- [`definition-of-done.md`](definition-of-done.md) — the gates a receiving repo
+- [`definition-of-done.md`](definition-of-done.md) — the required evidence a receiving repo
   applies to the work a handoff asks for; a brief never restates them
 - [`signal-hygiene.md`](signal-hygiene.md) — why "I filed it" is not "it was
   delivered" until something you can read says so

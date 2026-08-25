@@ -132,7 +132,7 @@ fi
 # hq's tests/verify-statusline-copy-contract.sh existed because 25 hand-edited
 # Dockerfiles could each get that wrong. Consumers now COPY this whole directory, so the
 # sibling arrives with the file that looks for it — the contract is a property of the
-# kit rather than a rule every consumer must remember. The gate still checks it, because
+# kit rather than a rule every consumer must remember. The check still covers it, because
 # a Dockerfile can still COPY the wrong thing.
 #
 # A missing source is fatal here, never a skipped install. A build that shipped a

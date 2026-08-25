@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Tests for Tools/check-agent-surfaces.sh — the gate that mechanizes checks 1-9
-# and 13 of workshop/docs/harness-agnostic-repos.md.
+# Tests for Tools/check-agent-surfaces.sh — the check that mechanizes checks 1-9
+# and 13-14 of workshop/docs/harness-agnostic-repos.md.
 #
 # The headline case is `nothing was done`: a repo with a lone CLAUDE.md and its
 # skills authored under .claude/skills/ — exactly the shape the standard exists to
@@ -34,11 +34,15 @@ fail() {
 # imports and fails check 4 on a conformant repo.
 make_conformant() {
     local d=$1
-    mkdir -p "$d/docs" "$d/.agents/skills/demo" "$d/.claude/skills"
+    mkdir -p "$d/workshop/docs" "$d/.agents/skills/demo" "$d/.claude/skills"
     cat > "$d/AGENTS.md" <<'EOF'
 # Instructions
 
-Everything every agent needs. Standing rule: [`docs/standing.md`](docs/standing.md).
+Everything every agent needs. Standing rules:
+
+- [`workshop/docs/signal-hygiene.md`](workshop/docs/signal-hygiene.md)
+- [`workshop/docs/definition-of-done.md`](workshop/docs/definition-of-done.md)
+- [`workshop/docs/verification-terminology.md`](workshop/docs/verification-terminology.md)
 
 ```bash
 psql postgresql://user:pass@localhost:5432/db
@@ -50,9 +54,13 @@ EOF
 # Bridge
 
 @AGENTS.md
-@docs/standing.md
+@workshop/docs/signal-hygiene.md
+@workshop/docs/definition-of-done.md
+@workshop/docs/verification-terminology.md
 EOF
-    echo 'The standing rule.' > "$d/docs/standing.md"
+    echo 'Signal hygiene.' > "$d/workshop/docs/signal-hygiene.md"
+    echo 'Definition of done.' > "$d/workshop/docs/definition-of-done.md"
+    echo 'Verification terminology.' > "$d/workshop/docs/verification-terminology.md"
     cat > "$d/.agents/skills/demo/SKILL.md" <<'EOF'
 ---
 name: demo
@@ -127,8 +135,8 @@ expect "a conformant repo is green" 0 NONE
 # --- one mutation per check ---------------------------------------------------
 wrapper_outgrows_root() { printf '%.0spadding padding padding\n' {1..80} >> CLAUDE.md; }
 drop_bridge_import()    { grep -v '^@AGENTS\.md$' CLAUDE.md > t && mv t CLAUDE.md; }
-unlink_standing_rule()  { sed 's|\[`docs/standing.md`\](docs/standing.md)|the standing rule|' AGENTS.md > t && mv t AGENTS.md; }
-import_from_root()      { echo '@docs/standing.md' >> AGENTS.md; }
+unlink_standing_rule()  { sed 's|\[`workshop/docs/signal-hygiene.md`\](workshop/docs/signal-hygiene.md)|the signal-hygiene rule|' AGENTS.md > t && mv t AGENTS.md; }
+import_from_root()      { echo '@workshop/docs/signal-hygiene.md' >> AGENTS.md; }
 oversize_root()         { printf '%.0sx%.0s\n' {1..21000} >> AGENTS.md; }
 add_per_tool_file()     { echo 'be helpful' > .cursorrules; }
 skill_only_for_claude() { mkdir -p .claude/skills/local && echo body > .claude/skills/local/SKILL.md; }
@@ -136,7 +144,16 @@ misaimed_bridge_link()  { rm .claude/skills/demo && ln -s ../../docs .claude/ski
 dangling_bridge_link()  { rm -rf .agents/skills/demo; }
 nonspec_frontmatter()   { sed 's/^description:/disable-model-invocation: true\ndescription:/' .agents/skills/demo/SKILL.md > t && mv t .agents/skills/demo/SKILL.md; }
 name_mismatch()         { sed 's/^name: demo/name: something-else/' .agents/skills/demo/SKILL.md > t && mv t .agents/skills/demo/SKILL.md; }
-vanished_import()       { rm docs/standing.md; }
+vanished_import()       { rm workshop/docs/signal-hygiene.md; }
+drop_terminology_import() { grep -v '^@workshop/docs/verification-terminology\.md$' CLAUDE.md > t && mv t CLAUDE.md; }
+unlink_terminology() { grep -v 'verification-terminology\.md' AGENTS.md > t && mv t AGENTS.md; }
+drop_terminology_pair() { drop_terminology_import; unlink_terminology; }
+split_standing_routes() {
+    mkdir -p alternate/docs
+    cp workshop/docs/definition-of-done.md alternate/docs/definition-of-done.md
+    sed 's|@workshop/docs/definition-of-done.md|@alternate/docs/definition-of-done.md|' CLAUDE.md > t && mv t CLAUDE.md
+    sed 's|workshop/docs/definition-of-done.md|alternate/docs/definition-of-done.md|g' AGENTS.md > t && mv t AGENTS.md
+}
 
 expect "wrapper larger than root"            1 wrapper_outgrows_root "FAIL 1"
 expect "no @AGENTS.md in the wrapper"        1 drop_bridge_import    "FAIL 2"
@@ -155,6 +172,14 @@ expect "skill name not matching its dir"     1 name_mismatch         "FAIL 9"
 # because that is where the pile is walked, and it must not be mistaken for the
 # uninitialized-submodule case below.
 expect "imported doc missing entirely" 1 vanished_import "FAIL 5"
+
+# --- check 14: the third standing rule cannot disappear as a pair -----------
+# Check 3 catches an import with no plain link, but both surfaces removed
+# together used to look conformant. That is the negative control that matters.
+expect "terminology import removed" 1 drop_terminology_import "FAIL 14"
+expect "terminology AGENTS link removed" 1 unlink_terminology "FAIL 14"
+expect "terminology delivery pair removed" 1 drop_terminology_pair "FAIL 14"
+expect "standing rules split across mount routes" 1 split_standing_routes "FAIL 14"
 
 # --- check 13: harness-only mechanics in SKILL.md bodies ---------------------
 # The three shapes the standard forbids unless `compatibility` is declared:
@@ -184,8 +209,8 @@ expect 'Claude-only frontmatter key' 1 nonspec_frontmatter "FAIL 13"
 # saying the folder is symlinks and skills are authored in .agents/skills/.
 # Checks 7 and 8 walk that directory, and before they learned to skip regular
 # files the signpost itself read as a bridge entry with no canonical twin — the
-# gate failed in every repo that carried one, and the sentence explaining the
-# rule was the thing breaking the rule's own gate.
+# check failed in every repo that carried one, and the sentence explaining the
+# rule was the thing breaking the rule's own check.
 bridge_readme()    { echo '# bridge' > .claude/skills/README.md; }
 canonical_readme() { echo '# canonical' > .agents/skills/README.md; }
 surface_readmes()  { bridge_readme; canonical_readme; }
@@ -194,7 +219,7 @@ expect 'a README beside the bridge links is not counted as a skill' \
     0 bridge_readme ".agents/skills/ holds 1 skill(s), .claude/skills/ bridges 1"
 expect 'a README beside the bridge links is not link-checked' \
     0 bridge_readme "ok   8" "README.md"
-expect 'a README on either surface leaves the gate green' 0 surface_readmes
+expect 'a README on either surface leaves the check green' 0 surface_readmes
 expect 'a README on the canonical surface is not validated as a skill' \
     0 surface_readmes "ok   9" "README.md"
 

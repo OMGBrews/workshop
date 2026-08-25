@@ -67,7 +67,7 @@ Implications:
      repoint each one **semantically** at the shipped work — a
      goal-list entry becomes its done-form pointing at what you built,
      a sibling doc's reference points at the landed code or feature
-     doc. Repos whose commit gate checks doc links whole-tree fail the
+     doc. Repos whose commit-time checks scan doc links whole-tree fail the
      removal on any link left pointing at the deleted brief.
    - Then stage the repaired files and remove the brief in the same
      commit: `git add <repaired files> && git rm "$TASK_QUEUE_TASK_PATH"`,
@@ -89,7 +89,7 @@ Implications:
      not under version control` otherwise),
    - repoint any markdown links to the brief at its new
      `queued/blocked/` path and stage them into the same commit (a
-     whole-tree doc-links gate fails the move otherwise),
+     whole-tree doc-links check fails the move otherwise),
    - commit the move,
    - stop.
 

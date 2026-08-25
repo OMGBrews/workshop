@@ -5,7 +5,7 @@
 # links, images, and reference definitions have an angle-bracketed destination,
 # or a whitespace-free destination without parentheses. Optional titles are
 # retained but not interpreted. URI, absolute, and fragment-only targets, plus
-# links in fenced or inline code, are deliberately outside this small gate.
+# links in fenced or inline code, are deliberately outside this small check.
 # Symlink sources are skipped and named. Targets escaping the repository are
 # skipped and named; submodule targets are checked when their mount is populated
 # and skipped and named when `git submodule status` reports them unavailable.

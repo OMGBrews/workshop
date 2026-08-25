@@ -13,7 +13,7 @@ Create a new task document in this repo's tasks directory.
 
 - **Tasks root**: `docs/work/tasks/` — written as `<tasks>/` below.
 - **Queue**: anything mentioning `<tasks>/queued/` applies only when that directory exists (it feeds the autonomous task-queue runner). In repos without it, skip those parts silently.
-- **Repo-specific authoring notes** (domain jargon to avoid in In brief, area maps, completion gates) live in `<tasks>/README.md` — read it before writing prose on the user's behalf.
+- **Repo-specific authoring notes** (domain jargon to avoid in In brief, area maps, completion requirements) live in `<tasks>/README.md` — read it before writing prose on the user's behalf.
 - **Bucket definitions**: [`bucket-definitions.md`](bucket-definitions.md), the file next to this one — what each bucket means and the shape the queue aims for, shared with every other task skill so they cannot drift. A repo's own bucket lists are courtesy summaries of it, never a second definition.
 
 ## The template is single-source

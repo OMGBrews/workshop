@@ -1,7 +1,7 @@
 .PHONY: check test links json lint
 
-# The one public, standalone gate. Keep this list explicit: task-queue runner
-# scripts have known shellcheck findings and stay named exclusions until those
+# The one public, standalone verification suite. Keep this list explicit:
+# task-queue runner scripts have known shellcheck findings and stay named exclusions until those
 # findings are repaired rather than disappearing behind recursive linting.
 check: test links json lint
 

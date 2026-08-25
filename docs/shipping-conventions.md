@@ -1,71 +1,80 @@
 # Shipping conventions
 
-How finished code and documentation reach the default branch, in every
-repository that follows this file. This is the fleet's single public default
-for landing work — read it before the end of any session that produced a
-change, so "how does this land?" is never decided fresh.
+How finished code and documentation land on the default branch in every
+repository that follows this file. Read it before the end of a session that
+produced a change; the terms used here are defined in
+[`verification-terminology.md`](verification-terminology.md).
 
-A repo that needs different rules does not rewrite this document: it names its
-own rules in its `docs/work/definition-of-done.md` and says why they differ.
-An unwritten divergence is how a fleet ends up with a dozen hand-written
-variants of the same convention.
+A repo that needs different rules names them in its
+`docs/work/definition-of-done.md` and says why. An unwritten divergence is how
+a fleet accumulates hand-written variants of the same convention.
 
-## Run the gates first
+## Gather the required evidence first
 
-A change is finished only after every applicable requirement named by the
-repo's `docs/work/definition-of-done.md` has run and passed — scoped by the
-surface the change touches, not by category. A repo with no automated gates
-simply has no automated command to run; that is an answer, and it changes
-nothing else about how the work lands.
+A change is ready to land only after every applicable requirement in the
+repository's `docs/work/definition-of-done.md` is satisfied, scoped by the
+surface the change touches. A repository with no automated checks has no
+automated command to run; that truthful answer changes nothing else about how
+work lands.
+
+A passing check is evidence. It does not authorize the next action and does not
+prove that GitHub or another platform enforces the requirement.
 
 ## How work lands
 
-Two routes, chosen by where the work happens, not by what the diff contains:
+Two routes are standard, chosen by the session and repository rather than by
+the diff category:
 
 - **From an authorized local session**, where the default branch permits it:
-  commit and push directly to the default branch. No branch, no PR — the
-  normal flow for work done on a machine the repo trusts.
+  commit and push directly to the default branch. The landing requirements are
+  procedural unless a platform control also binds that route.
 - **From a cloud session, or a repository that protects its default branch**:
-  a pull request is the ordinary way the work lands.
+  a pull request is the ordinary landing route. Required status checks and
+  reviews participate in a platform-enforced landing gate only when the active
+  rules bind the branch, actor, and route.
 
-Neither route grants consent by itself. A commit, push, merge, or pull request
-is an external action: a user instruction or a standing workflow delegation
-must authorize it. "The gate passed" authorizes nothing, and neither does "the
-diff is docs-only".
+Neither route grants consent by itself. A commit, push, pull request, or merge
+is an external action: a user instruction or standing workflow delegation must
+authorize it. An approval may satisfy a review requirement without authorizing
+every actor to perform the transition. A passing check authorizes nothing.
 
 ## What a docs-only diff changes
 
-One thing: which gates the change must pass. Nothing else — no new delivery
-category, no new authorization.
+One thing: which evidence requirements apply. It changes neither the landing
+route nor authorization.
 
-`Tools/docs-only-diff.sh <base>` — in the repo's own Workshop mount — is the
-single classifier, run from the repo root against the diff from `<base>` to
-HEAD:
+`Tools/docs-only-diff.sh <base>` is the shared classifier, run from the repo
+root against the diff from `<base>` to `HEAD`:
 
-- **Exit 0** — the diff is inside the repo's declared prose surface. Take the
-  repo's documented docs lane: skip the gates that, by the repo's own
-  declaration, read none of the changed paths.
-- **Exit 1 or 2** — not docs-only, or cannot decide. The normal gate path
-  applies; exit 2 is never a pass.
+- **Exit 0** — the diff is inside the repository's declared prose surface. Take
+  the documented docs lane and skip only checks proven to read none of the
+  changed paths.
+- **Exit 1 or 2** — the diff is not docs-only, or applicability could not be
+  determined. Take the normal verification path; exit 2 is never a pass.
 
-The predicate decides gate scoping only. It never decides whether a commit,
-push, merge, or pull request is authorized — a docs-only diff still needs the
-same consent as any other change. Whether a repo declares a prose surface at
-all is its own call, recorded between the `DOCS-ONLY` sentinels in its
-`docs/work/definition-of-done.md`; a repo with no declaration gets exit 2,
-which is the safe answer rather than a guess made on its behalf.
+The classifier selects applicability. It does not provide the evidence that
+the selected checks would produce, and it never authorizes an action. A repo
+declares its prose surface between `DOCS-ONLY` sentinels in
+`docs/work/definition-of-done.md`; no declaration produces exit 2 rather than a
+guess.
+
+## Releases and deployments
+
+Shipping changes to the default branch is landing, not releasing. A release
+declares an exact versioned candidate or artifact. Publishing, promotion,
+deployment, and post-deployment verification are separate actions with their
+own requirements and authorization. A repository documents those boundaries
+where they exist rather than treating a successful landing check as permission
+to cross all of them.
 
 ## Adoption
 
-This file is a standing rule. It reaches a repo through the same pinned
-Workshop mount that carries `docs/signal-hygiene.md` and
-`docs/definition-of-done.md`, and the short form of the rule lives in that
-second document, so adopting a Workshop commit that adds it is the whole
-adoption act — no new instruction-file migration. A repo outside the
-standing-rule mirror either records a deliberate exception in its own
-`docs/work/definition-of-done.md` or follows the same default.
+This file is a standing rule delivered by the pinned Workshop mount alongside
+`signal-hygiene.md`, `definition-of-done.md`, and
+`verification-terminology.md`. A repository outside that instruction contract
+records a deliberate exception in its own definition of done or follows the
+same default.
 
-The one repository that cannot import the rules it hosts is Workshop itself,
-whose contributor contract is deliberately pull-request-only
-(`CONTRIBUTING.md`): every change lands through a reviewed PR. That is the
-protected-repository arm of the convention, not a divergence from it.
+Workshop itself cannot import a rule through a submodule it hosts. Its
+pull-request-only contributor contract lives in `CONTRIBUTING.md`; that is the
+protected-repository route described above, not a different vocabulary.

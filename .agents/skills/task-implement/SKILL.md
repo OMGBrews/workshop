@@ -20,7 +20,7 @@ full path. If omitted, Phase 1 helps pick one.
 
 - **Tasks root**: `docs/work/tasks/` — written as `<tasks>/` below. If none exists, print "No tasks directory found — invoke the `task-create` skill to scaffold one." and stop.
 - **Queue**: `<tasks>/queued/` (when it exists) belongs to the autonomous task-queue runner. Never pick from it — a task sitting there is already claimed, and implementing it here races a worker that may be mid-flight on the same brief. If the user names a queued task explicitly, say that and offer the `task-move` skill to pull it back into a human bucket first.
-- **Definition of done**: `docs/work/definition-of-done.md` where it exists — the project-wide gates that no individual brief restates.
+- **Definition of done**: `docs/work/definition-of-done.md` where it exists — the project-wide requirements that no individual brief restates.
 - **The brief's vintage** is a commit, not a date: the commit that created the task file is `git log --diff-filter=A --format=%H --follow -- <task-file> | tail -1`. Window history with `<that-sha>..HEAD`, never with `--since=<date>` — commit dates aren't topology, so a branch merged after the brief was written carries commits dated before it, and a date window silently excludes exactly those.
 
 ## The shared execution discipline
@@ -32,7 +32,7 @@ Its five blocks are the discipline this skill runs on:
 |-------|-----------------|---------|
 | `staleness-check` | Diffing `finalized-at..HEAD` over the Scope paths; code wins over the brief; the acceptance criteria govern either way | Phase 3 |
 | `recommended-solution` | Recommended solution is advisory, acceptance criteria are contract, deviations named in commit bodies | Phase 4 |
-| `definition-of-done` | Finding `definition-of-done.md` and satisfying every applicable gate | Phase 4, Phase 6 |
+| `definition-of-done` | Finding `definition-of-done.md` and satisfying every applicable requirement | Phase 4, Phase 6 |
 | `ac-sentinels` | Edits to the acceptance list stay inside `AC:BEGIN` / `AC:END` | Phase 4 |
 | `ask-with-briefing` | Briefing the human before any question-prompt call | throughout |
 
@@ -170,7 +170,7 @@ While building:
 - **The acceptance criteria are the contract**; the `## Recommended solution` is advisory. Follow the recommended design unless the code at HEAD contradicts it, and when you deviate, say what you changed and why in the body of the relevant commit — never silently.
 - **Tick each criterion as it is met**, editing strictly inside the `AC:BEGIN` / `AC:END` sentinels. Tick on evidence, not on intent: the change is made and you ran the thing that shows it works. An unticked criterion at the end of the run is information; a criterion ticked because it was attempted is a lie the next reader has no way to catch.
 - **`- [~]` is a real state, and it is not done.** Live task files use three markers, not two: `- [ ]` not started, `- [x]` met, `- [~]` partially met — a hand-written signal that someone got part-way and stopped. Never promote a `[~]` to `[x]` on the strength of the earlier work; treat it as unmet and finish it, or leave it `[~]` and go to Phase 5. Whatever unusual marker a brief arrives with, preserve it rather than normalizing it away.
-- **Satisfy `<tasks>/definition-of-done.md`** where it exists. The brief does not restate those gates; they apply anyway.
+- **Satisfy `<tasks>/definition-of-done.md`** where it exists. The brief does not restate those requirements; they apply anyway.
 - Commit in well-scoped commits as you go, following the repo's commit conventions.
 - Fan out subagents for independent work, but keep `git` and the test runs to yourself — concurrent edits to disjoint files are safe, concurrent `git` in one tree is not.
 - Ask when you need to, with the briefing the `ask-with-briefing` block requires. In a session where the human is at the keyboard, a plain-text question ending your turn is usually the right shape; the push-notification form is for when they have walked away.
@@ -203,7 +203,7 @@ already done and never closed. Both run the same checks and the same
 confirmation, and neither skips 6b: a task that *looks* finished is exactly the
 one whose markers deserve enumerating.
 
-### 6a — Self-distrust validation
+### 6a — Self-distrust verification
 
 Run all four before claiming completion. Each has an answer you can read, not one you assert:
 
@@ -212,12 +212,12 @@ Run all four before claiming completion. Each has an answer you can read, not on
 | The brief is gone from the worktree | **Not here — at 6e.** The deletion follows the human's confirmation, so this cannot be true yet; asserting it at 6a is a check nothing can pass. Here, confirm the inverse: the brief is still present, and removing it is the only change left |
 | Commits exist beyond the branch's start SHA | `git log --oneline <Phase 2 SHA>..HEAD` is non-empty and the commits are this task's |
 | No leftover `STUCK.md` | No scratch files, debug prints, or commented-out blocks left behind — read your own diff (`git diff <Phase 2 SHA>..HEAD`) |
-| The tree still builds (`pytest --collect-only`) | The repo's cheapest whole-tree sanity check passes — test collection, a type check, a build, whichever this repo has — plus every applicable `definition-of-done.md` gate |
+| The tree still builds (`pytest --collect-only`) | The repo's cheapest whole-tree sanity check passes — test collection, a type check, a build, whichever this repo has — plus every applicable `definition-of-done.md` requirement |
 
-### 6b — The acceptance gate is `[x]`, not "no `[ ]` left"
+### 6b — The acceptance requirement is `[x]`, not "no `[ ]` left"
 
 Deletion is irreversible in the sense that matters — it is what tells every
-later reader the work is finished. So gate it positively: **every marker inside
+later reader the work is finished. So verify it positively: **every marker inside
 the `AC:BEGIN` / `AC:END` zone must be exactly `[x]`.** Enumerate them and read
 the list; do not test for the absence of `- [ ]`.
 
@@ -261,7 +261,7 @@ List both classes in the closing report, with which ones you actually changed.
 
 Everything above is a check you run. This is the one call you do not make alone.
 
-Present what 6a–6c found — each criterion and the evidence behind it, the gates
+Present what 6a–6c found — each criterion and the evidence behind it, the checks
 that ran and what they printed, the inbound links you would fix — and then ask,
 plainly, whether to close the task. Deleting the brief is what tells every later
 reader the work is finished; the human is the one entitled to say that.
@@ -316,6 +316,6 @@ is that the human cannot inspect a branch the way a runner can:
 - The task, and the commits that implemented it.
 - What Phase 3 verification found (what drifted, or "no drift").
 - Each acceptance criterion and the evidence it was met by.
-- Which gates ran and what they printed.
+- Which checks ran and what they printed.
 - Inbound links found and how each was handled.
 - Anything deliberately left undone, and why.

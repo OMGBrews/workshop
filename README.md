@@ -35,14 +35,16 @@ for the image-build path, the live-apply command, and the host-terminal prerequi
 ## Checks and releases
 
 Run `make check` from a standalone clone to execute Workshop's complete public
-gate set. GitHub Actions runs that same command for pushes, pull requests, and
+verification suite. GitHub Actions runs that same command for pushes, pull requests, and
 tags. Maintainers create milestone tags and GitHub Releases manually after the
 check passes; tags are immutable and identify the exact release commit. There
 is no promised release cadence or semantic-versioning compatibility contract.
 
 See [CHANGELOG.md](CHANGELOG.md) for release notes and
 [docs/work/definition-of-done.md](docs/work/definition-of-done.md) for the
-local check contract.
+local evidence contract. The shared meanings of checks, requirements, gates,
+release, and deployment are in
+[docs/verification-terminology.md](docs/verification-terminology.md).
 
 ## Cutover record
 

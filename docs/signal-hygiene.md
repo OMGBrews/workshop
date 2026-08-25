@@ -8,7 +8,7 @@ How to know a step actually happened — read before trusting any check, script,
 
 - **Trusted silence.** "Nothing found" is what a clean pass prints — and also what prints when the check ran in the wrong directory, the search tool skipped ignored paths, the pathspec is untracked, or the ref it read is a stale snapshot. A negative result is a lower bound, not a total, until you confirm the check could have seen a positive.
 
-- **A never-run deliverable.** If you never executed it, it is a draft — say so. In an environment that cannot run it, the first real run is part of authoring, not validation afterwards.
+- **A never-run deliverable.** If you never executed it, it is a draft — say so. In an environment that cannot run it, the first real run is part of authoring, not verification afterwards.
 
 Git's version of both: remote-tracking refs like `origin/main` are snapshots from your last fetch, so fetch before sizing any decision off them. And `HEAD == origin/main` is equality, not containment — true when your commit landed *and* when a rebase destroyed it. Read a push's own output; to prove a remote holds a commit, fetch, then test ancestry.
 

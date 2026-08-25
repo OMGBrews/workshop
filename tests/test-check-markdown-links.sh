@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Regression coverage for Workshop's standalone Markdown-link gate.
+# Regression coverage for Workshop's standalone Markdown-link check.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

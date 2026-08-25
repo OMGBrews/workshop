@@ -55,7 +55,7 @@ dependencies: []
          which every repo's own bucket list only summarizes
        - the tasks directory's `README.md` — when to file a task, and any
          repo-specific authoring notes (domain jargon to avoid in In brief,
-         area maps, completion gates)
+         area maps, completion requirements)
        - `queued/README.md` (repos with an autonomous queue) — readiness
          rules for the task-queue runner
        - `/task-finalize` — interactive open-questions resolver that also
