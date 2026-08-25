@@ -3,6 +3,13 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- Added the fleet's canonical verification terminology: checks produce
+  evidence, definitions of done state requirements, and boundary-qualified
+  gates control commit, landing, release, or deployment transitions. Standing
+  instruction delivery, cloud-session recovery, conformance checks, shared
+  task guidance, and a reusable classification fixture now use and enforce the
+  same vocabulary.
+
 - The devcontainer build kit now gives Claude Code, Codex, and Oh My Pi the
   same prompt-entry behavior: `Enter` inserts a newline and `Shift+Enter`
   submits. Existing harness configuration is preserved, startup validation

@@ -128,8 +128,8 @@ first line is a single word because the prompt breaks there.
 Before
 your final commit, look for a `definition-of-done.md` in the tasks
 directory (the parent of your brief's `queued/`); where it exists,
-satisfy every applicable gate in it — the project-wide definition of
-done. Your task brief does not restate those gates; they apply
+satisfy every applicable requirement in it — the project-wide definition of
+done. Your task brief does not restate those requirements; they apply
 anyway.
 <!-- /block: definition-of-done -->
 

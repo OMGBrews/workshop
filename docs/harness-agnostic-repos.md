@@ -49,7 +49,7 @@ holdout demands it, exactly one bridge.
 | **Skills** | `.agents/skills/<name>/SKILL.md` | per-skill symlink `.claude/skills/<name> -> ../../.agents/skills/<name>` | Claude Code sees no skills |
 | **Bootstrap** | a plain script, e.g. `scripts/agent/session-start.sh` | thin `.claude/hooks/*.sh` wrapper that emits the hook JSON envelope | Non-Claude sessions start on a stale checkout with uninitialized submodules |
 | **Tool config (MCP)** | none — genuinely per-harness | `.mcp.json` (Claude Code, Cursor); `.vscode/mcp.json` uses a different key | Only the harnesses you wrote config for get the servers |
-| **Gates** | `make check` + `docs/work/definition-of-done.md` | none needed — a command is a command | — |
+| **Verification** | `make check` + `docs/work/definition-of-done.md` | none needed — a command is a command | — |
 
 The instructions and skills surfaces are settled standards. The bootstrap surface is the
 one most repos get wrong, because a hook that only fires in one harness looks like it
@@ -65,6 +65,7 @@ CLAUDE.md      # thin Claude Code bridge:
                #   @AGENTS.md
                #   @devtools/docs/signal-hygiene.md
                #   @devtools/docs/definition-of-done.md
+               #   @devtools/docs/verification-terminology.md
                #   <Claude Code-specific sections only>
 ```
 
@@ -79,8 +80,9 @@ CLAUDE.md      # thin Claude Code bridge:
 
 That last row is the one that gets missed, and it fails silently: the rule stays in
 context for every Claude session, so nobody notices that a Codex session never learned
-it. **Every `@`-imported doc needs a matching plain link in `AGENTS.md`.** Both standing
-rules qualify — `signal-hygiene.md` and `definition-of-done.md`.
+it. **Every `@`-imported doc needs a matching plain link in `AGENTS.md`.** All three
+standing rules qualify — `signal-hygiene.md`, `definition-of-done.md`, and
+`verification-terminology.md`.
 
 ### Rules
 
@@ -250,20 +252,21 @@ top-level `servers` key; Codex uses `~/.codex/config.toml`.
 - **Record the decision** in the repo's architecture doc, so the absence reads as a
   choice rather than an oversight.
 
-## Surface 5 — gates
+## Surface 5 — verification
 
 The most portable surface, and it needs no bridge: a command is a command.
 
-- Every repo names its gates in `docs/work/definition-of-done.md` (see
+- Every repo states its required evidence in `docs/work/definition-of-done.md` (see
   [`definition-of-done.md`](definition-of-done.md)).
-- That file's scope is the gates, nothing more: the gates table, the `DOCS-ONLY` block
-  where the repo declares one (the paths no gate there reads), and the minimum prose
-  needed to run each gate correctly — the invocation, the pass condition, any caveat
-  that changes how you run it. A gate's rationale, its policy history, and the standing
+- That file's scope is the current evidence contract, nothing more: the checks table,
+  the `DOCS-ONLY` block where the repo declares one (the paths no check there reads),
+  the current enforcement statement, and the minimum prose needed to run each check
+  correctly — the invocation, the pass condition, any caveat that changes how you run
+  it. A check's rationale, its policy history, and the standing
   constraints behind it are repo description: link them, never restate them. The file
-  is read at the moment someone needs a command, and every paragraph that is not about
-  running a gate moves that command further away.
-- Gates are invoked as plain commands (`make check`), never through a harness feature.
+  is read at the moment someone needs a command, and unrelated prose moves that command
+  further away.
+- Checks are invoked as plain commands (`make check`), never through a harness feature.
 - The doc is linked from `AGENTS.md` as well as imported into `CLAUDE.md`.
 
 ## Conformance checklist
@@ -288,21 +291,22 @@ check, because it ends the investigation.
 | 11 | Root sentinels in scripts probe for `AGENTS.md` | The sentinel tracks the bridge, not the source |
 | 12 | Vendor harness environment variables are read only in one declared translation seam; everything else consumes neutral `AGENT_*` names | Location/policy detection silently answers wrong in every other harness |
 | 13 | SKILL.md bodies carry no harness-only mechanics (`$ARGUMENTS`, slash-invocations, Claude-only frontmatter) unless the skill declares `compatibility` | A skill only one harness can run looks spec-valid |
+| 14 | Repositories importing Workshop's signal-hygiene and definition-of-done rules also link and import `verification-terminology.md` through that same route | Sessions use incompatible meanings for checks, gates, CI, release, and deployment |
 
-Checks 1–9 and 13 are mechanizable and belong in `make check` as a single stage. Note the shape
+Checks 1–9 and 13–14 are mechanizable and belong in `make check` as a single stage. Note the shape
 of check 7: a count comparison, not "the directory exists" — an empty `.agents/skills/`
 and a fully-populated one both exist. Both 7 and 8 count *skills*, meaning directories
 and the symlinks standing in for them; a plain file on either surface — the generated
 `README.md` above — is not a skill and is skipped. A dangling symlink still counts, since
 that is the breakage check 8 exists to name.
 
-> **Status:** checks 1–9 and 13 are implemented as the shared gate
+> **Status:** checks 1–9 and 13–14 are implemented as the shared check
 > [`Tools/check-agent-surfaces.sh`](../Tools/check-agent-surfaces.sh) — a harness-agnostic
 > script that any repo runs against its own root (`bash devtools/Tools/check-agent-surfaces.sh .`
 > in a consumer that mounts the tree at `devtools/`). The repo-root argument is **required**: a
-> default would silently audit the wrong tree. The reference implementation wires the gate
+> default would silently audit the wrong tree. The reference implementation wires the check
 > as `make agent-surfaces` inside its `make check`; consumers without
-> fleet access run the same gate from the public mirror at the same path (`OMGBrewmaster/workshop`,
+> fleet access run the same check from the public mirror at the same path (`OMGBrewmaster/workshop`,
 > `Tools/check-agent-surfaces.sh`). Checks 10–11 stay manual by design — both are judgments
 > about a script's *body*, and their mechanical forms ("a file named `session-start.sh` exists",
 > "the string `AGENTS.md` appears in a script") pass on a stub; the script header states the
@@ -310,12 +314,12 @@ that is the breakage check 8 exists to name.
 > files, allowlisting the seam, the vendor boundary (`.claude/`), tests, and Markdown — but
 > stays repo-local because the seam's path is per-repo knowledge; the reference
 > implementation enforces it as `scripts/agent/check-env-neutrality.sh`, a `make check`
-> stage beside the shared gate. One implementation warning, learned the hard way: scan
-> with `git grep` and branch on its exit code (0 match / 1 clean / >1 gate error), never a
+> stage beside the shared check. One implementation warning, learned the hard way: scan
+> with `git grep` and branch on its exit code (0 match / 1 clean / >1 check error), never a
 > piped `grep` with stderr suppressed — the first version of that script passed on a regex
-> parse error, a gate whose pass state was reachable by the failure it existed to detect.
+> parse error, a check whose pass state was reachable by the failure it existed to detect.
 > A repo stops depending on someone remembering this checklist the moment its CI runs the
-> gate.
+> check.
 
 ## Adopting this in an existing repo
 
@@ -336,12 +340,12 @@ that is the breakage check 8 exists to name.
 6. **Repoint functional references.** Sentinels, doc-navigation roots, links.
 7. **Verify in more than one harness** — and record it in
    a repository-local verification log, one dated entry per harness per repo;
-   the gate verifies artifacts and the log is the behavior evidence. In
+   the check verifies artifacts and the log is the behavior evidence. In
    Claude Code: fresh session, probe a fact
    stated only in `AGENTS.md`, confirm no import-approval dialog blocks a
    non-interactive session, confirm skills still invoke through the symlinks. Elsewhere:
    confirm the skills are discovered at all.
-8. **Run the repo's gates** and record the adoption in its architecture docs.
+8. **Run the repo's required checks** and record the adoption in its architecture docs.
 
 ## Rejected alternatives
 
@@ -398,8 +402,9 @@ change.
   with each surface
 - [`signal-hygiene.md`](signal-hygiene.md) — how to know a step actually happened; the
   source of the checklist's "assert a positive property" rule
-- [`definition-of-done.md`](definition-of-done.md) — the gates surface, and where each
-  repo names its own
+- [`definition-of-done.md`](definition-of-done.md) — the required-evidence surface
+- [`verification-terminology.md`](verification-terminology.md) — shared meanings for
+  checks, requirements, gates, CI, release, and deployment
 - [`documentation-style-guide.md`](documentation-style-guide.md) — house conventions
 - The fleet-internal propagation guide is deliberately not linked here because
   Workshop is standalone and does not publish the private consumer inventory.

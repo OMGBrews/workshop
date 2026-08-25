@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests for Tools/check-docs-work-conformance.sh — the per-repo gate that
+# Tests for Tools/check-docs-work-conformance.sh — the per-repo check that
 # audits a repo's docs/work/ against the fleet docs work-directory contract.
 #
 # The headline case is the unmigrated baseline: a repo whose tasks still sit
@@ -73,9 +73,9 @@ make_conformant() {
     cat >"$1/docs/work/definition-of-done.md" <<'EOF'
 # Definition of done
 
-The gates a change to this repo must pass.
+The evidence required before a change lands in this repo.
 
-| Gate | Command | Pass condition |
+| Required evidence | Command | Pass condition |
 |------|---------|----------------|
 | Tests | bash tests/run-tests.sh | Exit 0 |
 EOF
@@ -96,7 +96,7 @@ make_unmigrated() {
     cat >"$1/docs/tasks/definition-of-done.md" <<'EOF'
 # Definition of done
 
-Legacy gates file.
+Legacy definition-of-done file.
 EOF
     write_brief "$1/docs/tasks/now" "legacy-task"
     git -C "$1" add -A
@@ -174,7 +174,7 @@ printf '%s\n' "$out" | grep -Fq "FAIL 1" || fail "unmigrated: no clause-1 failur
 printf '%s\n' "$out" | grep -Fq "docs/work/tasks/ does not exist" || fail "unmigrated: no migrate-tasks message"
 printf '%s\n' "$out" | grep -Fq "legacy tasks root docs/tasks/ remains" || fail "unmigrated: no legacy-root message"
 printf '%s\n' "$out" | grep -Fq "FAIL 6" || fail "unmigrated: no clause-6 failure"
-printf '%s\n' "$out" | grep -Fq "definition-of-done.md is missing" || fail "unmigrated: no migrate-gates message"
+printf '%s\n' "$out" | grep -Fq "definition-of-done.md is missing" || fail "unmigrated: no definition-of-done migration message"
 
 # --- the complete target is GREEN, with a verdict for every registry row ------
 d="$TMP/conformant"
@@ -211,7 +211,7 @@ expect "definition-of-done without a level-1 heading" 1 dod_no_heading \
 add_docs_only() {
     cat >>"$1/docs/work/definition-of-done.md" <<'EOF'
 
-<!-- DOCS-ONLY:BEGIN — paths no gate in this repo reads. DO NOT REMOVE. -->
+<!-- DOCS-ONLY:BEGIN — paths no check in this repo reads. DO NOT REMOVE. -->
 docs/
 <!-- DOCS-ONLY:END -->
 EOF

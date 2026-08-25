@@ -7,7 +7,7 @@ standards. Read this when contributing here or using Workshop as a submodule.
 
 Workshop is the hand-authored source of truth. Contributions follow
 [CONTRIBUTING.md](CONTRIBUTING.md), issues follow [SUPPORT.md](SUPPORT.md),
-and every change must satisfy the public gates in
+and every change must supply the required evidence in
 [docs/work/definition-of-done.md](docs/work/definition-of-done.md).
 
 ## Working in a project that vendors Workshop
@@ -17,8 +17,11 @@ and every change must satisfy the public gates in
   surface and the Claude bridge while preserving project-local collisions.
 - Read [docs/signal-hygiene.md](docs/signal-hygiene.md) and
   [docs/definition-of-done.md](docs/definition-of-done.md) before claiming a
-  check or task complete.
-- The repository's own public gates are declared in
+  check or task complete. Read
+  [docs/verification-terminology.md](docs/verification-terminology.md) before
+  discussing or changing checks, definitions of done, CI, shipping, releases,
+  or deployments.
+- The repository's own required evidence is declared in
   [docs/work/definition-of-done.md](docs/work/definition-of-done.md).
 - The superproject that tracks this repository's `main`, and what its pointer owes
   when a change lands here, are declared in

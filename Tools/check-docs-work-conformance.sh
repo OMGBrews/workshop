@@ -236,14 +236,14 @@ fi
 # heading plus substantive content. "The file exists" would pass on the shape
 # a half-done rollout leaves behind.
 if [ ! -f docs/work/definition-of-done.md ]; then
-    fail 6 "docs/work/definition-of-done.md is missing — every repo names its gates here, and a repo with none owes the one line that says so"
+    fail 6 "docs/work/definition-of-done.md is missing — every repo states its required evidence here, and a repo with no automated checks owes the one line that says so"
 else
     heading=$(grep -c '^# ' docs/work/definition-of-done.md || true)
     body=$(grep -cv '^[[:space:]]*$\|^#' docs/work/definition-of-done.md || true)
     if [ "$heading" -lt 1 ]; then
         fail 6 "docs/work/definition-of-done.md has no level-1 heading — this is not a written document"
     elif [ "$body" -lt 2 ]; then
-        fail 6 "docs/work/definition-of-done.md is a heading and $body line(s) of content — it names no gate and does not say there are none"
+        fail 6 "docs/work/definition-of-done.md is a heading and $body line(s) of content — it names no required evidence and does not say there is none"
     else
         pass 6 "docs/work/definition-of-done.md ($heading heading, $body content line(s))"
     fi
