@@ -83,6 +83,7 @@ docs/
                         # machine reads and writes; clause detail is in devtools'
                         # private fleet contract (not mirrored)
     ├── definition-of-done.md   [required; DOCS-ONLY block optional within it]
+    ├── claude-code-web.md      [required in fleet projects; Workshop host excepted]
     ├── consumed-by.md          [required where a parent mounts the repo]
     ├── tasks/                  [required for repos on the task system]
     │   ├── README.md           [optional curation]
@@ -106,7 +107,7 @@ docs/
 | `setup/` | Initial setup and configuration | `development-environment.md` |
 | `style-guides/` | Coding and documentation conventions | `csharp-style-guide.md` |
 | `testing/` | Test plans, coverage strategy | `test-coverage-plan.md` |
-| `work/` | The machine's directory — every file and directory the shared devtools machine reads and writes | `definition-of-done.md`, `consumed-by.md`, `tasks/` (+`now/soon/later/finalized/never`, opt-in `queued/`), `kaizen/`, `problems/`, `handoffs/`, `thoughts/` |
+| `work/` | The machine's directory — every file and directory the shared devtools machine reads and writes | `definition-of-done.md`, `claude-code-web.md`, `consumed-by.md`, `tasks/` (+`now/soon/later/finalized/never`, opt-in `queued/`), `kaizen/`, `problems/`, `handoffs/`, `thoughts/` |
 
 ### File naming
 
