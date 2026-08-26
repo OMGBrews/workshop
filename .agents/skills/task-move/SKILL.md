@@ -16,7 +16,7 @@ Move a task file between priority buckets in this repo's tasks directory.
 
 ## Phase 1 — Find the Task
 
-Search for the task file across all buckets (`now/`, `soon/`, `later/`, `never/`, and `queued/` where it exists). Match by filename (with or without `.md` extension).
+Search for the task file across all buckets (`now/`, `soon/`, `later/`, `finalized/`, `never/`, and `queued/` where it exists). Match by filename (with or without `.md` extension).
 
 If the task is not found, list available tasks and ask the user to pick one.
 
@@ -24,7 +24,7 @@ If no task name was provided in the arguments, list all tasks and ask which one 
 
 ## Phase 2 — Validate Target
 
-If no target bucket was provided in the arguments, ask where to move it. Valid targets: `now`, `soon`, `later`, `never` — plus `queued` in repos where `<tasks>/queued/` exists.
+If no target bucket was provided in the arguments, ask where to move it. Valid targets: `now`, `soon`, `later`, `never` — plus `queued` in repos where `<tasks>/queued/` exists. `finalized` is not a manual target: successful `task-finalize` owns admission so every brief there has passed readiness.
 
 If the task is already in the target bucket, print "Task is already in `{bucket}/`." and stop.
 

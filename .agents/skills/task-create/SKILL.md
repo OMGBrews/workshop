@@ -36,14 +36,14 @@ If no tasks root exists at all, offer to create one at `docs/work/tasks/` (the
 machine-owned location):
 - `docs/work/tasks/` with a `README.md` — the template is not copied or linked into
   the tasks root; Phase 3 reads the canonical file from inside this skill.
-- `docs/work/tasks/now/`, `docs/work/tasks/soon/`, `docs/work/tasks/later/`, `docs/work/tasks/never/` each with a one-liner `README.md`. Write each one-liner from [`bucket-definitions.md`](bucket-definitions.md) and point at it for the definition of record — the one-liner is a courtesy summary, not a second definition. Write that pointer as the repo-root-relative path in prose (`.agents/skills/task-create/bucket-definitions.md` — the repo's own canonical skills surface, whatever the devtools tree is mounted as, per [`skill-path-resolution.md`](../../../docs/skill-path-resolution.md)), **not** a markdown relative link: the tree sits outside the tasks tree, so a `../../..` hyperlink renders broken on GitHub even where it resolves on disk. (Do **not** create `q…ueued/` — an autonomous queue is a deliberate per-repo opt-in, not scaffolding.)
+- `docs/work/tasks/now/`, `docs/work/tasks/soon/`, `docs/work/tasks/later/`, `docs/work/tasks/finalized/`, `docs/work/tasks/never/` each with a one-liner `README.md`. Write each one-liner from [`bucket-definitions.md`](bucket-definitions.md) and point at it for the definition of record — the one-liner is a courtesy summary, not a second definition. Write that pointer as the repo-root-relative path in prose (`.agents/skills/task-create/bucket-definitions.md` — the repo's own canonical skills surface, whatever the devtools tree is mounted as, per [`skill-path-resolution.md`](../../../docs/skill-path-resolution.md)), **not** a markdown relative link: the tree sits outside the tasks tree, so a `../../..` hyperlink renders broken on GitHub even where it resolves on disk. (Do **not** create `queued/` — an autonomous queue is a deliberate per-repo opt-in, not scaffolding.)
 
 If the user declines, stop.
 
 ## Phase 2 — Gather Info
 
 1. If no task name was provided in the arguments, ask for one (kebab-case, action-verb-first, e.g., `fix-login-crash`).
-2. Ask which bucket to place the task in. Options: `now`, `soon` (default), `later`. (`never/` is not offered at creation — a task is parked there later via the `task-move` skill; see [`bucket-definitions.md`](bucket-definitions.md). Tasks heading for autonomous execution are still created in a normal bucket first — `task-finalize` gets them ready, and `task-move` promotes them to `queued/` once they pass readiness.)
+2. Ask which bucket to place the task in. Options: `now`, `soon` (default), `later`. (`finalized/` is entered only by successful `task-finalize`; `never/` is entered later via `task-move`. Tasks heading for autonomous execution are created in a planning bucket, finalized into `finalized/`, then moved to `queued/`.)
 3. Ask for a brief goal statement (1-2 sentences starting with an action verb).
 4. Ask for effort estimate: `small`, `medium` (default), or `large`.
 5. Priority defaults to `medium` and dependencies to `[]` — don't ask unless the user signals urgency (then offer `high`/`medium`/`low`) or names other tasks this one must wait for (then record their slugs as dependencies).
@@ -76,7 +76,7 @@ Print: "Created `<tasks>/{bucket}/{task-name}.md`."
 
 ## Phase 5 — Offer to Finalize
 
-The `task-finalize` skill walks open questions interactively, verifies the task's claims against HEAD, and validates readiness. It does not move the task: in repos with a queue, promotion to `queued/` is a separate `task-move` run once finalization passes.
+The `task-finalize` skill walks open questions interactively, verifies the task's claims against HEAD, validates readiness, and moves a passing brief into `finalized/`. In repos with a queue, promotion from there to `queued/` remains a separate `task-move` run.
 
 Ask a single-select question (one option only) to offer it:
 

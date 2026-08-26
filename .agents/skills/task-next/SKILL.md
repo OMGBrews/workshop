@@ -1,6 +1,6 @@
 ---
 name: task-next
-description: Fast pointer at the single next task — picks from the first non-empty bucket (now, else soon, else later), screens only for blockers, weights by the focus document, and delegates all verification to task-finalize/task-audit. Read-only, budgeted at ~4 tool calls.
+description: Fast pointer at the single next task — prefers finalized work, otherwise picks from now, soon, then later; screens only for blockers and weights by the focus document. Read-only, budgeted at ~4 tool calls.
 metadata:
   latency: interactive
   model-hint: fastest-available
@@ -9,8 +9,8 @@ metadata:
 # Next Task
 
 Answer "what should I work on right now?" for **this repository** — fast. Point at one
-unblocked task from the highest-priority non-empty bucket, weighted by what the focus
-document says matters. This skill is a quick pointer, not an audit: it trusts task
+unblocked finalized task when available; otherwise use the highest-priority non-empty
+planning bucket, weighted by what the focus document says matters. This skill is a quick pointer, not an audit: it trusts task
 briefs as written and delegates verification to the skills that already do it —
 `task-finalize` re-verifies the brief against HEAD as its own first step, and
 `task-audit <task>` is the deep pre-flight for a brief you doubt.
@@ -53,15 +53,15 @@ above is the machine-readable form of this request, for harnesses that read it.)
 Tasks root: `docs/work/tasks/`. If none
 exists, print "No tasks directory found — run `task-create` to scaffold one." and stop.
 
-In one command: list `now/`, `soon/`, and `later/`, and — if `focus.md` exists at the
+In one command: list `finalized/`, `now/`, `soon/`, and `later/`, and — if `focus.md` exists at the
 tasks root — append `git log -1 --format=%cs -- <tasks>/focus.md` to the same command.
 
 **Candidates are the `*.md` files in the first non-empty bucket**, in the order
-`now/` → `soon/` → `later/`. Exclude `README.md` and `_TEMPLATE.md`. `never/` is never
+`finalized/` → `now/` → `soon/` → `later/`. Exclude `README.md` and `_TEMPLATE.md`. `never/` is never
 read; `queued/` (where it exists) belongs to the autonomous runner and is never read
 either. A later bucket enters **only if** every candidate in the chosen one is screened
-out in step 3 — say so when that happens ("`now/` is all blocked; picking from
-`soon/`").
+out in step 3 — say so when that happens ("`finalized/` is all blocked; picking from
+`now/`" or "`now/` is all blocked; picking from `soon/`").
 
 ### 2. Read (one batch)
 
@@ -124,10 +124,8 @@ Constraint: <what the argument changed>   (only when an argument was given)
 
 Then one honesty line and one offer, and stop — never invoke anything:
 
-- "Not validated against HEAD — `task-finalize <slug>` does that as its first step."
-  Offer `task-implement <slug>` instead when the task carries a `finalized-at:` stamp
-  and no open questions; offer `task-audit <slug>` when the brief looks old enough to
-  doubt.
+- For a `finalized/` pick: "Finalized at `<sha>`; `task-implement <slug>` re-checks changes since that commit." Offer `task-implement <slug>` directly.
+- For a planning-bucket pick: "Not validated against HEAD — `task-finalize <slug>` does that as its first step." Offer `task-audit <slug>` when the brief looks old enough to doubt.
 - If focus.md was older than ~30 days: "`focus.md` was last touched <date> — is that
   still what matters?"
 

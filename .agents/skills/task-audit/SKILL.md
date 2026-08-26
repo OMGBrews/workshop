@@ -8,8 +8,9 @@ description: Audit task documents for staleness against the codebase and git his
 Audit task documents in this repo's tasks directory against the current codebase and git history — then update verifiable items, flag completed tasks, and report findings.
 
 This command checks task **status and relevance** — not formatting or style, and
-not bucket placement: all bucket moves and deletions belong to
-the `task-reprioritize` skill. This audit only **records signals** that bear on priority
+not bucket placement: planning rebalancing and deletion belong to
+`task-reprioritize`, while lifecycle moves belong to `task-finalize` and `task-move`.
+This audit only **records signals** that bear on priority
 and hands them off.
 
 ## Repo conventions (resolve first)
@@ -31,7 +32,7 @@ Execute the following phases in order.
 
 1. Read `<tasks>/README.md` to refresh on the task document format and conventions.
 
-2. List all `.md` files under `<tasks>/` (with a file-glob lookup; bucket folders: `now/`, `soon/`, `later/`, `never/`). **Exclude README files, `_TEMPLATE.md`, `focus.md`, and everything under `queued/`** — the first three describe the folder or the repo's current focus, not tasks; the queue is the runner's. `focus.md` in particular sits at the tasks root beside the buckets and is prose, not a task document: audited as one it fails every structural check it was never meant to pass.
+2. List all `.md` files under `<tasks>/` (with a file-glob lookup; bucket folders: `now/`, `soon/`, `later/`, `finalized/`, `never/`). **Exclude README files, `_TEMPLATE.md`, `focus.md`, and everything under `queued/`** — the first three describe the folder or the repo's current focus, not tasks; the queue is the runner's. Finalized briefs remain in scope because their code observations can rot while they wait. `focus.md` in particular sits at the tasks root beside the buckets and is prose, not a task document: audited as one it fails every structural check it was never meant to pass.
 
 3. Read every task document. For each, extract:
    - YAML frontmatter (`status`, `effort`, `priority`, `dependencies`); the creation date comes from `git log --diff-filter=A --follow` when needed

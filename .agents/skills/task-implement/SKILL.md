@@ -69,12 +69,12 @@ Anywhere else the in-session flow would diverge from the worker's discipline,
 
 ## Phase 1 — Pick the task
 
-If the argument resolves to a real task file under `<tasks>/{now,soon,later,never}/`, use it. Print the resolved path.
+If the argument resolves to a real task file under `<tasks>/{finalized,now,soon,later,never}/`, use it. Print the resolved path.
 
 Otherwise, with no usable argument:
 
 1. If the `task-next` skill exists in this repo (check the `.claude/skills/task-next/` bridge into the canonical `.agents/skills/` tree), stop and offer it: "No task named. Run `task-next` to pick one, then re-run `task-implement <task>`." Do not invoke it — the pipeline offers, it never chains.
-2. Where that skill is absent, list the `now/` bucket (falling back to `soon/` when `now/` is empty) with each task's title, `effort`, `priority`, and acceptance-criteria progress, and ask which to implement. This is a pick-one capture, so a question prompt is appropriate — brief first, per the `ask-with-briefing` block.
+2. Where that skill is absent, list `finalized/` first, then `now/` (falling back to `soon/` when both are empty), with each task's title, `effort`, `priority`, and acceptance-criteria progress, and ask which to implement. This is a pick-one capture, so a question prompt is appropriate — brief first, per the `ask-with-briefing` block.
 
 Refuse a task whose `dependencies:` are unmet, naming the blocking task, unless the user overrides.
 

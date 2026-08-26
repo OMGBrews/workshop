@@ -11,14 +11,15 @@ documentation it names, the git history, and anything else relevant before
 delivering your report. You decide what is important to report; there is no
 template. Given a task file (`task-status <task-file>`), go deep on that one.
 Given none, sweep the tasks root — `docs/work/tasks/` — buckets
-`now/ soon/ later/ never/`, plus `queued/` where the autonomous runner
+`finalized/ now/ soon/ later/ never/`, plus `queued/` where the autonomous runner
 is in use — and keep each verdict brief. Scope is this repo only; sibling
 clones in a workspace checkout are out of scope.
 
 **Strictly read-only.** Report; never edit, delete, or move anything. Route
 follow-ups to the skill that owns them: the `task-implement` skill closes finished work
 out (completed tasks are deleted, not marked done), the `task-audit` skill re-verifies a
-brief in depth, and the `task-reprioritize` and `task-move` skills own bucket placement.
+brief in depth, `task-finalize` owns admission to `finalized/`, and
+`task-reprioritize` / `task-move` own the remaining bucket placement.
 
 ## Known traps in this fleet — each has produced a wrong report before
 

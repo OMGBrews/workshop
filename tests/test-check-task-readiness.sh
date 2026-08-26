@@ -171,15 +171,15 @@ run_checker "$TMP/plain.md"
 assert_contains "non-repository task file" "not inside a Git worktree"
 
 # Conformance mode shares only the document-format parser.  A human draft is
-# valid before finalization; the same brief in queued/ must have a real stamp.
+# valid before finalization; the same brief in finalized/ must have a real stamp.
 repo="$TMP/conformance-policy"
 make_good_repo "$repo"
 remove_finalized_at "$repo"
 run_checker --conformance "$repo/$TASK_REL" human
 [ "$CHECK_RC" -eq 0 ] || fail "human conformance draft: exit $CHECK_RC, wanted 0"
-run_checker --conformance "$repo/$TASK_REL" queued
-[ "$CHECK_RC" -eq 1 ] || fail "queued conformance stamp policy: exit $CHECK_RC, wanted 1"
-assert_contains "queued conformance stamp policy" "missing finalized-at"
+run_checker --conformance "$repo/$TASK_REL" finalized
+[ "$CHECK_RC" -eq 1 ] || fail "finalized conformance stamp policy: exit $CHECK_RC, wanted 1"
+assert_contains "finalized conformance stamp policy" "missing finalized-at"
 
 if [ "$failures" -ne 0 ]; then
     echo "$failures check-task-readiness assertion(s) failed" >&2

@@ -15,7 +15,7 @@ Prepare a task for execution by a later session: verify the task's claims agains
 
 - **Tasks root**: `docs/work/tasks/` — written as `<tasks>/` below. If none exists, print "No tasks directory found — invoke the `task-create` skill to scaffold one." and stop.
 
-Finalization's deliverable is a task verified, decided, and stamped. This skill edits and stages files (it never renames or moves a task), ends with a commit offer, and **never pushes** — synchronizing git with the remote is the user's, outside this skill. The run's classification decides the offer's shape:
+Finalization's deliverable is a task verified, decided, stamped, and moved into `<tasks>/finalized/`. The move happens only after the readiness check passes. This skill edits and stages files, ends with a commit offer, and **never pushes** — synchronizing git with the remote is the user's, outside this skill. The run's classification decides the offer's shape:
 
 - **Self-contained run** — everything *this run* put in the diff was already shown to and confirmed by the user through the Phase 5 discussion — each decision restated as a `**Recording:**` line before the next question opened — or is machine-derived (the `finalized-at:` stamp). Phase 9 offers the commit directly, disclosing any pre-run edits of the user's own (Phase 1 snapshots them).
 - **Authored-content run** — the skill also created or substantially wrote content the user didn't see verbatim: follow-up task files spun off from a decision (Phase 5b), a drift-corrected `## Context` or `## Scope` (Phase 3), a brief defect fixed on the solution review's evidence (Phase 4a), a `## Recommended solution` (Phase 7), an `**In brief**:` paragraph (Phase 8), multi-paragraph prose. Phase 9 still offers the commit, but points the user at the staged diff for an IDE review first — the authored content is never pasted into the conversation.
@@ -26,7 +26,7 @@ Phases 3, 4a, 5b, 7, and 8 flag the edits that make a run authored-content as th
 
 ## Phase 1 — Resolve the Task
 
-**The task argument is required.** Resolve it against the bucket directories `<tasks>/{now,soon,later,never,queued}/`, accepting a bare name (with or without `.md`) or a path.
+**The task argument is required.** Resolve it against `<tasks>/{now,soon,later,finalized,never}/`, accepting a bare name (with or without `.md`) or a path. Refuse a task under `queued/`: the autonomous runner may already own it, so moving it would race live work. Tell the user to use `task-move` to pull it back first.
 
 One match → use it, printing the resolved path before continuing. Anything else — no argument, no match, or several — stop and say which it was.
 
@@ -368,20 +368,42 @@ Run the same bundled checker from Phase 2 after the brief is complete, and read 
 
 One check warrants an interaction of its own: **no `**In brief**:` paragraph, or it still holds the template comment** — warn, do not fail. In brief serves human triage, not implementation correctness, so a missing one never blocks readiness; tasks predating the field are expected to lack it. Offer to write one (a yes/no capture — use the popup); if the user accepts, authoring it makes this an **authored-content** run (Phase 9).
 
+### Move the passing brief
+
+Only when the checker exits 0, move the task into `<tasks>/finalized/`. A task
+already there stays in place. If the directory does not exist in an older task
+tree, create it with a short `README.md` saying that briefs there passed
+`task-finalize`, are ready for supervised implementation, and are defined by
+`.agents/skills/task-create/bucket-definitions.md`; this keeps the directory
+tracked after it empties. The README is machine-derived scaffolding, not authored
+content. Support both tracked and untracked source files without losing staged content:
+
+```bash
+mkdir -p <tasks>/finalized
+git add <source-task-file>
+git mv <source-task-file> <tasks>/finalized/<task-name>.md
+```
+
+Update `task_file` to the destination and retain the source path for Phase 9's
+staging, diff attribution, and path-scoped commit. The rename is machine-derived
+from the successful readiness verdict and therefore does not make the run
+authored-content. If readiness exits 1 or 2, do not move the brief.
+
 ---
 
 ## Phase 9 — Summary and commit
 
-First, look at what is already staged: `git diff --staged --name-only`. Anything there this run never touched is the user's parked work — leave it staged, exclude it from the attribution below, and name it in the commit offer (the commit's pathspec keeps it out). Then stage everything this run touched: `git add` the task file and any files the run created. Then classify the run as **self-contained** or **authored-content** from the staged diff (`git diff --staged`), not from memory — attribute every hunk in the run's own files:
+First, look at what is already staged: `git diff --staged --name-only`. Anything there this run never touched is the user's parked work — leave it staged, exclude it from the attribution below, and name it in the commit offer (the commit's pathspec keeps it out). Then stage everything this run touched, including both sides of the task move and any files the run created. Then classify the run as **self-contained** or **authored-content** from the staged diff (`git diff --staged`), not from memory — attribute every hunk in the run's own files:
 
 - Hunks the Phase 1 snapshot already showed are the user's own pre-run edits: they don't reclassify the run, and the commit offer discloses them.
 - A hunk that traces to a Phase 6 step — a `## Decisions` bullet carrying a **Recording:** line's text, a per-question `## Open questions` removal, a confirmed contract or frontmatter adjustment, the `finalized-at:` stamp — keeps the run **self-contained**. Multi-paragraph answers the user typed are still self-contained: they're the user's own words, shown in the conversation.
+- The Phase 8 rename into `finalized/` is machine-derived and keeps the run self-contained.
 - Any new file, and any hunk you cannot attribute — a drift-corrected `## Context` or `## Scope` (Phase 3), a brief defect fixed on the solution review's evidence (Phase 4a), a `## Recommended solution` (Phase 7), an `**In brief**:` paragraph (Phase 8's offer), spun-off follow-up task files — makes the run **authored-content**. A Decisions bullet that paraphrases instead of quoting its Recording line counts too: the guarantee is *shown verbatim*, and the diff is where that claim gets checked.
 - A task file that started untracked is classified by its own rule, not hunk attribution: the staged diff shows one new file mixing the user's pre-run content with this run's edits, and Phase 1 recorded no pre-image to attribute against. That run is **authored-content** — the review surface is the whole document, which is exactly what the commit adds.
 
 Then print a final block with:
 
-- The task path.
+- The task's destination path in `finalized/` (and its source bucket when a move occurred).
 - The Phase 3 verification result: what had drifted and was corrected (with the commits responsible), or "no drift found". Name the `finalized-at` SHA, and carry any Phase 3 caveat (the tree held uncommitted scoped changes at verification time).
 - Number of open questions resolved.
 - Whether any were deferred (and which).
@@ -419,7 +441,7 @@ Then make the commit offer. Its shape depends on the classification:
 
   Neither option is marked recommended here: the right answer depends on a review this conversation cannot see.
 
-If the user picks Yes, run `git commit -m "<chosen message>" -- <task-file> <files this run created>` — the pathspec scopes the commit to the run's files, so the user's parked staged work stays staged and uncommitted — and report the resulting commit hash. If No, print:
+If the user picks Yes, run `git commit -m "<chosen message>" -- <source-task-file> <finalized-task-file> <files this run created>` (omit the source when no move occurred) — the pathspec scopes the commit to the run's files, so the user's parked staged work stays staged and uncommitted — and report the resulting commit hash. If No, print:
 
 > Left staged. Review the staged changes (`git status`, `git diff --staged`, or your IDE) and commit when satisfied.
 
