@@ -4,7 +4,8 @@
 # Default usage prints PASS/FAIL for readiness rules 1–8.  The explicit
 # --conformance mode reuses the document-format parser for
 # Tools/check-docs-work-conformance.sh: human drafts do not need the complete
-# handoff verdict, while queued briefs additionally need a usable finalized-at.
+# handoff verdict, while finalized and queued briefs additionally need a usable
+# finalized-at.
 
 set -euo pipefail
 
@@ -12,7 +13,7 @@ usage() {
     cat >&2 <<'EOF'
 usage:
   bash check-task-readiness.sh <task-file>
-  bash check-task-readiness.sh --conformance <task-file> <human|queued>
+  bash check-task-readiness.sh --conformance <task-file> <human|finalized>
 EOF
 }
 
@@ -25,10 +26,10 @@ elif [ "$#" -eq 3 ] && [ "$1" = "--conformance" ]; then
     task_argument="$2"
     policy="$3"
     case "$policy" in
-        human | queued) ;;
+        human | finalized | queued) ;;
         *)
             usage
-            echo "invalid conformance policy '$policy' (expected human or queued)" >&2
+            echo "invalid conformance policy '$policy' (expected human or finalized)" >&2
             exit 2
             ;;
     esac
@@ -326,7 +327,7 @@ finalized_at_issue() { # <required: 0|1> <check-commit: 0|1>
     local required="$1" check_commit="$2"
     if [ "$finalized_at_count" -eq 0 ]; then
         if [ "$required" -eq 1 ]; then
-            printf 'missing finalized-at — queue admission requires a brief to be finalized and ready'
+            printf 'missing finalized-at — finalized placement requires a verified brief'
         fi
     elif [ "$finalized_at_count" -ne 1 ]; then
         printf 'frontmatter field finalized-at appears %s times' "$finalized_at_count"
@@ -373,7 +374,7 @@ if [ "$mode" = "conformance" ]; then
     issue="$(dependencies_issue)"
     [ -z "$issue" ] || format_fail "$issue"
 
-    if [ "$policy" = "queued" ]; then
+    if [ "$policy" = "finalized" ] || [ "$policy" = "queued" ]; then
         issue="$(finalized_at_issue 1 1)"
     else
         issue="$(finalized_at_issue 0 0)"

@@ -69,7 +69,8 @@ EOF
 make_conformant() {
     git_init "$1"
     mkdir -p "$1/docs/work/tasks/now" "$1/docs/work/tasks/soon" \
-             "$1/docs/work/tasks/later" "$1/docs/work/tasks/never"
+             "$1/docs/work/tasks/later" "$1/docs/work/tasks/finalized" \
+             "$1/docs/work/tasks/never"
     cat >"$1/docs/work/definition-of-done.md" <<'EOF'
 # Definition of done
 
@@ -191,8 +192,9 @@ legacy_tasks_twin() { mkdir -p "$1/docs/tasks/now"; echo x >"$1/docs/tasks/now/s
 expect "legacy tasks root retained beside the migration" 1 legacy_tasks_twin \
     "FAIL 1" "legacy tasks root docs/tasks/ remains"
 
-drop_bucket() { rm -rf "$1/docs/work/tasks/never"; }
-expect "missing human bucket" 1 drop_bucket "FAIL 1" "missing human bucket docs/work/tasks/never/"
+drop_bucket() { rm -rf "$1/docs/work/tasks/finalized"; }
+expect "finalized bucket is created lazily for existing task trees" 0 drop_bucket \
+    "finalized/ is created on first successful finalization"
 
 done_bucket() { mkdir -p "$1/docs/work/tasks/done"; }
 expect "done/ bucket present" 1 done_bucket "FAIL 1" "done/ bucket present"
@@ -265,6 +267,19 @@ queue_conformant() {
 }
 expect "queue with README and a finalized brief is green" 0 queue_conformant \
     "queued/README.md present" "finalized-at"
+
+finalized_conformant() {
+    sha=$(git -C "$1" rev-parse HEAD)
+    write_brief "$1/docs/work/tasks/finalized" "finalized-task" "finalized-at: $sha"
+}
+expect "finalized bucket with a stamped brief is green" 0 finalized_conformant \
+    "finalized-at in lifecycle buckets"
+
+finalized_no_stamp() {
+    write_brief "$1/docs/work/tasks/finalized" "finalized-task"
+}
+expect "finalized brief without finalized-at" 1 finalized_no_stamp \
+    "FAIL 11" "missing finalized-at"
 
 queue_no_finalized() {
     mkdir -p "$1/docs/work/tasks/queued"

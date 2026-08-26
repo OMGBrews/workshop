@@ -361,7 +361,7 @@ dep_in_queue_tree_at_head() {
 # True if a brief for this slug has ever existed at its queued/ path in
 # main's history. Distinguishes "completed and removed" from "never
 # queued at all" (e.g. a typo'd slug, or a task still sitting in
-# now/soon/later) — the latter must block dependents.
+# now/soon/later/finalized) — the latter must block dependents.
 dep_was_queued_on_main() {
   local dep="$1"
   [[ -n "$(git -C "$ROOT" rev-list -1 HEAD -- "$QUEUE_REL/$dep.md" 2>/dev/null)" ]]

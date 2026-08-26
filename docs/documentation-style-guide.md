@@ -87,7 +87,7 @@ docs/
     ├── tasks/                  [required for repos on the task system]
     │   ├── README.md           [optional curation]
     │   ├── focus.md            [opt-in]
-    │   ├── now/ soon/ later/ never/
+    │   ├── now/ soon/ later/ finalized/ never/
     │   └── queued/ (+blocked/) [opt-in]
     ├── kaizen/                 [opt-in]
     ├── problems/               [opt-in]
@@ -106,7 +106,7 @@ docs/
 | `setup/` | Initial setup and configuration | `development-environment.md` |
 | `style-guides/` | Coding and documentation conventions | `csharp-style-guide.md` |
 | `testing/` | Test plans, coverage strategy | `test-coverage-plan.md` |
-| `work/` | The machine's directory — every file and directory the shared devtools machine reads and writes | `definition-of-done.md`, `consumed-by.md`, `tasks/` (+`now/soon/later/never`, opt-in `queued/`), `kaizen/`, `problems/`, `handoffs/`, `thoughts/` |
+| `work/` | The machine's directory — every file and directory the shared devtools machine reads and writes | `definition-of-done.md`, `consumed-by.md`, `tasks/` (+`now/soon/later/finalized/never`, opt-in `queued/`), `kaizen/`, `problems/`, `handoffs/`, `thoughts/` |
 
 ### File naming
 
@@ -735,7 +735,7 @@ Source code directories benefit from a short `README.md` that orients developers
 
 ### Task documents
 
-Located in `docs/work/tasks/`, organized into time-horizon buckets: `now/`, `soon/`, `later/`, `never/`, plus the opt-in `queued/` where the repo runs the autonomous task-queue runner.
+Located in `docs/work/tasks/`, with planning buckets `now/`, `soon/`, `later/`, and `never/`; the lifecycle bucket `finalized/` for briefs ready for supervised implementation; and the opt-in `queued/` where the repo runs the autonomous task-queue runner.
 
 Tasks define the **problem and desired outcome** — not the implementation plan. Leave architectural decisions and step-by-step instructions for plan mode, or for `/task-finalize`, which writes a `## Recommended solution` while its analysis is fresh.
 

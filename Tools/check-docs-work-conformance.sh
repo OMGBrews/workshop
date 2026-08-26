@@ -75,7 +75,7 @@ note()   { printf 'note  %-2s %s\n' "$1" "$2"; notes=$((notes + 1)); }
 # drafts may have open questions and no finalized-at stamp.  The command runs
 # under set -e, so capture exit 1 explicitly and let clause 11 aggregate every
 # malformed brief into its stable FAIL record.
-#   $1 = brief path, $2 = human or queued finalized-at policy.
+#   $1 = brief path, $2 = human or finalized finalized-at policy.
 validate_brief() {
     local out rc=0
     out=$(bash "$readiness_checker" --conformance "$1" "$2") || rc=$?
@@ -108,7 +108,7 @@ else
     fi
     for b in now soon later never; do
         if [ ! -d "docs/work/tasks/$b" ]; then
-            problems="${problems}missing human bucket docs/work/tasks/$b/; "
+            problems="${problems}missing planning bucket docs/work/tasks/$b/; "
         fi
     done
     for legacy in docs/tasks docs/planning/tasks; do
@@ -122,7 +122,7 @@ else
     if [ -n "$problems" ]; then
         fail 1 "$problems"
     else
-        pass 1 "docs/work/tasks/ with now/ soon/ later/ never/ buckets; no legacy root, no done/ bucket"
+        pass 1 "docs/work/tasks/ with now/ soon/ later/ never/ planning buckets; finalized/ is created on first successful finalization; no legacy root, no done/ bucket"
     fi
 fi
 
@@ -318,10 +318,10 @@ else
 fi
 
 # --- 11: the document-format contract (required for task documents) -----------
-# Ordinary briefs in the four human buckets need the four author-required
+# Ordinary briefs in the four planning buckets need the four author-required
 # frontmatter values and the AC sentinels; finalized-at is not required there.
-# Briefs in queued/ and queued/blocked/ additionally need a valid finalized-at
-# commit, because queue admission already requires readiness. Reserved support
+# Briefs in finalized/, queued/, and queued/blocked/ additionally need a valid
+# finalized-at commit because both lifecycle transitions require readiness. Reserved support
 # documents (README.md, focus.md) and the runner's forensic
 # markers (the .crashed / .merge-failed / .abandoned-wip / .dispatch-failed /
 # .ci-stuck / .partial shapes the runner commits) are not briefs.
@@ -337,7 +337,7 @@ else
         [ -d "docs/work/tasks/$bucket" ] || continue
         policy="human"
         case "$bucket" in
-            queued | queued/blocked) policy="queued" ;;
+            finalized | queued | queued/blocked) policy="finalized" ;;
         esac
         while IFS= read -r f; do
             [ -n "$f" ] || continue
@@ -351,14 +351,14 @@ else
                      ! -name '*.crashed.*.md' ! -name '*.merge-failed.*.md' \
                      ! -name '*.abandoned-wip.*.md' ! -name '*.dispatch-failed.*.md' \
                      ! -name '*.ci-stuck.*.md' ! -name '*.partial.*.md')
-    done < <(printf 'now\nsoon\nlater\nnever\nqueued\nqueued/blocked\n')
+    done < <(printf 'now\nsoon\nlater\nfinalized\nnever\nqueued\nqueued/blocked\n')
 
     if [ -n "$brief_problems" ]; then
         fail 11 "$brief_problems"
     elif [ "$checked" -eq 0 ]; then
         pass 11 "no ordinary briefs to validate (the buckets hold only support documents)"
     else
-        pass 11 "$checked brief(s) validated — four author-required frontmatter fields, AC sentinels, and finalized-at in the queue"
+        pass 11 "$checked brief(s) validated — four author-required frontmatter fields, AC sentinels, and finalized-at in lifecycle buckets"
     fi
 fi
 

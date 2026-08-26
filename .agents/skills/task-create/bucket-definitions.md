@@ -20,7 +20,7 @@ document is right and the summary is the bug to fix. A summary that grows past a
 sentence per bucket has started becoming a second definition; trim it back to a
 pointer.
 
-## The four human buckets
+## The four planning buckets
 
 Tasks are filed by **how soon we intend to work them** — not by how important they
 are, and not by what they touch.
@@ -35,6 +35,19 @@ are, and not by what they touch.
 **Completed tasks are deleted, not archived.** Git preserves the history and
 `git log --diff-filter=D` finds them. There is no `done/` bucket and no `done`
 status.
+
+## `finalized/`
+
+`<tasks>/finalized/` holds briefs that passed `/task-finalize` and are available
+for supervised implementation. Finalization moves the brief here automatically;
+`/task-implement` removes it on completion, and `/task-move` may hand it to
+`queued/` where an autonomous runner exists.
+
+This is a lifecycle bucket, not a fifth planning horizon. It sits outside queue
+shape and reprioritization, and `/task-next` considers it before unfinalized work.
+A usable `finalized-at:` stamp is required for every brief in the directory. The
+name describes the recorded finalization event, not a permanent freshness claim:
+the implementer still checks what changed after that commit.
 
 ### `never/` is parked, not terminal
 
@@ -69,15 +82,15 @@ and the runner moves it out, deleting the brief on completion or setting it asid
 
 ## Queue shape
 
-The human buckets aim for **roughly 3 tasks in `now/`, 3 in `soon/`, and the rest in
+The planning buckets aim for **roughly 3 tasks in `now/`, 3 in `soon/`, and the rest in
 `later/`**. It is a soft target rather than a quota: `/task-reprioritize` owns the
 tolerances and the fill order that enforce it, and names its own deviations.
 
-`never/` and `queued/` sit **outside** that shape and outside ranking altogether.
-Nothing is promoted out of or demoted into either by shape rules, `/task-next` never
-recommends from them, and `/task-reprioritize` never moves a task in or out of them.
-Both still move on explicit request, and `/task-move` is the skill that does it for
-either — it enforces the readiness rules on the way into `queued/`.
+`finalized/`, `never/`, and `queued/` sit **outside** that shape. `/task-reprioritize`
+never moves a task in or out of them. `/task-next` prefers `finalized/`, ignores
+`never/`, and leaves `queued/` to the autonomous runner. Explicit moves out of these
+buckets belong to `/task-move`; it enforces the readiness rules on the way into
+`queued/`.
 
 ## See also
 

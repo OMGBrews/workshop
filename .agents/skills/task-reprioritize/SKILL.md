@@ -7,7 +7,7 @@ description: Rebalance the task queue toward a healthy shape in a single decide-
 
 Rebalance the task queue toward the healthy shape defined in [`../task-create/bucket-definitions.md`](../task-create/bucket-definitions.md) § Queue shape, in a single pass. Decide-then-apply instead of asking the user move-by-move: the plan is printed before any move, and staged changes are cheap to revert.
 
-This command owns **all bucket moves and deletions** — the `task-audit` skill verifies what the documents say but never moves them. This skill is lightweight: it uses **task-file metadata and bucket state** — no codebase analysis, no test execution. When a `task-audit` run earlier in this conversation produced reprioritization signals, consume them as evidence (see Phase 2); if the documents themselves look stale, run `task-audit` first.
+This command owns **planning-bucket moves and deletions** — `task-finalize` owns admission to `finalized/`, `task-move` owns explicit lifecycle moves, and `task-audit` verifies what documents say without moving them. This skill is lightweight: it uses **task-file metadata and bucket state** — no codebase analysis, no test execution. When a `task-audit` run earlier in this conversation produced reprioritization signals, consume them as evidence (see Phase 2); if the documents themselves look stale, run `task-audit` first.
 
 This skill **stages** changes via `git mv` / `git rm` but does **NOT** auto-commit.
 
@@ -18,14 +18,14 @@ This skill **stages** changes via `git mv` / `git rm` but does **NOT** auto-comm
 ## Repo conventions (resolve first)
 
 - **Tasks root**: `docs/work/tasks/` — written as `<tasks>/` below. If none exists, print "No tasks directory found — invoke the `task-create` skill to scaffold one." and stop.
-- **Queue**: `<tasks>/queued/` (when it exists) holds tasks the autonomous runner is executing — read-only context for this skill, never a source or target of moves. In repos without it, skip everything that mentions it.
+- **Lifecycle buckets**: `<tasks>/finalized/` holds tasks ready for supervised implementation; `<tasks>/queued/` (when it exists) holds tasks the autonomous runner is executing. Both are read-only context for this skill, never sources or targets of moves.
 - **Bucket definitions**: [`../task-create/bucket-definitions.md`](../task-create/bucket-definitions.md) — resolve it relative to this file's **physical** directory (follow the symlink before taking `..`, per [`skill-path-resolution.md`](../../../docs/skill-path-resolution.md)), so the sibling is found in the same tree whatever the mount is called; shared with every other task skill so they cannot drift. If even that does not resolve (a partial vendored copy without `task-create`), find the file by mount discovery — the `Tools/sync-skill-symlinks.sh` pattern: this skill's physical location names the mount — and say you fell back.
 - **Focus document**: `<tasks>/focus.md` — the owner's statement of what matters right now, at the tasks root beside `README.md`. It sits outside every bucket directory, so a bucket glob never reaches it and it is never a candidate for a move. Format, matching, weight, and the staleness branches are all specified in [`ranking-rubric.md` § Focus weighting](ranking-rubric.md#focus-weighting-tasksfocusmd).
-- **`never/` is excluded from rebalancing**: nothing is promoted out of or demoted into `never/` by shape rules. Parking and unparking are deliberate acts, via the `task-move` skill.
+- **`finalized/` and `never/` are excluded from rebalancing**: nothing is moved in or out of either by shape rules. Finalization owns entry to `finalized/`; parking and explicit moves out belong to `task-move`.
 
 ---
 
-## Phase 1 — Inventory (including `queued/` as read-only context)
+## Phase 1 — Inventory (including lifecycle buckets as read-only context)
 
 ### Read the focus document first
 
@@ -55,6 +55,7 @@ List all `.md` files under:
 - `<tasks>/now/`
 - `<tasks>/soon/`
 - `<tasks>/later/`
+- `<tasks>/finalized/` *(read-only; ready for supervised implementation)*
 - `<tasks>/queued/` *(where it exists — read-only; these are executing, so they are not candidates for moves, only context for area-coupling)*
 
 Exclude `README.md`, `_TEMPLATE.md`, anything inside `queued/blocked/`, and `.gitkeep`.
@@ -88,11 +89,11 @@ Apply [`ranking-rubric.md` § Area inference](ranking-rubric.md#area-inference).
 Print a compact inventory table grouped by bucket, including the queued section where present:
 
 ```
-### Now (N) | Soon (N) | Later (N) | Queued (N, read-only)
+### Now (N) | Soon (N) | Later (N) | Finalized (N, read-only) | Queued (N, read-only)
 | Bucket | Task | Status | Effort | Progress | Area | Focus | Goal (1 sentence) |
 ```
 
-If `now/`, `soon/`, `later/` are all empty (and `queued/`, where present, is also empty), print "No tasks anywhere — nothing to rebalance." and stop.
+If `now/`, `soon/`, and `later/` are all empty, print "No planning tasks — nothing to rebalance." Report finalized and queued counts as read-only context, then stop.
 
 ---
 
@@ -117,7 +118,7 @@ weighting is built to preserve — see below.
 Print a diagnosis block:
 
 ```
-Current shape: now=N, soon=N, later=N (queued=N executing)
+Current shape: now=N, soon=N, later=N (finalized=N ready; queued=N executing)
 Targets:       now≈3, soon≈3, later=rest
 
 Focus: <present, last touched YYYY-MM-DD | present but >30 days old (YYYY-MM-DD) — using it anyway, does it still hold? | present but never committed — staleness unknown | ABSENT — this pass ranked on mechanics alone>
@@ -135,6 +136,9 @@ Readiness/evidence overrides detected:
 ...
 
 Queued context (read-only):
+- <task> [area:<area>]
+
+Finalized context (read-only):
 - <task> [area:<area>]
 ...
 ```

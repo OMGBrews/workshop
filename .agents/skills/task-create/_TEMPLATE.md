@@ -5,8 +5,8 @@ priority: medium
 dependencies: []
 ---
 
-<!-- Template for new tasks. Copy this file into a bucket (`now/`, `soon/`,
-     `later/`, `never/`) under the repo's tasks directory (`docs/work/tasks/`),
+<!-- Template for new tasks. Copy this file into a planning bucket (`now/`,
+     `soon/`, `later/`) under the repo's tasks directory (`docs/work/tasks/`),
      fill in the placeholders, and delete this preamble block plus
      any optional sections you don't need.
 
@@ -34,7 +34,8 @@ dependencies: []
      One further field is machine-written — do NOT fill it by hand:
        - `finalized-at` — the commit SHA the task's claims were verified
            against. `/task-finalize` stamps it after its verify-against-HEAD
-           phase; the task-queue worker diffs `<sha>..HEAD` over the scoped
+           phase and moves the brief into `finalized/`; the task-queue worker
+           diffs `<sha>..HEAD` over the scoped
            paths at pickup and re-verifies the brief when code moved.
 
      There is no `created` field and no Created line — a task's creation
