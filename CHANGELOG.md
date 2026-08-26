@@ -3,6 +3,14 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- Added the repository-owned Claude Code Web environment standard. Every fleet
+  repository can now archive a configured or explicit negative state at
+  `docs/work/claude-code-web.md`; the shared validator checks its sentinel JSON,
+  secret-safe variable declarations, network policy, exact setup script, and
+  Claude settings projection, and can render human or normalized fleet views.
+  The narrow `claude-web-session` skill uses that declaration for environment
+  and repository selection without implying permission to launch or apply it.
+
 - Added the fleet's canonical verification terminology: checks produce
   evidence, definitions of done state requirements, and boundary-qualified
   gates control commit, landing, release, or deployment transitions. Standing
