@@ -1,0 +1,32 @@
+# Foreign git hooks land here. Ignore them; never commit them; never delete them.
+#
+# Workshop points every consumer's `core.hooksPath` at this directory
+# (Tools/sync-skill-symlinks.sh, docs/templates/cloud-sessions/agent-session-start.sh)
+# so check-skill-roster-freshness.sh can run as post-checkout/post-merge/post-rewrite.
+# `core.hooksPath` is exclusive: once it is set, git ignores .git/hooks/ entirely,
+# so ANY other hook installer — `git lfs install`, `pre-commit install`, husky, a
+# project's own bootstrap — must write into this tracked directory for its hook to
+# run at all. Foreign hooks are therefore expected here, and this is not specific
+# to LFS.
+#
+# Two consequences, both counter-intuitive:
+#
+#   - Never commit one. It is a consumer's local installation, and publishing it
+#     would run it in every other consumer — including repos where the tool it
+#     belongs to is not installed, whose not-found branch typically exits non-zero
+#     and blocks the operation.
+#
+#   - Never delete one as cleanup. Deleting does not restore a default: with
+#     `core.hooksPath` redirected here, the stray file IS the active hook, so
+#     removing it silently disables the installing tool's check (LFS push
+#     validation, for example) in the repo that installed it.
+#
+# Adding a hook to Workshop itself means adding it below AND to the expected
+# manifest in tests/test-hooks-directory-manifest.sh, which asserts that the
+# tracked contents of this directory are exactly this set.
+
+*
+!.gitignore
+!post-checkout
+!post-merge
+!post-rewrite
