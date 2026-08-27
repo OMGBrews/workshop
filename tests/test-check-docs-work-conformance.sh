@@ -221,7 +221,7 @@ EOF
 expect "DOCS-ONLY declared is reported, not re-validated" 0 add_docs_only \
     "DOCS-ONLY block present" "Tools/docs-only-diff.sh"
 
-consumed_legacy() { printf 'fleet\n' >"$1/docs/consumed-by.md"; }
+consumed_legacy() { printf 'OMGBrews/workshop-dev\n' >"$1/docs/consumed-by.md"; }
 expect "consumed-by only at the legacy location" 1 consumed_legacy \
     "FAIL 8" "migrate it to docs/work/consumed-by.md"
 
@@ -237,11 +237,11 @@ consumed_badline() {
         >"$1/docs/work/consumed-by.md"
 }
 expect "consumed-by with a line /ship cannot read" 1 consumed_badline \
-    "FAIL 8" "each line must be 'fleet' or owner/repo"
+    "FAIL 8" "each line must be owner/repo"
 
 consumed_twin() {
-    printf 'fleet\n' >"$1/docs/consumed-by.md"
-    printf '# Consumed by\n\n<!-- CONSUMED-BY:BEGIN -->\nfleet\n<!-- CONSUMED-BY:END -->\n' \
+    printf 'OMGBrews/workshop-dev\n' >"$1/docs/consumed-by.md"
+    printf '# Consumed by\n\n<!-- CONSUMED-BY:BEGIN -->\nOMGBrews/workshop-dev\n<!-- CONSUMED-BY:END -->\n' \
         >"$1/docs/work/consumed-by.md"
 }
 expect "legacy consumed-by retained beside the migrated copy" 1 consumed_twin \
@@ -445,10 +445,10 @@ thoughts_migrated() {
 expect "migrated thought inbox is green" 0 thoughts_migrated "docs/work/thoughts/ present"
 
 consumed_migrated() {
-    printf '# Consumed by\n\n<!-- CONSUMED-BY:BEGIN -->\nfleet\n<!-- CONSUMED-BY:END -->\n' \
+    printf '# Consumed by\n\n<!-- CONSUMED-BY:BEGIN -->\nOMGBrews/workshop-dev\n<!-- CONSUMED-BY:END -->\n' \
         >"$1/docs/work/consumed-by.md"
 }
-expect "migrated consumed-by declaration is green" 0 consumed_migrated "declares: fleet"
+expect "migrated consumed-by declaration is green" 0 consumed_migrated "declares: OMGBrews/workshop-dev"
 
 # --- clause 16: docs/work/audits/ (opt-in via the declaring config) -----------
 audits_dir_only() { mkdir -p "$1/docs/work/audits"; }

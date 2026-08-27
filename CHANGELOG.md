@@ -3,6 +3,18 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- Published the `ship` skill. Coordinated pull-request delivery — child-first
+  merges, post-merge pointer bumps, and the parent declarations in
+  `docs/work/consumed-by.md` that drive them — is now a shared skill any
+  consumer receives by moving its Workshop pin and re-running
+  `Tools/sync-skill-symlinks.sh`. `Tools/normalize-remote.sh` and its
+  regression test came with it, so the skill has no dependency outside this
+  repository, and `docs/session-return-durability.md` publishes the
+  cloud-session return measurements its Phase 5 rules rest on. The
+  `consumed-by` grammar narrowed at the same time: a declaration line is an
+  `owner/repo` pair, and the unused `fleet` reserved word is gone from both
+  the skill and `check-docs-work-conformance.sh`.
+
 - Added the repository-owned Claude Code Web environment standard. Every fleet
   repository can now archive a configured or explicit negative state at
   `docs/work/claude-code-web.md`; the shared validator checks its sentinel JSON,
