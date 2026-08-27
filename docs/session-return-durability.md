@@ -246,5 +246,5 @@ One caveat this run cannot retire: it observed a merge roughly two minutes after
 
 ## See also
 
-- [`signal-hygiene.md`](../workshop/docs/signal-hygiene.md) — how to know a step actually happened; this experiment is an application of it
-- `.agents/skills/ship/SKILL.md` — the skill whose Phase 7 hand-off depends on the answer
+- [`signal-hygiene.md`](signal-hygiene.md) — how to know a step actually happened; this experiment is an application of it
+- [`ship`'s `SKILL.md`](../.agents/skills/ship/SKILL.md) — the skill whose Phase 7 hand-off depends on the answer
