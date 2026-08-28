@@ -763,3 +763,25 @@ hp="$(git -C "$TMP/clone-ws" config --get core.hooksPath)"
 [ "$hp" = "workshop/Tools/hooks" ] \
   || fail "roster seam wired the wrong hooksPath under a workshop/ mount (got '$hp')"
 echo "ok 14 - a workshop/-named mount is discovered: drift silent against its templates, hooksPath wired into it"
+
+# --- 15. a .gitmodules-discovered mount is not discarded by read parsing ----
+# Conventional names are only a fast path. For every other mount the fallback
+# reads `git config --get-regexp`, whose key and path must be split into two
+# fields. `IFS=` makes the entire line the key and leaves the path empty, so a
+# generic mount silently loses both its drift guard and roster hook wiring.
+git clone -q "$TMP/super" "$TMP/clone-generic"
+deploy_hook "$TMP/clone-generic"
+generic="$TMP/clone-generic/shared-kit"
+mkdir -p "$generic/docs/templates/cloud-sessions" "$generic/Tools/hooks"
+cp "$HOOK_TEMPLATE" "$generic/docs/templates/cloud-sessions/session-start.sh"
+cp "$NEUTRAL_TEMPLATE" "$generic/docs/templates/cloud-sessions/agent-session-start.sh"
+cp "$DEVTOOLS_ROOT/Tools/check-skill-roster-freshness.sh" "$generic/Tools/"
+cp "$DEVTOOLS_ROOT"/Tools/hooks/post-checkout "$DEVTOOLS_ROOT"/Tools/hooks/post-merge "$DEVTOOLS_ROOT"/Tools/hooks/post-rewrite "$generic/Tools/hooks/"
+git -C "$TMP/clone-generic" config -f .gitmodules submodule.shared-kit.path shared-kit
+out="$(run_hook "$TMP/clone-generic")" || fail "hook exited non-zero with a generic kit mount: $out"
+echo "$out" | grep -q "DRIFT" \
+  && fail "DRIFT reported for byte-identical copies under a generic mount: $out"
+hp="$(git -C "$TMP/clone-generic" config --get core.hooksPath)"
+[ "$hp" = "shared-kit/Tools/hooks" ] \
+  || fail "roster seam did not use the generic .gitmodules mount (got '$hp')"
+echo "ok 15 - a generic .gitmodules mount is discovered: drift silent against its templates, hooksPath wired into it"

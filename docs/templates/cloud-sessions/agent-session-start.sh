@@ -90,7 +90,7 @@ for candidate in devtools workshop; do
   fi
 done
 if [ -z "$KIT_MOUNT" ]; then
-  while IFS= read -r _kit_key kit_path; do
+  while read -r _kit_key kit_path; do
     [ -n "$kit_path" ] || continue
     if [ -f "$kit_path/docs/templates/cloud-sessions/agent-session-start.sh" ]; then
       KIT_MOUNT="$kit_path"; break
