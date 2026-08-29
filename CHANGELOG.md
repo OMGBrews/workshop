@@ -3,6 +3,12 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- Standardized `docs/work/tasks/focus.md` as a compact direction document with one
+  public contract, a `focus-update` writer skill, and mechanical conformance checks for
+  its 15-line ceiling, labelled deferrals, dates, and task-brief links. Task selection,
+  reprioritization, and session landing now share the artifact definition without
+  sharing their distinct ranking behavior.
+
 - Published the `ship` skill. Coordinated pull-request delivery — child-first
   merges, post-merge pointer bumps, and the parent declarations in
   `docs/work/consumed-by.md` that drive them — is now a shared skill any

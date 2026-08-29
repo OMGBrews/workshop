@@ -248,10 +248,33 @@ expect "legacy consumed-by retained beside the migrated copy" 1 consumed_twin \
     "FAIL 8" "legacy docs/consumed-by.md remains"
 
 add_focus() { printf '# Focus\n\nShip the thing.\n' >"$1/docs/work/tasks/focus.md"; }
-expect "focus document present" 0 add_focus "focus.md present" "ranking-rubric"
+expect "focus document conforms" 0 add_focus "focus.md conforms" "docs/focus-document.md"
 
 empty_focus() { : >"$1/docs/work/tasks/focus.md"; }
 expect "empty focus document" 1 empty_focus "FAIL 9" "empty or unreadable"
+
+long_focus() {
+    printf '# Focus\n\n' >"$1/docs/work/tasks/focus.md"
+    for n in $(seq 1 14); do printf 'Direction line %s.\n' "$n"; done >>"$1/docs/work/tasks/focus.md"
+}
+expect "focus document exceeds its hard ceiling" 1 long_focus \
+    "FAIL 9" "16 lines exceeds the 15-line ceiling"
+
+duplicate_not_now() {
+    printf '# Focus\n\nShip the thing.\n\n**Not now:** polish\n**Not now:** migration\n' \
+        >"$1/docs/work/tasks/focus.md"
+}
+expect "focus document has two not-now lines" 1 duplicate_not_now \
+    "FAIL 9" "2 **Not now:** lines found"
+
+dated_focus() { printf '# Focus\n\nShip the thing after 2026-08-29.\n' >"$1/docs/work/tasks/focus.md"; }
+expect "focus document embeds a date" 1 dated_focus "FAIL 9" "date string found"
+
+task_link_focus() {
+    printf '# Focus\n\nShip [this task](./soon/ship-the-thing.md).\n' >"$1/docs/work/tasks/focus.md"
+}
+expect "focus document links into a task bucket" 1 task_link_focus \
+    "FAIL 9" "Markdown link enters task bucket 'soon'"
 
 add_queue() { mkdir -p "$1/docs/work/tasks/queued"; }
 expect "queue opted in without its README" 1 add_queue \

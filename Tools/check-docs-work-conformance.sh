@@ -63,6 +63,7 @@ fi
 
 failures=0
 notes=0
+task_brief_buckets=(now soon later finalized never queued queued/blocked)
 
 pass()   { printf 'ok   %-2s %s\n' "$1" "$2"; }
 fail()   { printf 'FAIL %-2s %s\n' "$1" "$2"; failures=$((failures + 1)); }
@@ -298,10 +299,39 @@ fi
 # --- 9: focus.md (opt-in) -----------------------------------------------------
 if [ "$tasks_active" -eq 0 ]; then
     absent 9 "no task system — no tasks root to hold a focus document"
-elif [ -f docs/work/tasks/focus.md ] && [ -s docs/work/tasks/focus.md ]; then
-    pass 9 "docs/work/tasks/focus.md present — its format is owned by task-reprioritize/ranking-rubric.md, not re-validated here"
 elif [ -e docs/work/tasks/focus.md ]; then
-    fail 9 "docs/work/tasks/focus.md is empty or unreadable — a focus document must state the owner's direction in prose"
+    focus_file=docs/work/tasks/focus.md
+    focus_problems=""
+    if [ ! -f "$focus_file" ] || [ ! -s "$focus_file" ]; then
+        focus_problems="${focus_problems}empty or unreadable — a focus document must state the owner's direction in prose; "
+    else
+        focus_lines=$(awk 'END { print NR }' "$focus_file")
+        if [ "$focus_lines" -gt 15 ]; then
+            focus_problems="${focus_problems}${focus_lines} lines exceeds the 15-line ceiling; "
+        fi
+        not_now_count=$(grep -c '^\*\*Not now:\*\*' "$focus_file" || true)
+        if [ "$not_now_count" -gt 1 ]; then
+            focus_problems="${focus_problems}${not_now_count} **Not now:** lines found; at most one is allowed; "
+        fi
+        if grep -Eq '(^|[^0-9])[0-9]{4}-[0-9]{2}-[0-9]{2}([^0-9]|$)' "$focus_file"; then
+            focus_problems="${focus_problems}date string found; derive focus age from Git instead; "
+        fi
+        while IFS= read -r link_target; do
+            link_path=${link_target%%#*}
+            link_path=${link_path%%\?*}
+            for bucket in "${task_brief_buckets[@]}"; do
+                if [[ "/$link_path/" == *"/$bucket/"* ]]; then
+                    focus_problems="${focus_problems}Markdown link enters task bucket '$bucket': $link_target; "
+                    break
+                fi
+            done
+        done < <(grep -oE '\]\([^)]+' "$focus_file" | sed 's/^](//' || true)
+    fi
+    if [ -n "$focus_problems" ]; then
+        fail 9 "docs/work/tasks/focus.md $focus_problems"
+    else
+        pass 9 "docs/work/tasks/focus.md conforms to docs/focus-document.md — at most 15 lines, at most one **Not now:** line, no date strings, and no Markdown links into task buckets"
+    fi
 else
     absent 9 "no focus document — ranking runs on mechanics alone"
 fi
@@ -336,8 +366,7 @@ elif [ ! -d docs/work/tasks ]; then
 else
     checked=0
     brief_problems=""
-    while IFS= read -r bucket; do
-        [ -n "$bucket" ] || continue
+    for bucket in "${task_brief_buckets[@]}"; do
         [ -d "docs/work/tasks/$bucket" ] || continue
         policy="human"
         case "$bucket" in
@@ -355,7 +384,7 @@ else
                      ! -name '*.crashed.*.md' ! -name '*.merge-failed.*.md' \
                      ! -name '*.abandoned-wip.*.md' ! -name '*.dispatch-failed.*.md' \
                      ! -name '*.ci-stuck.*.md' ! -name '*.partial.*.md')
-    done < <(printf 'now\nsoon\nlater\nfinalized\nnever\nqueued\nqueued/blocked\n')
+    done
 
     if [ -n "$brief_problems" ]; then
         fail 11 "$brief_problems"

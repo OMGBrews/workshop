@@ -806,7 +806,7 @@ A criterion is `- [ ]` (not done) or `- [x]` (done). A third marker, `- [~]`, is
 - **Constraints are acceptance criteria**, not background. Must work offline, must support both platforms — these get checkboxes.
 - **Delete unused optional sections** rather than leaving them empty.
 - **Completed tasks are deleted.** Git history preserves them; there is no `done` status. Reprioritize by moving the file between buckets — `/task-move` for one, `/task-reprioritize` for a rebalance.
-- **Slash commands**: `/task-list` (inventory), `/task-status` (liveness and closure verdicts), `/task-next` (what to work on), `/task-create`, `/task-move`, `/task-reprioritize`, `/task-audit` (validity against the codebase), `/task-finalize` (verify and resolve questions), `/task-implement` (execute in-session), `/task-queue` (the autonomous runner). They were renamed from verb-first names — `/list-tasks` → `/task-list` — in the 2026-07-26 convergence.
+- **Slash commands**: `/task-list` (inventory), `/task-status` (liveness and closure verdicts), `/task-next` (what to work on), `/task-create`, `/task-move`, `/task-reprioritize`, `/task-audit` (validity against the codebase), `/task-finalize` (verify and resolve questions), `/task-implement` (execute in-session), `/task-queue` (the autonomous runner), and `/focus-update` (write or replace the repository's direction). They were renamed from verb-first names — `/list-tasks` → `/task-list` — in the 2026-07-26 convergence.
 
 #### Metadata policy
 

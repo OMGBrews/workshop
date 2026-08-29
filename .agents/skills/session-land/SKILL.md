@@ -275,8 +275,8 @@ that note down.
 rest of that task's context already lives, and the `task-next` skill pins in-flight work ahead of
 anything new (its Phase 4, in-flight pinning), so the morning reaches it through the queue
 rather than through a pointer kept in a second file. `focus.md` states the repo's
-*direction* and deliberately does not name a next task — the rubric's
-[Direction, not a next task](../task-reprioritize/ranking-rubric.md#direction-not-a-next-task)
+*direction* and deliberately does not name a next task — the focus-document contract's
+[Direction, not a next task](../../../docs/focus-document.md#direction-not-a-next-task)
 records why the `**Next action:**` line it used to carry was removed. **Do not write one,
 and do not restore one you find missing.**
 
@@ -295,21 +295,9 @@ Where the resume point goes:
 `focus.md` is touched by this phase in exactly one case: the session **changed the repo's
 direction** — a new area of concentration, or something newly deprioritized. Then update
 the prose, or the `**Not now:**` line, to say so, and label it as a landed call like any
-other decision. Its format is **not this skill's to invent**; it has one specification, in
-[`ranking-rubric.md`](../task-reprioritize/ranking-rubric.md#focus-weighting-tasksfocusmd).
-Honor it exactly:
-
-- **No dates anywhere in the file** — staleness is derived from git, and a written date
-  goes stale the moment the prose around it is edited.
-- **Replace the `**Not now:**` line in place** if one exists; insert at most one. Never a
-  second copy.
-- **Do not clobber the owner's prose.** Rewriting their statement of direction is a
-  decision about what the repo is for, which is further than a landing reaches — add to it
-  or leave it.
-
-Only when creating the file from scratch, use the rubric's template: the heading, one to
-five sentences on what the repo is concentrating on and why, and an optional `**Not now:**`
-line naming what is deliberately deferred so the morning does not re-litigate it.
+other decision. Its format is **not this skill's to invent**; read and honor the single
+[focus-document contract](../../../docs/focus-document.md). In particular, do not
+clobber the owner's direction: changing what the repo is for reaches beyond landing.
 
 ---
 
@@ -433,8 +421,8 @@ skipping a caller's confirmation because the landing "already ended".
 - [`signal-hygiene.md`](../../../docs/signal-hygiene.md) — why this skill verifies its
   commits by reading them rather than by asserting them.
 - [`kaizen-guide.md`](../../../docs/kaizen-guide.md) — the practice behind Phase 4.
-- [`ranking-rubric.md`](../task-reprioritize/ranking-rubric.md#focus-weighting-tasksfocusmd)
+- [`docs/focus-document.md`](../../../docs/focus-document.md)
   — the single specification of `focus.md`, which this skill writes only when the session
   changed the repo's direction. Its
-  [Direction, not a next task](../task-reprioritize/ranking-rubric.md#direction-not-a-next-task)
+  [Direction, not a next task](../../../docs/focus-document.md#direction-not-a-next-task)
   section is why Phase 6 puts the resume point in the task document instead.
