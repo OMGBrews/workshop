@@ -160,6 +160,10 @@ if [ ! -e "$POPULATE_MARKER" ]; then
                 echo "[bootstrap]      GitHub keeps only ten OAuth tokens per user and application,"
                 echo "[bootstrap]      so each device flow login silently revokes the oldest — which"
                 echo "[bootstrap]      on a multi-container fleet is another container's."
+                echo "[bootstrap]      Running several containers? Install the token from the host"
+                echo "[bootstrap]      across all of them at once instead of pasting it into each,"
+                echo "[bootstrap]      and re-run that after any rebuild — a rebuild discards the"
+                echo "[bootstrap]      home directory this login writes to."
                 echo "[bootstrap]   3. Scripted rebuild with no editor, from the host:"
                 echo '[bootstrap]      devcontainer up --remove-existing-container --remote-env GH_TOKEN="$(gh auth token)" --workspace-folder .'
                 echo "[bootstrap]      Keep --remove-existing-container: without it the CLI reuses this"
