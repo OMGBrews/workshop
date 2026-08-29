@@ -135,7 +135,11 @@ echo "ok 3 - the failure names the repo and points at the retry"
 # --- 4. missing credentials gets credentials advice -------------------------
 ws="$(fresh_ws ws-noauth)"
 run noauth create "$ws"
-contains "gh auth login" || fail "no gh auth login in the credentials advice"
+# The literal must carry --with-token: the bare `gh auth login` this once asserted
+# is a substring of the token form, so the old assertion passed either wording and
+# could not tell the device-flow advice from its replacement.
+contains "gh auth login --with-token" || fail "credentials advice does not hand gh a token on stdin"
+contains "device flow" || fail "credentials advice does not name the device-flow anti-pattern"
 contains "GH_TOKEN" || fail "no scripted-rebuild token recipe in the credentials advice"
 contains "Attach an editor" || fail "no editor path in the credentials advice"
 echo "ok 4 - a credentials failure gets the three ways forward"
