@@ -137,15 +137,17 @@ those callers must stay identical rather than merely similar:
 | `task-create/_TEMPLATE.md` | `task-create` | task creation — read from inside the skill; no repo-side copy |
 | `task-queue/execution-discipline.md` | the task-queue worker | `task-implement` |
 | `task-finalize/check-task-readiness.sh` | `task-finalize` | `task-move` and `Tools/check-docs-work-conformance.sh` |
+| `docs/focus-document.md` | `focus-update` and repository owners | `task-next`, `task-reprioritize`, `session-land`, and repository task guides |
 
 The task template established this pattern after copied templates diverged into
 seven variants. The execution discipline is live runner configuration: the
 worker expands its marked blocks into one prompt, while `task-implement` reads
-the same file in-session. The readiness checker similarly keeps task movement
-and repository conformance on one executable rule. `task-reprioritize/ranking-rubric.md`
-formerly had a second reader in `task-next`; that edge was removed in 2026-08-11,
-so the two skills may now diverge and stay aligned through bucket placement
-instead.
+the same file in-session. The readiness checker similarly keeps task movement and
+repository conformance on one executable rule. The focus-document contract is shared
+in the other direction: writers and both selection readers need one artifact
+definition, while `task-next` and `task-reprioritize` retain different ranking
+judgments and stay aligned through bucket placement rather than sharing a ranking
+rubric.
 
 ### Rules
 

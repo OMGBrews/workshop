@@ -13,14 +13,14 @@ This skill **stages** changes via `git mv` / `git rm` but does **NOT** auto-comm
 
 **The ranking rules live in [`ranking-rubric.md`](ranking-rubric.md)**, next to this file — area inference, in-flight pinning, readiness and evidence signals, the N/S/L placement categories, the A/B/C coupling tiers, the tiebreakers, and focus weighting. This skill is the rubric's only reader: the `task-next` skill deliberately ranks on its own smaller inline order (decoupled 2026-08-11 for selection speed) and stays aligned by trusting the bucket placement this skill produces, not by re-deriving it. Read the rubric before Phase 1; the phases below cite its sections rather than restating them.
 
-**This pass is weighted by `<tasks>/focus.md` throughout**, not as a closing report line. Every phase below says how focus affected it, and the rubric's [Focus weighting](ranking-rubric.md#focus-weighting-tasksfocusmd) section is the single specification of what matches, how much it weighs, and what to do when the document is stale or absent. Focus modifies the mechanics and never overrides them — in particular it never promotes a task whose remaining work cannot start.
+**This pass is weighted by `<tasks>/focus.md` throughout**, not as a closing report line. Every phase below says how focus affected it. The [focus-document contract](../../../docs/focus-document.md) specifies the artifact; the rubric's [Focus weighting](ranking-rubric.md#focus-weighting-tasksfocusmd) section specifies what matches, how much it weighs, and its staleness branches. Focus modifies the mechanics and never overrides them — in particular it never promotes a task whose remaining work cannot start.
 
 ## Repo conventions (resolve first)
 
 - **Tasks root**: `docs/work/tasks/` — written as `<tasks>/` below. If none exists, print "No tasks directory found — invoke the `task-create` skill to scaffold one." and stop.
 - **Lifecycle buckets**: `<tasks>/finalized/` holds tasks ready for supervised implementation; `<tasks>/queued/` (when it exists) holds tasks the autonomous runner is executing. Both are read-only context for this skill, never sources or targets of moves.
 - **Bucket definitions**: [`../task-create/bucket-definitions.md`](../task-create/bucket-definitions.md) — resolve it relative to this file's **physical** directory (follow the symlink before taking `..`, per [`skill-path-resolution.md`](../../../docs/skill-path-resolution.md)), so the sibling is found in the same tree whatever the mount is called; shared with every other task skill so they cannot drift. If even that does not resolve (a partial vendored copy without `task-create`), find the file by mount discovery — the `Tools/sync-skill-symlinks.sh` pattern: this skill's physical location names the mount — and say you fell back.
-- **Focus document**: `<tasks>/focus.md` — the owner's statement of what matters right now, at the tasks root beside `README.md`. It sits outside every bucket directory, so a bucket glob never reaches it and it is never a candidate for a move. Format, matching, weight, and the staleness branches are all specified in [`ranking-rubric.md` § Focus weighting](ranking-rubric.md#focus-weighting-tasksfocusmd).
+- **Focus document**: `<tasks>/focus.md` — the owner's statement of what matters right now, at the tasks root beside `README.md`. It sits outside every bucket directory, so a bucket glob never reaches it and it is never a candidate for a move. Format and parsing are specified in the [focus-document contract](../../../docs/focus-document.md); matching, weight, and staleness remain in [`ranking-rubric.md` § Focus weighting](ranking-rubric.md#focus-weighting-tasksfocusmd).
 - **`finalized/` and `never/` are excluded from rebalancing**: nothing is moved in or out of either by shape rules. Finalization owns entry to `finalized/`; parking and explicit moves out belong to `task-move`.
 
 ---
@@ -30,8 +30,7 @@ This skill **stages** changes via `git mv` / `git rm` but does **NOT** auto-comm
 ### Read the focus document first
 
 Before globbing anything, read `<tasks>/focus.md` and derive its staleness, per
-[`ranking-rubric.md` § Focus weighting](ranking-rubric.md#focus-weighting-tasksfocusmd)
-and its [Staleness](ranking-rubric.md#staleness) subsection. **Check that the file exists
+[`ranking-rubric.md` § Staleness](ranking-rubric.md#staleness). **Check that the file exists
 before asking git anything** — `git log` prints a normal recent date for a *deleted*
 path, so running it first reports a healthy focus for a document that is gone:
 

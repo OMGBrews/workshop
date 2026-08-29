@@ -146,6 +146,11 @@ A repo may state, in its owner's own words, what matters right now. That stateme
 lives at `<tasks>/focus.md` — the tasks root, beside `README.md`, deliberately outside
 every bucket directory so no task glob mistakes it for a task.
 
+[`docs/focus-document.md`](../../../docs/focus-document.md) is the single specification
+for the artifact's format, authoring contract, parsing rules, and exclusions. This
+section owns only the reader-side weighting and staleness mechanics applied by
+`/task-reprioritize`.
+
 `/task-reprioritize` reads it at each rebalance — **coarse and durable** — to decide
 which bucket a task sits in, so the queue's shape carries the stated direction between
 rebalances. (`/task-next` also reads the *file*, live at each selection, but by its own
@@ -155,7 +160,7 @@ unattended, and where the two disagree the fresher selection-time read wins.)
 
 - **No skill writes a next task into it.** `/session-land` records a session's resume
   point in the task document the work belongs to, not here; `/task-next` then surfaces
-  it through in-flight pinning. See [Direction, not a next task](#direction-not-a-next-task).
+  it through in-flight pinning. See [Direction, not a next task](../../../docs/focus-document.md#direction-not-a-next-task).
 
 ### What counts as in focus
 
@@ -230,57 +235,6 @@ No hysteresis rule, deliberately. A damper for observed flapping can be added wh
 flapping is observed; adding one now would be tuning against a problem nobody has
 measured.
 
-### Format
-
-```markdown
-# Focus
-
-<One to five sentences: what this repo is concentrating on right now, and why.
-Plain prose, written by the owner — this is the one place stated intent beats
-anything inferable from the queue.>
-
-**Not now:** <optional, one unwrapped line — what is deliberately deprioritized, so a silence reads as a decision rather than an oversight.>
-```
-
-### Direction, not a next task
-
-This file states a **direction**, at a level above any single task: the area, the kind
-of work, the reason one kind comes before another. It does not name the next task, and
-no skill writes one into it. Until 2026-08-03 the format carried a `**Next action:**`
-line directly under the H1, written by `/session-land` and treated by `/task-next` as
-an outright ranking win; it was removed because a focus document that names one task is
-a task pointer wearing a strategy document's name — it goes stale the moment that task
-is done, it overrides the ranking it was only meant to inform, and it competes with the
-queue for the job the queue already does.
-
-The resumption cost that line was answering is real (roughly 10–15 minutes to resume
-after an interruption; Parnin, "Programmer, Interrupted"), so it is answered elsewhere
-rather than dropped: the resume point belongs **in the task document**, which is where
-the rest of that task's context already lives, and `/task-next` pins in-flight work
-ahead of anything new. A next action written as prose in this file is therefore not a
-contract with any skill — it is just prose, and a reader treats it as such.
-
-### Rules a writer and a reader must both honor
-
-- **No dates anywhere in the file.** Staleness comes from git (below). A written date
-  goes stale the moment the prose is edited without touching it.
-- `**Not now:**` is **optional and appears at most once**, with the label matched at the
-  start of a line exactly as written. A writer **replaces** an existing line in place;
-  when the label is absent it inserts one at the end. Never a second copy.
-- **A writer never clobbers the prose.** The owner's statement and their `**Not now:**`
-  line survive every automated write; only the labelled line being written changes. A
-  writer creating the file from scratch uses this template.
-- **Do not hard-wrap the labelled line.** It is one source line from the label to the
-  newline, however long, so a writer can replace it without reflowing a paragraph and a
-  reader can capture it without guessing where it ended. The surrounding prose wraps
-  normally.
-- Everything else is free prose. A reader must accept a file that carries no labelled
-  line at all; prose alone is a valid focus document.
-- **Rewrite in place.** No changelog, no accumulating list of past focuses — git holds
-  the history. Keep the file under roughly 15 lines: it is read at the start of every
-  selection, and a page of strategy is a different document.
-- A workspace index repo (hq) may additionally name which *project* is in focus.
-
 ### Staleness
 
 **Test that the file exists first, and only then ask git how old it is.** Absence is not
@@ -316,5 +270,6 @@ queue silently stops honouring a document the owner still believes is being read
 ## See also
 
 - [`SKILL.md`](SKILL.md) — `/task-reprioritize`, which applies this rubric to bucket placement (and carries the worked example that pins the rubric's behavior)
+- [`docs/focus-document.md`](../../../docs/focus-document.md) — the single focus-document specification shared by writers and readers
 - [`../task-next/SKILL.md`](../task-next/SKILL.md) — `/task-next`, the fast selector that deliberately does *not* read this rubric; it trusts the bucket placement this rubric produces
 - [`../task-create/_TEMPLATE.md`](../task-create/_TEMPLATE.md) — the canonical task template, the precedent for a shared file living inside one skill

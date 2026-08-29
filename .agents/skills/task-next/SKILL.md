@@ -22,6 +22,10 @@ so it works best when a rebalance has run recently. Close enough is good enough 
 a fast, slightly imperfect pick beats a slow, perfect one, because the user can see the
 queue too and will override a bad pick in seconds.
 
+The [focus-document contract](../../../docs/focus-document.md) defines the file's
+format and parsing rules. The selection-time staleness branches, lift, and demotion
+below are this skill's deliberately lighter reader judgment.
+
 **Read-only**: moves nothing, edits nothing, commits nothing, starts nothing. It ends
 by *offering* the next command. Scope is this repository alone (`git rev-parse
 --show-toplevel`); sibling projects' queues are never candidates.

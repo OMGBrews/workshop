@@ -95,4 +95,5 @@ buckets belong to `/task-move`; it enforces the readiness rules on the way into
 ## See also
 
 - [`_TEMPLATE.md`](_TEMPLATE.md) — the canonical task template, in this directory
+- [`docs/focus-document.md`](../../../docs/focus-document.md) — the contract for the optional direction document beside the buckets
 - [`../task-reprioritize/ranking-rubric.md`](../task-reprioritize/ranking-rubric.md) — how tasks are ranked *within* the shape this document defines
