@@ -40,3 +40,12 @@ where the default branch permits it; a cloud session or protected repository
 uses a pull request. Neither a passing check nor a docs-only classification
 authorizes a commit, push, pull request, or merge. The full convention is in
 [`shipping-conventions.md`](shipping-conventions.md).
+
+## See also
+
+- [`verification-profiles.md`](verification-profiles.md) — proportionate
+  verification expectations by repository role and risk
+- [`verification-terminology.md`](verification-terminology.md) — canonical
+  lifecycle and verification vocabulary
+- [`shipping-conventions.md`](shipping-conventions.md) — authorization and the
+  two standard landing routes
