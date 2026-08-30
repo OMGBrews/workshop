@@ -3,6 +3,14 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- Defined four proportionate verification profiles for content or scaffold,
+  active local software, shared or released software, and production or
+  deployed systems. The guidance selects by current role and risk, strengthens
+  defaults for sensitive or difficult-to-recover work, and avoids inventing
+  automation for lifecycle stages a repository does not perform. A reusable
+  classification fixture and checked bidirectional navigation support
+  reader-side trials.
+
 - Standardized `docs/work/tasks/focus.md` as a compact direction document with one
   public contract, a `focus-update` writer skill, and mechanical conformance checks for
   its 15-line ceiling, labelled deferrals, dates, and task-brief links. Task selection,
