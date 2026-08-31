@@ -29,7 +29,7 @@ For each task file, read it and extract:
 - **Goal**: First sentence of the Goal (or Problem statement) section
 - **Progress**: Count of checked (`- [x]`) vs total (`- [ ]` + `- [x]`) acceptance-criteria checkboxes
 
-A task with bold-metadata lines (`**Status**: Not Started`) instead of frontmatter predates the 2026-07 format convergence — extract the equivalent fields, and note at the end of the report that the devtools tree's `Tools/migrate-task-format.sh` converts the repo (resolve the tool from this skill's physical directory — [`skill-path-resolution.md`](../../../docs/skill-path-resolution.md)).
+A task with bold-metadata lines (`**Status**: Not Started`) instead of frontmatter predates the 2026-07 format convergence — extract the equivalent fields, and note at the end of the report that Workshop's `Tools/migrate-task-format.sh` converts the repo (resolve the tool from this skill's physical directory — [`skill-path-resolution.md`](../../../docs/skill-path-resolution.md)).
 
 ## Phase 3 — Present Results
 
