@@ -33,6 +33,6 @@ add stricter policy without making those private paths an input to Workshop.
 
 ## See also
 
-- [Task guide](work/tasks/README.md)
+- [Task skill](../.agents/skills/task-create/SKILL.md)
 - [Definition of done](definition-of-done.md)
 - [Kaizen guide](kaizen-guide.md)
