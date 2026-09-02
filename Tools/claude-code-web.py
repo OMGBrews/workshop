@@ -211,6 +211,34 @@ def validate_environment(value: Any) -> None:
         raise DeclarationError("environment.setupScript: each array item must be exactly one line")
 
 
+def validate_setup_script(value: dict[str, Any], root: Path, primary: str) -> None:
+    """Require the fleet's versioned, absolute-path setup-script stub."""
+    setup = value["setupScript"]
+    if not setup:
+        return
+    repository = primary.rsplit("/", 1)[1]
+    header = f"# {repository} setup stub — v"
+    if len(setup) != 5 or not setup[1].startswith(header):
+        raise DeclarationError("environment.setupScript: expected the canonical five-line setup stub")
+    version = setup[1][len(header) :].split(".", 1)[0]
+    if not version.isdecimal() or int(version) < 1:
+        raise DeclarationError("environment.setupScript: stub version must be a positive integer")
+    expected = [
+        "#!/bin/bash",
+        f"# {repository} setup stub — v{version}. Real script: scripts/agent/cloud-setup.sh in the repo.",
+        "# Bump the version above to force a cache rebuild after editing that script.",
+        "set -euo pipefail",
+        f"bash /home/user/{repository}/scripts/agent/cloud-setup.sh",
+    ]
+    if setup != expected:
+        raise DeclarationError("environment.setupScript: expected the canonical five-line setup stub")
+    script = root / "scripts/agent/cloud-setup.sh"
+    if not script.is_file() or not script.stat().st_mode & 0o111:
+        raise DeclarationError(
+            "environment.setupScript: scripts/agent/cloud-setup.sh must exist and be executable"
+        )
+
+
 def read_settings(root: Path) -> dict[str, Any] | None:
     path = root / ".claude/settings.json"
     if not path.exists():
@@ -277,6 +305,7 @@ def validate(root: Path) -> dict[str, Any]:
         if "reason" in config:
             raise DeclarationError("configuration: configured availability forbids reason")
         validate_environment(config["environment"])
+        validate_setup_script(config["environment"], root, primary)
         declared_id = config["environment"]["id"]
         if settings_id is None:
             raise DeclarationError(

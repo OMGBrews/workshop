@@ -11,7 +11,7 @@ fail() { echo "FAIL: $*"; failures=$((failures + 1)); }
 
 make_repo() {
     local path="$1"
-    mkdir -p "$path/docs/work" "$path/.claude"
+    mkdir -p "$path/docs/work" "$path/.claude" "$path/scripts/agent"
     git init -q "$path"
     git -C "$path" remote add origin https://github.com/example/project.git
     cat >"$path/docs/work/claude-code-web.md" <<'EOF'
@@ -38,12 +38,20 @@ Fixture declaration.
       {"name": "API_TOKEN", "source": "secret", "required": true},
       {"name": "FEATURE_MODE", "source": "literal", "value": "enabled"}
     ],
-    "setupScript": ["#!/usr/bin/env bash", "set -euo pipefail", "bash scripts/setup.sh"]
+    "setupScript": [
+      "#!/bin/bash",
+      "# project setup stub — v1. Real script: scripts/agent/cloud-setup.sh in the repo.",
+      "# Bump the version above to force a cache rebuild after editing that script.",
+      "set -euo pipefail",
+      "bash /home/user/project/scripts/agent/cloud-setup.sh"
+    ]
   }
 }
 ```
 <!-- WORKSHOP-CLOUD-SESSION:END -->
 EOF
+    printf '#!/bin/bash\n' >"$path/scripts/agent/cloud-setup.sh"
+    chmod +x "$path/scripts/agent/cloud-setup.sh"
     cat >"$path/.claude/settings.json" <<'EOF'
 {"permissions":{"allow":[]},"remote":{"defaultEnvironmentId":"env_abc123"}}
 EOF
@@ -90,16 +98,41 @@ printf '%s\n' "$output" | python3 -m json.tool >/dev/null || fail "show --json i
 first_key=$(printf '%s\n' "$output" | sed -n '2s/^[[:space:]]*"\([^"]*\)".*/\1/p')
 [ "$first_key" = "additionalRepositories" ] || fail "show --json does not sort keys"
 
-expected=$(printf '#!/usr/bin/env bash\nset -euo pipefail\nbash scripts/setup.sh')
+expected=$(printf '#!/bin/bash\n# project setup stub — v1. Real script: scripts/agent/cloud-setup.sh in the repo.\n# Bump the version above to force a cache rebuild after editing that script.\nset -euo pipefail\nbash /home/user/project/scripts/agent/cloud-setup.sh')
 actual=$(python3 "$TOOL" render-setup "$case_dir")
 [ "$actual" = "$expected" ] || fail "render-setup did not reproduce the exact line array"
 
 case_dir="$TMP/blank-setup"
 make_repo "$case_dir"
-sed -i 's/\["#!\/usr\/bin\/env bash", "set -euo pipefail", "bash scripts\/setup.sh"\]/[]/' \
-    "$case_dir/docs/work/claude-code-web.md"
+python3 - "$case_dir/docs/work/claude-code-web.md" <<'PY'
+import json
+import sys
+
+path = sys.argv[1]
+text = open(path, encoding="utf-8").read()
+start, payload = text.split("```json\n", 1)
+payload, end = payload.split("\n```", 1)
+data = json.loads(payload)
+data["environment"]["setupScript"] = []
+open(path, "w", encoding="utf-8").write(start + "```json\n" + json.dumps(data, indent=2) + "\n```" + end)
+PY
 actual=$(python3 "$TOOL" render-setup "$case_dir")
 [ -z "$actual" ] || fail "an empty setupScript array did not render as a blank field"
+
+case_dir="$TMP/relative-setup"
+make_repo "$case_dir"
+sed -i 's#bash /home/user/project/scripts/agent/cloud-setup.sh#bash scripts/agent/cloud-setup.sh#' "$case_dir/docs/work/claude-code-web.md"
+expect_fail "relative setup path is rejected" "$case_dir" "expected the canonical five-line setup stub"
+
+case_dir="$TMP/wrong-setup-repository"
+make_repo "$case_dir"
+sed -i 's#/home/user/project/#/home/user/other/#' "$case_dir/docs/work/claude-code-web.md"
+expect_fail "wrong setup repository is rejected" "$case_dir" "expected the canonical five-line setup stub"
+
+case_dir="$TMP/missing-setup-script"
+make_repo "$case_dir"
+rm "$case_dir/scripts/agent/cloud-setup.sh"
+expect_fail "missing setup script is rejected" "$case_dir" "must exist and be executable"
 
 case_dir="$TMP/mismatch"
 make_repo "$case_dir"

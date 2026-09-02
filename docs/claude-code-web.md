@@ -57,9 +57,11 @@ ordinary Markdown, but it must contain exactly one machine-readable block:
       }
     ],
     "setupScript": [
-      "#!/usr/bin/env bash",
+      "#!/bin/bash",
+      "# project setup stub — v1. Real script: scripts/agent/cloud-setup.sh in the repo.",
+      "# Bump the version above to force a cache rebuild after editing that script.",
       "set -euo pipefail",
-      "bash scripts/agent/cloud-setup.sh"
+      "bash /home/user/project/scripts/agent/cloud-setup.sh"
     ]
   }
 }
@@ -69,6 +71,37 @@ ordinary Markdown, but it must contain exactly one machine-readable block:
 
 The sentinels and JSON fence are stable interfaces. Tools parse only that block,
 never headings or explanatory prose.
+
+## Setup scripts
+
+A project needing build-time provisioning keeps an executable
+`scripts/agent/cloud-setup.sh` in its primary repository. It holds generic,
+reusable provisioning logic; the Claude-specific environment field contains only this
+five-line stub, with `<repo>` replaced by the basename of `primaryRepository`:
+
+```bash
+#!/bin/bash
+# <repo> setup stub — vN. Real script: scripts/agent/cloud-setup.sh in the repo.
+# Bump the version above to force a cache rebuild after editing that script.
+set -euo pipefail
+bash /home/user/<repo>/scripts/agent/cloud-setup.sh
+```
+
+The absolute path is required because the setup script's working directory is
+undocumented. The version is a positive integer: editing the tracked script does not
+rebuild the environment cache, while changing the stub does. The declaration is the
+only copy of the stub; use `render-setup` to obtain text for the dialog rather than
+copying it into scripts or prose. The short stub avoids the dialog's known long-line
+and chained-command mangling without imposing an unsupported line-length limit.
+
+Use a setup script only for credential-free provisioning that should survive in the
+environment cache, such as package installs, toolchains, or cache warms. It runs as
+root once per cache build against a fresh clone of `main`, with roughly five minutes
+available and no environment secrets. Derive repository paths from `BASH_SOURCE`, not
+the working directory. Fetching, fast-forwarding, and credential-dependent work belong
+in SessionStart bootstrap instead. A project with no such work declares `[]` and states
+in prose what prepares its sessions. Shared environments always declare `[]`: their
+co-tenants must match byte-for-byte, and a setup script would run for every primary.
 
 ## Version 1 schema
 
