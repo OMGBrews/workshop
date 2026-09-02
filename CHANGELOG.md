@@ -3,6 +3,10 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- Standardized cloud setup scripts on `scripts/agent/cloud-setup.sh`, with a
+  versioned absolute-path dialog stub and validator coverage for the stub and its
+  executable target.
+
 - Defined four proportionate verification profiles for content or scaffold,
   active local software, shared or released software, and production or
   deployed systems. The guidance selects by current role and risk, strengthens
