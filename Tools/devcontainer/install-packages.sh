@@ -20,6 +20,7 @@ apt-get update && apt-get install -y \
     libfontconfig1 \
     libfreetype6 \
     ripgrep \
+    shellcheck \
     tmux \
     unzip \
     wget \
