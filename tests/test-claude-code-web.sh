@@ -244,6 +244,246 @@ output=$(python3 "$TOOL" validate "$ROOT" 2>&1) || rc=$?
 printf '%s\n' "$output" | grep -Fq "missing declaration" \
     || fail "Workshop host exception lacks the expected missing-declaration result"
 
+# --- Standard bootstrap-kit adoption -----------------------------------------
+#
+# A repository can carry correct, committed agent surfaces that resolve only
+# through its Workshop mount while nothing in it is able to bootstrap that
+# mount — and the only symptom is that the shared skills are silently missing
+# when someone opens a cloud session. Each case below damages exactly one
+# adoption edge and asserts the validator names the repository, the edge, and
+# the remedy. `make_consumer` starts from the same declaration the cases above
+# use, so a failure here is about the kit and nothing else.
+
+TEMPLATES="$ROOT/docs/templates/cloud-sessions"
+
+# The command `.claude/settings.json` records verbatim. $CLAUDE_PROJECT_DIR is
+# expanded by Claude Code when it runs the hook, never by this shell.
+# shellcheck disable=SC2016
+WRAPPER_COMMAND='"$CLAUDE_PROJECT_DIR"/.claude/hooks/session-start.sh'
+
+# <path> [workshop-url]
+make_consumer() {
+    local path="$1" url="${2:-https://github.com/OMGBrews/workshop.git}"
+    make_repo "$path"
+    cat >"$path/.gitmodules" <<EOF
+[submodule "workshop"]
+	path = workshop
+	url = $url
+EOF
+    mkdir -p "$path/workshop/docs/templates/cloud-sessions" "$path/.claude/hooks"
+    cp "$TEMPLATES/agent-session-start.sh" "$path/workshop/docs/templates/cloud-sessions/"
+    cp "$TEMPLATES/session-start.sh" "$path/workshop/docs/templates/cloud-sessions/"
+    cp "$TEMPLATES/agent-session-start.sh" "$path/scripts/agent/session-start.sh"
+    cp "$TEMPLATES/session-start.sh" "$path/.claude/hooks/session-start.sh"
+    chmod +x "$path/scripts/agent/session-start.sh" "$path/.claude/hooks/session-start.sh"
+    write_settings "$path" "$WRAPPER_COMMAND" command 120
+}
+
+# <path> <command> <type-json-fragment> <timeout-json-fragment>
+# type and timeout are written raw so a case can omit or mistype either.
+write_settings() {
+    local path="$1" command="$2" type="$3" timeout="$4"
+    python3 - "$path/.claude/settings.json" "$command" "$type" "$timeout" <<'PY'
+import json, sys
+path, command, type_value, timeout_value = sys.argv[1:5]
+hook = {"command": command}
+if type_value != "-":
+    hook["type"] = type_value
+if timeout_value != "-":
+    hook["timeout"] = int(timeout_value)
+data = {
+    "permissions": {"allow": []},
+    "remote": {"defaultEnvironmentId": "env_abc123"},
+    "hooks": {"SessionStart": [{"hooks": [hook]}]},
+}
+with open(path, "w") as fh:
+    json.dump(data, fh, indent=2)
+    fh.write("\n")
+PY
+}
+
+case_dir="$TMP/kit-complete"
+make_consumer "$case_dir"
+expect_pass "complete standard kit" "$case_dir"
+
+# The legacy redirecting URL is the spelling most of the fleet still records.
+# If normalization ever exempted it, every one of those repositories would drop
+# out of this rule with nothing printed to say so.
+case_dir="$TMP/kit-legacy-url-complete"
+make_consumer "$case_dir" "https://github.com/OMGBrewmaster/workshop.git"
+expect_pass "legacy Workshop URL is still a consumer" "$case_dir"
+
+case_dir="$TMP/kit-legacy-url-damaged"
+make_consumer "$case_dir" "https://github.com/OMGBrewmaster/workshop.git"
+rm "$case_dir/scripts/agent/session-start.sh"
+expect_fail "legacy Workshop URL cannot evade the kit rule" "$case_dir" \
+    "scripts/agent/session-start.sh is absent"
+
+case_dir="$TMP/kit-ssh-url"
+make_consumer "$case_dir" "git@github.com:OMGBrews/workshop.git"
+rm "$case_dir/.claude/hooks/session-start.sh"
+expect_fail "ssh Workshop URL cannot evade the kit rule" "$case_dir" \
+    ".claude/hooks/session-start.sh is absent"
+
+case_dir="$TMP/kit-missing-neutral"
+make_consumer "$case_dir"
+rm "$case_dir/scripts/agent/session-start.sh"
+expect_fail "missing neutral bootstrap" "$case_dir" \
+    "Fix: cp workshop/docs/templates/cloud-sessions/agent-session-start.sh scripts/agent/session-start.sh"
+
+case_dir="$TMP/kit-missing-wrapper"
+make_consumer "$case_dir"
+rm "$case_dir/.claude/hooks/session-start.sh"
+expect_fail "missing Claude wrapper" "$case_dir" \
+    "Fix: cp workshop/docs/templates/cloud-sessions/session-start.sh .claude/hooks/session-start.sh"
+
+case_dir="$TMP/kit-not-executable"
+make_consumer "$case_dir"
+chmod -x "$case_dir/scripts/agent/session-start.sh"
+expect_fail "non-executable deployed copy" "$case_dir" \
+    "is not executable, so the session bootstrap cannot run. Fix: chmod +x scripts/agent/session-start.sh"
+
+case_dir="$TMP/kit-wrapper-not-executable"
+make_consumer "$case_dir"
+chmod -x "$case_dir/.claude/hooks/session-start.sh"
+expect_fail "non-executable wrapper" "$case_dir" \
+    "chmod +x .claude/hooks/session-start.sh"
+
+case_dir="$TMP/kit-drift"
+make_consumer "$case_dir"
+printf '# local hotfix\n' >>"$case_dir/scripts/agent/session-start.sh"
+expect_fail "deployed copy drifted from its template" "$case_dir" \
+    "differs from its canonical template workshop/docs/templates/cloud-sessions/agent-session-start.sh"
+
+case_dir="$TMP/kit-wrapper-drift"
+make_consumer "$case_dir"
+printf '# local hotfix\n' >>"$case_dir/.claude/hooks/session-start.sh"
+expect_fail "wrapper drifted from its template" "$case_dir" \
+    "differs from its canonical template workshop/docs/templates/cloud-sessions/session-start.sh"
+
+# The incident shape: committed agent surfaces pointing into a mount that
+# nothing populated. The mount is read from .gitmodules, not from a resolved
+# symlink, precisely so this stays visible.
+case_dir="$TMP/kit-uninitialized-mount"
+make_consumer "$case_dir"
+rm -rf "$case_dir/workshop"
+expect_fail "uninitialized Workshop mount" "$case_dir" \
+    "not initialized (workshop/docs/templates/cloud-sessions/agent-session-start.sh is absent)"
+
+case_dir="$TMP/kit-no-registration"
+make_consumer "$case_dir"
+cat >"$case_dir/.claude/settings.json" <<'EOF'
+{"permissions":{"allow":[]},"remote":{"defaultEnvironmentId":"env_abc123"}}
+EOF
+expect_fail "wrapper deployed but never registered" "$case_dir" \
+    "registers no SessionStart hook running the standard bootstrap wrapper"
+
+case_dir="$TMP/kit-wrong-hook-type"
+make_consumer "$case_dir"
+write_settings "$case_dir" "$WRAPPER_COMMAND" prompt 120
+expect_fail "registration with the wrong command type" "$case_dir" \
+    "with type 'prompt'; the canonical hook object declares type \"command\""
+
+case_dir="$TMP/kit-missing-hook-type"
+make_consumer "$case_dir"
+write_settings "$case_dir" "$WRAPPER_COMMAND" - 120
+expect_fail "registration with no command type" "$case_dir" \
+    "the canonical hook object declares type \"command\""
+
+case_dir="$TMP/kit-wrong-timeout"
+make_consumer "$case_dir"
+write_settings "$case_dir" "$WRAPPER_COMMAND" command 600
+expect_fail "registration with the wrong timeout" "$case_dir" \
+    "with timeout 600; the canonical hook object declares timeout 120"
+
+case_dir="$TMP/kit-missing-timeout"
+make_consumer "$case_dir"
+write_settings "$case_dir" "$WRAPPER_COMMAND" command -
+expect_fail "registration with no timeout" "$case_dir" \
+    "the canonical hook object declares timeout 120"
+
+# Standard adoption constrains the Workshop bootstrap entry and nothing else:
+# a project keeping its own SessionStart hook alongside is conforming.
+case_dir="$TMP/kit-extra-project-hook"
+make_consumer "$case_dir"
+python3 - "$case_dir/.claude/settings.json" <<'PY'
+import json, sys
+path = sys.argv[1]
+with open(path) as fh:
+    data = json.load(fh)
+data["hooks"]["SessionStart"].append(
+    {"hooks": [{"type": "command", "command": "bash scripts/project-hook.sh", "timeout": 600}]}
+)
+data["hooks"]["PreToolUse"] = [{"matcher": "Bash", "hooks": [{"type": "command", "command": "true"}]}]
+with open(path, "w") as fh:
+    json.dump(data, fh, indent=2)
+    fh.write("\n")
+PY
+expect_pass "project-specific hooks are preserved alongside the standard hook" "$case_dir"
+
+# A submodule that is not Workshop says nothing about the kit.
+case_dir="$TMP/kit-unrelated-submodule"
+make_repo "$case_dir"
+cat >"$case_dir/.gitmodules" <<'EOF'
+[submodule "library"]
+	path = library
+	url = https://github.com/example/library.git
+EOF
+expect_pass "a non-Workshop submodule requires no kit" "$case_dir"
+
+# The opt-outs are the declared negative states, and only those. An absent or
+# malformed declaration stays a failure: silence is not an answer.
+kit_absent() {
+    rm -f "$1/scripts/agent/session-start.sh" "$1/.claude/hooks/session-start.sh"
+    cat >"$1/.claude/settings.json" <<'EOF'
+{"permissions":{"allow":[]}}
+EOF
+}
+
+declare_negative() { # <path> <availability>
+    cat >"$1/docs/work/claude-code-web.md" <<EOF
+# Claude Code Web
+
+<!-- WORKSHOP-CLOUD-SESSION:BEGIN -->
+\`\`\`json
+{
+  "version": 1,
+  "availability": "$2",
+  "primaryRepository": "example/project",
+  "additionalRepositories": [],
+  "reason": "fixture"
+}
+\`\`\`
+<!-- WORKSHOP-CLOUD-SESSION:END -->
+EOF
+}
+
+case_dir="$TMP/kit-opt-out-not-configured"
+make_consumer "$case_dir"
+kit_absent "$case_dir"
+declare_negative "$case_dir" not-configured
+expect_pass "not-configured opts out of the kit requirement" "$case_dir"
+
+case_dir="$TMP/kit-opt-out-unsupported"
+make_consumer "$case_dir"
+kit_absent "$case_dir"
+declare_negative "$case_dir" unsupported
+expect_pass "unsupported opts out of the kit requirement" "$case_dir"
+
+case_dir="$TMP/kit-absent-declaration"
+make_consumer "$case_dir"
+kit_absent "$case_dir"
+rm "$case_dir/docs/work/claude-code-web.md"
+expect_fail "an absent declaration is not an opt-out" "$case_dir" "missing declaration"
+
+case_dir="$TMP/kit-malformed-declaration"
+make_consumer "$case_dir"
+kit_absent "$case_dir"
+sed -i 's/"availability": "configured"/"availability": "someday"/' \
+    "$case_dir/docs/work/claude-code-web.md"
+expect_fail "a malformed declaration is not an opt-out" "$case_dir" \
+    "configuration.availability: expected configured, not-configured, or unsupported"
+
 if [ "$failures" -ne 0 ]; then
     echo "$failures failure(s)" >&2
     exit 1

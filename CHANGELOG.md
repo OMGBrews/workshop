@@ -3,6 +3,15 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- Made standard cloud-session bootstrap adoption a validated invariant. A
+  `configured` repository that declares the public Workshop submodule must now
+  carry both canonical kit scripts byte-for-byte, both executable, and register
+  the wrapper as a complete `SessionStart` hook object. The relationship is read
+  from `.gitmodules` rather than a resolved symlink, so an uninitialized mount —
+  the shape that leaves every shared skill silently unregistered for a whole
+  session — is a failure rather than an exemption, and both public Workshop URL
+  spellings are recognized.
+
 - Standardized cloud setup scripts on `scripts/agent/cloud-setup.sh`, with a
   versioned absolute-path dialog stub and validator coverage for the stub and its
   executable target.

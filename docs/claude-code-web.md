@@ -205,6 +205,44 @@ contradict its declared state.
 a repository root, not an arbitrary subdirectory, so a declaration cannot be
 silently checked against the wrong project.
 
+## Standard bootstrap adoption
+
+A `configured` repository whose `.gitmodules` declares the public Workshop
+submodule must also carry the complete
+[cloud-session bootstrap kit](templates/cloud-sessions/README.md). The validator
+requires all three edges together:
+
+- `scripts/agent/session-start.sh` and `.claude/hooks/session-start.sh` exist and
+  are byte-identical to the matching templates in that repository's own
+  initialized Workshop mount;
+- both deployed copies are executable;
+- `.claude/settings.json` registers the wrapper as a complete canonical
+  `SessionStart` hook object — `type: "command"`, the wrapper command, and the
+  120-second timeout.
+
+The three are checked together because each is separately satisfiable while the
+bootstrap still never runs, and none of the failures announces itself. A wrapper
+that is present but unregistered fires nothing; the skill registry is built once
+per session from `.claude/skills/*`, so every symlink into an unpopulated mount
+stays unregistered for that whole session, with the files readable on disk. One
+repository sat in that state for days and it was found by a person hitting it.
+
+Two consequences shape how the rule is written:
+
+- **The Workshop relationship is read from `.gitmodules` and lexical paths, not
+  from a resolved symlink.** An uninitialized mount is the failure the check
+  exists to see, and resolving links would make it invisible.
+- **Both public Workshop spellings count.** `OMGBrews/workshop` and the
+  redirecting legacy `OMGBrewmaster/workshop` name the same repository, and most
+  consumers still record the older URL. Recognizing only the new one would
+  exempt them silently.
+
+Other hook objects, other events, and every other settings key are unconstrained
+and preserved: standard adoption governs the Workshop bootstrap entry, not the
+rest of a project's session preparation. `not-configured` and `unsupported` are
+positive opt-outs and bypass the requirement entirely; an absent or malformed
+declaration is not an opt-out and remains a failure.
+
 ## Tooling
 
 Run the shared tool from any checkout of Workshop:

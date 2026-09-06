@@ -24,6 +24,32 @@ DOMAIN = re.compile(
 )
 SECRET_NAME_COMPONENTS = {"KEY", "TOKEN", "PASSWORD", "PASSWD", "SECRET", "CREDENTIAL", "CREDENTIALS"}
 
+# GitHub remote spellings, shared by the checkout identity check and the
+# `.gitmodules` reader below.
+GITHUB_URL_PATTERNS = (
+    r"^https?://github\.com/([^/]+/[^/]+?)(?:\.git)?$",
+    r"^git@github\.com:([^/]+/[^/]+?)(?:\.git)?$",
+    r"^ssh://git@github\.com/([^/]+/[^/]+?)(?:\.git)?$",
+)
+
+# Both public spellings of the Workshop remote. The repository was transferred
+# from OMGBrewmaster to OMGBrews; GitHub redirects the old URL, so most
+# consumers still record it verbatim and are normalized only at their next
+# pointer bump. Accepting the new spelling alone would exempt every one of them
+# from the kit requirement below — and an exemption nobody can see is the exact
+# failure this check exists to prevent.
+WORKSHOP_REPOSITORIES = frozenset({"OMGBrews/workshop", "OMGBrewmaster/workshop"})
+
+# The standard cloud-session bootstrap kit: deployed copy -> canonical template,
+# relative to the repository root and the Workshop mount respectively.
+BOOTSTRAP_KIT = (
+    ("scripts/agent/session-start.sh", "docs/templates/cloud-sessions/agent-session-start.sh"),
+    (".claude/hooks/session-start.sh", "docs/templates/cloud-sessions/session-start.sh"),
+)
+KIT_MARKER = "docs/templates/cloud-sessions/agent-session-start.sh"
+SESSION_START_COMMAND = '"$CLAUDE_PROJECT_DIR"/.claude/hooks/session-start.sh'
+SESSION_START_TIMEOUT = 120
+
 
 class DeclarationError(ValueError):
     """A user-actionable declaration error."""
@@ -239,6 +265,166 @@ def validate_setup_script(value: dict[str, Any], root: Path, primary: str) -> No
         )
 
 
+def github_repository(url: str) -> str | None:
+    """`owner/repo` for a GitHub remote URL, or None when it is not one."""
+    for pattern in GITHUB_URL_PATTERNS:
+        match = re.fullmatch(pattern, url)
+        if match:
+            return match.group(1)
+    return None
+
+
+def declared_submodules(root: Path) -> dict[str, str]:
+    """Every `.gitmodules` edge, as declared path -> declared URL.
+
+    Read lexically, from the committed declaration alone. Nothing here touches
+    the working tree, so an edge whose mount was never initialized is still
+    seen — which is the whole point: the failure this check exists for looks
+    from the working tree exactly like a repository that mounts nothing.
+    """
+    modules = root / ".gitmodules"
+    if not modules.is_file():
+        return {}
+    try:
+        listing = subprocess.run(
+            [
+                "git",
+                "config",
+                "--file",
+                str(modules),
+                "--get-regexp",
+                r"^submodule\..*\.(path|url)$",
+            ],
+            capture_output=True,
+            text=True,
+        )
+    except OSError as error:
+        raise DeclarationError(f"cannot read {modules}: {error}") from error
+    # 1 is "no matches"; anything above it is a real failure to read the file,
+    # and reporting that as "declares no submodules" would exempt the
+    # repository from the kit requirement without saying so.
+    if listing.returncode > 1:
+        detail = listing.stderr.strip() or f"git config exited {listing.returncode}"
+        raise DeclarationError(f"cannot read {modules}: {detail}")
+    paths: dict[str, str] = {}
+    urls: dict[str, str] = {}
+    for line in listing.stdout.splitlines():
+        key, _, value = line.partition(" ")
+        name, _, field = key.rpartition(".")
+        name = name[len("submodule.") :]
+        if field == "path":
+            paths[name] = value
+        elif field == "url":
+            urls[name] = value
+    return {paths[name]: url for name, url in urls.items() if name in paths}
+
+
+def workshop_mount(root: Path) -> str | None:
+    """The path `.gitmodules` declares for the Workshop submodule, if any."""
+    for path, url in sorted(declared_submodules(root).items()):
+        if github_repository(url) in WORKSHOP_REPOSITORIES:
+            return path
+    return None
+
+
+def validate_session_start_registration(settings: dict[str, Any] | None, primary: str) -> None:
+    """Require a complete canonical `SessionStart` hook object for the wrapper.
+
+    Presence on disk is not adoption. The skill and hook registries are built
+    once per session from what settings declare, so an executable wrapper that
+    nothing registers never runs and leaves no trace that it did not.
+    """
+    remedy = (
+        "Fix: merge the hooks key from "
+        "<workshop mount>/docs/templates/cloud-sessions/settings-hooks.json into "
+        ".claude/settings.json, keeping the project's other keys."
+    )
+    matches: list[dict[str, Any]] = []
+    hooks = (settings or {}).get("hooks")
+    entries = hooks.get("SessionStart") if isinstance(hooks, dict) else None
+    for group in entries if isinstance(entries, list) else []:
+        if not isinstance(group, dict):
+            continue
+        group_hooks = group.get("hooks")
+        for hook in group_hooks if isinstance(group_hooks, list) else []:
+            if isinstance(hook, dict) and hook.get("command") == SESSION_START_COMMAND:
+                matches.append(hook)
+    if not matches:
+        raise DeclarationError(
+            f"{primary}: .claude/settings.json registers no SessionStart hook running the "
+            f"standard bootstrap wrapper ({SESSION_START_COMMAND}), so the deployed kit "
+            f"never runs. {remedy}"
+        )
+    # Other hook objects, other events, and the rest of settings are none of
+    # this check's business: standard adoption constrains the Workshop
+    # bootstrap entry, not the rest of a project's session preparation.
+    for hook in matches:
+        if hook.get("type") == "command" and hook.get("timeout") == SESSION_START_TIMEOUT:
+            return
+    hook = matches[0]
+    if hook.get("type") != "command":
+        raise DeclarationError(
+            f"{primary}: .claude/settings.json registers the standard bootstrap wrapper with "
+            f"type {hook.get('type')!r}; the canonical hook object declares type \"command\". "
+            f"{remedy}"
+        )
+    raise DeclarationError(
+        f"{primary}: .claude/settings.json registers the standard bootstrap wrapper with "
+        f"timeout {hook.get('timeout')!r}; the canonical hook object declares timeout "
+        f"{SESSION_START_TIMEOUT}. {remedy}"
+    )
+
+
+def validate_bootstrap_kit(root: Path, settings: dict[str, Any] | None, primary: str) -> None:
+    """Require the complete standard bootstrap kit of a Workshop consumer.
+
+    Applies when a `configured` repository declares the public Workshop
+    submodule. Three edges are checked together because each is separately
+    satisfiable while the bootstrap still never runs: both deployed scripts
+    matching their canonical templates byte-for-byte, both executable, and the
+    wrapper registered as a complete `SessionStart` hook object. A repository
+    whose agent surfaces link into Workshop while nothing bootstraps it starts
+    every session with those links dangling and nothing printed to say so.
+    """
+    mount = workshop_mount(root)
+    if mount is None:
+        return
+    if not (root / mount / KIT_MARKER).is_file():
+        raise DeclarationError(
+            f"{primary}: .gitmodules declares the Workshop submodule at {mount!r}, but that "
+            f"mount is not initialized ({mount}/{KIT_MARKER} is absent), so the standard "
+            "bootstrap kit cannot be checked and every agent surface linked into it dangles. "
+            f"Fix: git submodule update --init {mount}"
+        )
+    for deployed, template in BOOTSTRAP_KIT:
+        copy = root / deployed
+        canonical = root / mount / template
+        redeploy = f"Fix: cp {mount}/{template} {deployed} && chmod +x {deployed}"
+        if not canonical.is_file():
+            raise DeclarationError(
+                f"{primary}: the pinned Workshop checkout at {mount!r} carries no "
+                f"{template} to check {deployed} against — the pin predates the standard "
+                "bootstrap kit. Fix: advance the Workshop pointer, then redeploy both kit files."
+            )
+        if not copy.is_file():
+            raise DeclarationError(
+                f"{primary}: standard bootstrap kit incomplete — {deployed} is absent while "
+                f"the repository mounts Workshop at {mount!r}. {redeploy}"
+            )
+        if not copy.stat().st_mode & 0o111:
+            raise DeclarationError(
+                f"{primary}: standard bootstrap kit — {deployed} is not executable, so the "
+                f"session bootstrap cannot run. Fix: chmod +x {deployed}"
+            )
+        if copy.read_bytes() != canonical.read_bytes():
+            raise DeclarationError(
+                f"{primary}: standard bootstrap kit — {deployed} differs from its canonical "
+                f"template {mount}/{template}. The template is canonical: upstream a "
+                f"deliberate change there first, then redeploy. {redeploy}"
+            )
+    validate_session_start_registration(settings, primary)
+
+
 def read_settings(root: Path) -> dict[str, Any] | None:
     path = root / ".claude/settings.json"
     if not path.exists():
@@ -298,7 +484,8 @@ def validate(root: Path) -> dict[str, Any]:
             "configuration.additionalRepositories: must not repeat primaryRepository"
         )
 
-    settings_id = default_environment_id(read_settings(root), root)
+    settings = read_settings(root)
+    settings_id = default_environment_id(settings, root)
     if availability == "configured":
         if "environment" not in config:
             raise DeclarationError("configuration: configured availability requires environment")
@@ -306,6 +493,7 @@ def validate(root: Path) -> dict[str, Any]:
             raise DeclarationError("configuration: configured availability forbids reason")
         validate_environment(config["environment"])
         validate_setup_script(config["environment"], root, primary)
+        validate_bootstrap_kit(root, settings, primary)
         declared_id = config["environment"]["id"]
         if settings_id is None:
             raise DeclarationError(
@@ -381,16 +569,10 @@ def checkout_repository(root: Path) -> str:
         raise DeclarationError(f"cannot resolve Git origin for repository root {root}") from error
     if Path(top).resolve() != root:
         raise DeclarationError(f"not the Git worktree root: {root}")
-    patterns = (
-        r"^https?://github\.com/([^/]+/[^/]+?)(?:\.git)?$",
-        r"^git@github\.com:([^/]+/[^/]+?)(?:\.git)?$",
-        r"^ssh://git@github\.com/([^/]+/[^/]+?)(?:\.git)?$",
-    )
-    for pattern in patterns:
-        match = re.fullmatch(pattern, origin)
-        if match:
-            return match.group(1)
-    raise DeclarationError(f"origin is not a supported GitHub repository URL: {origin!r}")
+    repository = github_repository(origin)
+    if repository is None:
+        raise DeclarationError(f"origin is not a supported GitHub repository URL: {origin!r}")
+    return repository
 
 
 def main(argv: list[str] | None = None) -> int:
