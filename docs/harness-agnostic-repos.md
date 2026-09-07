@@ -260,14 +260,15 @@ The most portable surface, and it needs no bridge: a command is a command.
 
 - Every repo states its required evidence in `docs/work/definition-of-done.md` (see
   [`definition-of-done.md`](definition-of-done.md)).
-- That file's scope is the current evidence contract, nothing more: the checks table,
-  the `DOCS-ONLY` block where the repo declares one (the paths no check there reads),
-  the current enforcement statement, and the minimum prose needed to run each check
-  correctly — the invocation, the pass condition, any caveat that changes how you run
-  it. A check's rationale, its policy history, and the standing
-  constraints behind it are repo description: link them, never restate them. The file
-  is read at the moment someone needs a command, and unrelated prose moves that command
-  further away.
+- That file's scope is the current evidence contract, nothing more: the six sections
+  [`definition-of-done-schema.md`](definition-of-done-schema.md) defines — repository
+  profile, pre-commit feedback, landing requirements (with the `DOCS-ONLY` block where
+  the repo declares one, the paths no check there reads), release requirements,
+  deployment requirements, known gaps — and the minimum prose needed to run each check
+  correctly: the invocation, the pass condition, any caveat that changes how you run
+  it. A check's rationale, its policy history, and the standing constraints behind it
+  are repo description: link them, never restate them. The file is read at the moment
+  someone needs a command, and unrelated prose moves that command further away.
 - Checks are invoked as plain commands (`make check`), never through a harness feature.
 - The doc is linked from `AGENTS.md` as well as imported into `CLAUDE.md`.
 
