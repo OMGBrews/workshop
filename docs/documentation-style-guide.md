@@ -82,7 +82,7 @@ docs/
 └── work/               # THE MACHINE'S DIRECTORY — files the shared devtools
                         # machine reads and writes; clause detail is in devtools'
                         # private fleet contract (not mirrored)
-    ├── definition-of-done.md   [required; DOCS-ONLY block optional within it]
+    ├── definition-of-done.md   [required; six sections per definition-of-done-schema.md]
     ├── claude-code-web.md      [required in fleet projects; Workshop host excepted]
     ├── consumed-by.md          [required where a parent mounts the repo]
     ├── tasks/                  [required for repos on the task system]
@@ -733,6 +733,12 @@ What follows from this decision (positive and negative).
 Source code directories benefit from a short `README.md` that orients developers. These are distinct from documentation directory READMEs (covered in [File organization](#file-organization)) — they describe code, not docs.
 
 **Template**: [`templates/directory-readme.md`](./templates/directory-readme.md)
+
+### Definition-of-done documents
+
+Located at `docs/work/definition-of-done.md`, one per repository. Six sections in a fixed order — repository profile, pre-commit feedback, landing requirements, release requirements, deployment requirements, known gaps — as [`definition-of-done-schema.md`](./definition-of-done-schema.md) defines them; the `DOCS-ONLY` block, where a repository declares one, sits last in landing requirements under `### Docs-only surface`.
+
+**Template**: [`templates/definition-of-done.md`](./templates/definition-of-done.md)
 
 ### Task documents
 

@@ -3,6 +3,16 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- Reshaped the definition-of-done convention into a short always-loaded rule
+  and an on-demand schema, `docs/definition-of-done-schema.md`. Every
+  repository's `docs/work/definition-of-done.md` now answers six questions in a
+  fixed order — repository profile, pre-commit feedback, landing requirements,
+  release requirements, deployment requirements, known gaps — with
+  applicability, evidence type, enforcement, and evidence state as separate
+  fields, per-clone preconditions inside the verdict, and the `DOCS-ONLY`
+  block in a defined position. A canonical template and a scratch-repository
+  test ship with it, and Workshop's own page is the first migrated example.
+
 - Made standard cloud-session bootstrap adoption a validated invariant. A
   `configured` repository that declares the public Workshop submodule must now
   carry both canonical kit scripts byte-for-byte, both executable, and register
