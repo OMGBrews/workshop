@@ -72,7 +72,7 @@ For each task, the analysis agent must:
 
 2. **Git history evidence** — Scope history to the task, not a fixed window:
    - The task file's own history: `git log --follow --oneline -- <task file>` (when it was created, moved between buckets, last revised).
-   - Work landed since the task was written: `git log --oneline <vintage>..HEAD -- <referenced paths>` over the files and directories the task mentions, where the vintage is the frontmatter `finalized-at:` SHA when present (the brief was re-verified there), else the creating commit (see Repo conventions). Note any commits that partially or fully address the task, and any that changed its ground truth.
+   - Work landed since the task was written: resolve `task-history-baseline.sh` beside the task-finalize checker's physical path and run `check` with the task repository, inspected `HEAD`, and the frontmatter `finalized-at:` when present, else the creating commit (see Repo conventions). Only `STATUS=usable` permits `git log --oneline <baseline>..HEAD -- <referenced paths>`. `STATUS=reverify` requires direct verification of all factual claims, cited constructs, recommended-solution premises, and acceptance criteria, with the reason recorded; never retry the dead SHA, guess a replacement, or use a date window. A helper execution error is reported and stops history claims. Note any usable-range commits that partially or fully address the task, and any that changed its ground truth.
 
 3. **Acceptance-criteria evaluation** — For each `- [ ]` item, determine:
    - **Verifiably complete**: Codebase evidence confirms the criterion is met. Note the evidence.

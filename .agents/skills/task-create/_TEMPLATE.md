@@ -32,11 +32,11 @@ dependencies: []
            `queued/` cleanly (merged, not crashed/blocked). Default `[]`.
 
      One further field is machine-written — do NOT fill it by hand:
-       - `finalized-at` — the commit SHA the task's claims were verified
-           against. `/task-finalize` stamps it after its verify-against-HEAD
-           phase and moves the brief into `finalized/`; the task-queue worker
-           diffs `<sha>..HEAD` over the scoped
-           paths at pickup and re-verifies the brief when code moved.
+       - `finalized-at` — a conservative comparison baseline shared by the
+           inspected commit and freshly fetched default branch when possible.
+           `/task-finalize` falls back to the inspected commit with a
+           limited-durability disclosure; consumers fully re-verify when the
+           stamped history is unavailable or outside current ancestry.
 
      There is no `created` field and no Created line — a task's creation
      date is derived from git when needed:

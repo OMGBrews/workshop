@@ -45,9 +45,13 @@ for supervised implementation. Finalization moves the brief here automatically;
 
 This is a lifecycle bucket, not a fifth planning horizon. It sits outside queue
 shape and reprioritization, and `/task-next` considers it before unfinalized work.
-A usable `finalized-at:` stamp is required for every brief in the directory. The
-name describes the recorded finalization event, not a permanent freshness claim:
-the implementer still checks what changed after that commit.
+A single well-formed `finalized-at:` stamp is required for every brief in the
+directory. It records a conservative comparison baseline shared by the inspected
+commit and a freshly fetched default branch where one can be established; otherwise
+it records the inspected commit with limited durability disclosed at finalization.
+The name describes the recorded finalization event, not a permanent freshness claim:
+the implementer checks what changed after a usable baseline, and fully re-verifies
+the brief when the stamped history is unavailable or outside current ancestry.
 
 ### `never/` is parked, not terminal
 

@@ -45,7 +45,7 @@ printf '%s\n' "$readiness_output"
 printf 'EXIT=%s\n' "$readiness_rc"
 ```
 
-Exit 0 is admission-ready. Exit 1 means the numbered `FAIL` records are the reasons to refuse; `WARN` records alone do not block the move. Exit 2 means the checker could not derive the task file's repository context, so stop and fix that before considering the move.
+Exit 0 is admission-ready. Exit 1 means the numbered `FAIL` records are the reasons to refuse; `WARN` records alone do not block the move. In particular, a well-formed stamp whose history is unavailable warns that every consumer must fully re-verify, but remains queueable because the unattended worker carries that fallback. Missing, malformed, and duplicate stamps still fail. Exit 2 means the checker could not derive the task file's repository context, so stop and fix that before considering the move.
 
 If the checker exits 1:
 

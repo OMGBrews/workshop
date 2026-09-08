@@ -97,7 +97,7 @@ Three things the format depends on:
 
 - **The `AC:BEGIN` / `AC:END` sentinels are load-bearing.** `/task-finalize`, `/task-move`, `/task-status`, and the task-queue worker parse the list between them, and a file missing them will not validate or run. Keep them, and keep edits to the criteria inside them.
 - **There is no `Created` field**, and no date line of any kind. A recorded date goes stale on every edit; git's does not. Derive it when needed: `git log --diff-filter=A --follow --format=%cs -- <task-file>`.
-- **`finalized-at` is machine-written** — `/task-finalize` stamps the commit SHA it verified the task against. Do not fill it by hand.
+- **`finalized-at` is machine-written** — `/task-finalize` records a conservative comparison baseline shared by the inspected commit and freshly fetched default branch when possible, with a limited-durability inspected-commit fallback. Consumers fully re-verify when that history is unavailable. Do not fill it by hand.
 
 A criterion is `- [ ]` or `- [x]`. A third marker, `- [~]`, is used in practice for work that is started but explicitly unfinished; it counts toward the total and never toward done, so it blocks the "finished, delete the brief" verdict.
 

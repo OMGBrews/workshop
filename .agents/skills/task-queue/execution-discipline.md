@@ -82,9 +82,11 @@ Where it goes in the worker prompt: step 1, after the brief has been read.
 
 <!-- block: staleness-check -->
 **Staleness check.** The brief is a cache of code observations; its
-frontmatter `finalized-at: <sha>` records the commit those
-observations were verified against. Run
-`git log --oneline <sha>..HEAD -- <paths from the brief's Scope section>`
+frontmatter `finalized-at: <sha>` records their conservative comparison
+baseline. Resolve `task-history-baseline.sh` beside the task-finalize
+checker's physical directory and run `check` with the task repository,
+inspected `HEAD`, and stamp before constructing a range. `STATUS=usable`
+permits `git log --oneline <baseline>..HEAD -- <paths from the brief's Scope section>`
 (whole repo if the brief has no Scope). Before trusting an empty
 result, confirm this repo tracks those paths:
 `git ls-files --error-unmatch -- <path>`. `git log` prints nothing
@@ -97,9 +99,17 @@ Non-empty → the ground moved after verification:
 re-verify the brief's factual claims (Context, Recommended solution,
 cited anchors) against the current code before implementing, and
 where brief and code disagree, the code wins. The Acceptance
-criteria govern either way. A brief with no `finalized-at` stamp
-predates verification — treat all of its claims as unverified and
-check them as you go.
+criteria govern either way. `STATUS=reverify` — unavailable commit,
+non-ancestor, or insufficient history — requires direct verification of
+every factual claim, cited construct, recommended-solution premise, and
+acceptance criterion against current code. Print the helper's reason and
+continue autonomously; do not require interactive re-finalization, rewrite
+the stamp, change acceptance criteria, retry the unusable SHA, guess another
+commit, or use a date window. A helper execution error must be reported;
+continue with direct verification only when current files remain inspectable,
+otherwise follow the blocked-work procedure. Classify an unstamped brief's
+creation commit before using its range; if that history is unusable, or the
+brief is untracked, use the same full verification path.
 <!-- /block: staleness-check -->
 
 ### Recommended solution
