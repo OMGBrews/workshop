@@ -151,7 +151,7 @@ The date is carried by the filename, not repeated in the heading, and entries ta
 
 Every ~2 weeks or after a sprint, review recent journal entries (the newest month directories). Look for entries that share a root cause, and route each cluster by what it is:
 
-- **A standing, fixable flaw** — broken tooling, an ungated mirror, a script defect: anything where "verified gone" is a meaningful endpoint — becomes a **problem document** (`docs/work/problems/` — seeded from `devtools/docs/templates/problems/README.md`), plus a task where the fix is already concrete. It does not become a pattern: a pattern tracks a *tendency*, a problem tracks a *state*, and the problem lifecycle — persists until the flaw is verified gone; a task completing is not the trigger — is the right home for anything a fix can end.
+- **A standing, fixable flaw** — broken tooling, an ungated mirror, a script defect: anything where "verified gone" is a meaningful endpoint — becomes a **problem document** filed from `.agents/skills/problem-create/_TEMPLATE.md` under `docs/work/problems/` (whose README is seeded from `docs/templates/problems/README.md`), plus a task where the fix is already concrete. It does not become a pattern: a pattern tracks a *tendency*, a problem tracks a *state*, and the problem lifecycle — persists until the flaw is verified gone; a task completing is not the trigger — is the right home for anything a fix can end.
 - **A recurring tendency whose countermeasure is statable today** — graduate it, in the same pass, under the contract below.
 - **A recurring tendency not yet statable** — create or update `patterns/<slug>.md` with evidence, mitigation, and status, and let it accumulate until it is.
 

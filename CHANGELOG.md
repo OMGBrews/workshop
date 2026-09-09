@@ -3,6 +3,11 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- Added a canonical prose template and the `problem-create`, `problem-status`,
+  and `problem-audit` skills for recording and reassessing flaws that exist
+  today. Kaizen routing and the seeded problems guide now share that template,
+  while retirement remains evidence-gated through `kaizen-resolve`.
+
 - Reshaped the definition-of-done convention into a short always-loaded rule
   and an on-demand schema, `docs/definition-of-done-schema.md`. Every
   repository's `docs/work/definition-of-done.md` now answers six questions in a

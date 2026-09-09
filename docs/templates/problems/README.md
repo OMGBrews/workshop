@@ -4,7 +4,7 @@ This directory documents currently-existing flaws in this project — defects in
 
 A problem document describes the *state of the world*: what is wrong, where it manifests, and what it costs. It does not prescribe a solution or acceptance criteria — those belong in a task once someone is ready to act.
 
-This README was seeded from `devtools/docs/templates/problems/README.md` — the copy is this repo's own to edit (a seed, not a mirror; deliberate divergence is fine). The concept and lifecycle were proven in `foiassist/pia-maker`'s `docs/problems/` before being adopted fleet-wide (2026-08-05).
+This README was seeded from the mounted Workshop tree's `docs/templates/problems/README.md` — the copy is this repo's own to edit (a seed, not a mirror; deliberate divergence is fine). The concept and lifecycle were proven in `foiassist/pia-maker`'s `docs/problems/` before being adopted fleet-wide (2026-08-05).
 
 ## When to add a document
 
@@ -32,7 +32,7 @@ grep -rn "<entry-filename-without-.md>" --exclude-dir=.git docs/      # linked c
 grep -rn "<a distinctive phrase from the entry's title>" --exclude-dir=.git docs/   # prose ones
 ```
 
-Any hit from something live — a pattern, another problem, a task, a CLAUDE.md, or another journal entry — and the entry stays. The rule, the reasoning, and the second grep's necessity are in `devtools/docs/kaizen-guide.md` under *The journal's lifecycle*.
+Any hit from something live — a pattern, another problem, a task, a CLAUDE.md, or another journal entry — and the entry stays. The rule, the reasoning, and the second grep's necessity are in the mounted Workshop tree's `docs/kaizen-guide.md` under *The journal's lifecycle*.
 
 The cascade belongs to **the session that verifies the flaw gone**, because that session is the only one holding the document's evidence list — once the file is deleted, nothing records which entries it absorbed. `/kaizen-resolve` is that session's ritual — run it rather than reconstructing this by hand. Skipping it costs one stray entry rather than a broken link, but that entry then matches nothing and is read by every future review.
 
@@ -42,18 +42,12 @@ A single problem may spawn one task or several. Tasks reference back to the prob
 
 Name the file `kebab-case.md` after the flaw (e.g. `export-drops-step-3-narratives.md`) — no date prefix, since a problem persists until its flaw is fixed.
 
-Each problem document should include:
+The canonical shape lives at `.agents/skills/problem-create/_TEMPLATE.md`: an In brief paragraph followed by Scope statement, The flaw, Evidence, Impact, Background, and See also. This is a courtesy summary; the template is the single source. Avoid prescribing solutions. If a fix approach is obvious, mention it briefly under See also or leave it for a task document.
 
-- **Scope statement**: One paragraph naming the flaw and who should care
-- **The flaw**: What is wrong, in concrete terms (file paths, behaviors, evidence)
-- **Impact**: Why this matters — what breaks, what is harder, what risk it carries
-- **Background**: How the flaw came to exist, if relevant
-- **See also**: Related docs, style guides, or upstream context
-
-Avoid prescribing solutions. If a fix approach is obvious, mention it briefly under "See also" or leave it for a task document.
+Skills: `problem-create` files a record from the canonical template, `problem-status` reports current signals, `problem-audit` re-verifies the record in depth, and `kaizen-resolve` retires it only after the flaw is verified gone.
 
 ## See also
 
 - The repo's tasks directory — concrete, actionable work items
 - `docs/work/kaizen/` — friction in how we build, and the recurring tendencies distilled from it
-- `devtools/docs/kaizen-guide.md` — the Act-stage routing that sends flaw-shaped clusters here instead of into `patterns/`
+- The mounted Workshop tree's `docs/kaizen-guide.md` — the Act-stage routing that sends flaw-shaped clusters here instead of into `patterns/`
