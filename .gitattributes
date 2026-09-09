@@ -1,0 +1,11 @@
+# Line endings are declared here, not left to the consumer's git configuration.
+#
+# Every text file is LF in the repository and LF in the working tree on every
+# platform. The scripts in this tree are COPYed into Linux images and run by bash
+# there, and Git for Windows installs with core.autocrlf=true in its SYSTEM
+# gitconfig — so without this file a Windows clone checked every script out CRLF
+# and a consumer's devcontainer build died at `set: pipefail: invalid option name`.
+# Extension-less scripts (Tools/hooks/*) and the .py tools are covered by the
+# wildcard; nothing here is enumerated by name so that the next script is covered
+# on arrival.
+* text=auto eol=lf
