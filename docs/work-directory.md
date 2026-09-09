@@ -15,7 +15,8 @@ policy beside them rather than baking it into a shared tool.
 |------|---------|-------|
 | `docs/work/tasks/` | Task briefs and their lifecycle buckets | Task skills and the repository maintainer |
 | `docs/work/definition-of-done.md` | Repository-required verification evidence | Repository maintainer |
-| `docs/work/kaizen/` | Process-friction journal, patterns, and problems | Kaizen skills and the repository maintainer |
+| `docs/work/kaizen/` | Process-friction journal and recurring patterns | Kaizen skills and the repository maintainer |
+| `docs/work/problems/` | Current, fixable flaws and the evidence that keeps them open | Problem skills, kaizen skills, and the repository maintainer |
 | `docs/work/audits/` | Audit tracker state when audit skills are used | Audit skills |
 | `docs/work/claude-code-web.md` | Desired cloud-session declaration when configured | Repository maintainer |
 
