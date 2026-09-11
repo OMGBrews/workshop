@@ -116,5 +116,6 @@ The first three are named rather than linked: each sits at a path that differs p
 
 - `docs/kaizen-guide.md` — *The journal's lifecycle*: the citation gate, the two greps, the veto rules, and the same-commit reasoning this skill executes.
 - `kaizen-review` — the pattern side of the same lifecycle, and the skill that files problem documents in the first place. Not vendored into every repo.
+- `.agents/skills/problem-create/_TEMPLATE.md` — the canonical shape of newly filed problem documents.
 - `docs/templates/problems/README.md` — the problems-directory lifecycle this skill closes out, as seeded into each repo.
 - `signal-hygiene.md` — the standing rule the evidence gate is an instance of: a check whose pass state a no-op also satisfies reports success and ends the investigation. This repo's copy is linked from `AGENTS.md` and `@`-imported by the root `CLAUDE.md`; the path differs per repo.
