@@ -18,6 +18,11 @@ they create a manually initiated milestone tag or GitHub Release.
   block in a defined position. A canonical template and a scratch-repository
   test ship with it, and Workshop's own page is the first migrated example.
 
+- Moved the task queue out of the public repository. Maintainer planning for
+  Workshop work, including cross-repo handoffs addressed to Workshop, now lives
+  in the private `OMGBrews/workshop-dev` wrapper; `docs/work/` keeps only the
+  definition of done and the consumed-by declaration.
+
 - Made standard cloud-session bootstrap adoption a validated invariant. A
   `configured` repository that declares the public Workshop submodule must now
   carry both canonical kit scripts byte-for-byte, both executable, and register

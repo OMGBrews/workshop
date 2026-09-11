@@ -116,6 +116,10 @@ invalid_dependency() { sed -i 's/^dependencies: \[\]$/dependencies: [not_a_slug]
 invalid_finalized_at() {
     sed -i 's/^finalized-at: .*/finalized-at: 0123456789abcdef0123456789abcdef01234567/' "$1/$TASK_REL"
 }
+malformed_finalized_at() { sed -i 's/^finalized-at: .*/finalized-at: not-a-sha/' "$1/$TASK_REL"; }
+duplicate_finalized_at() {
+    sed -i '/^finalized-at:/p' "$1/$TASK_REL"
+}
 tilde_only_criterion() {
     sed -i 's/^- \[ \] The brief is ready\.$/- [~] The brief is in progress./' "$1/$TASK_REL"
 }
@@ -148,8 +152,12 @@ expect_readiness "rule-6-open-questions" 1 open_question "FAIL 6" "Open question
 expect_readiness "rule-7-invalid-priority" 1 invalid_priority "FAIL 7" "priority: invalid value"
 expect_readiness "rule-7-invalid-dependency" 1 invalid_dependency \
     "FAIL 7" "invalid task slug"
-expect_readiness "rule-8-invalid-finalized-at" 1 invalid_finalized_at \
-    "FAIL 8" "does not name a commit"
+expect_readiness "rule-8-unavailable-finalized-at" 0 invalid_finalized_at \
+    "PASS 8" "WARN 8" "full re-verification required"
+expect_readiness "rule-8-malformed-finalized-at" 1 malformed_finalized_at \
+    "FAIL 8" "not a 40-hex commit SHA"
+expect_readiness "rule-8-duplicate-finalized-at" 1 duplicate_finalized_at \
+    "FAIL 8" "appears 2 times"
 expect_readiness "done-only-criterion" 0 done_only_criterion "PASS 2"
 expect_readiness "tilde-only-criterion" 0 tilde_only_criterion "PASS 2"
 expect_readiness "block-dependencies" 0 block_dependencies "PASS 7"

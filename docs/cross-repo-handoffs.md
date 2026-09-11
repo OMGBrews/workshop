@@ -42,6 +42,11 @@ Use the shared task template, exactly as for any other task in the target repo:
   extras — the task skills and the queue runner read the fields they name and
   ignore the rest, so a brief carrying them is an ordinary task everywhere else.
 
+  Address the repository that holds the receiver's task queue. A public
+  repository whose planning lives in a private wrapper says so in its
+  `AGENTS.md` — Workshop's queue is `OMGBrews/workshop-dev` — and a brief
+  addressed to the public repository has no queue to land in.
+
 ## Delivering it
 
 Filing is not delivery. A brief written into a tree nobody is told about is

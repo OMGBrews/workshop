@@ -10,6 +10,11 @@ Workshop is the hand-authored source of truth. Contributions follow
 and every change must supply the required evidence in
 [docs/work/definition-of-done.md](docs/work/definition-of-done.md).
 
+Workshop carries no task queue. Maintainer planning for Workshop work,
+including cross-repo handoffs addressed to this repository, lives in the
+private wrapper `OMGBrews/workshop-dev`; address a handoff there, not here.
+Outside contributors use the public channels in [SUPPORT.md](SUPPORT.md).
+
 ## Working in a project that vendors Workshop
 
 - Link Workshop's shared skill roster into a project's `.agents/skills/`;

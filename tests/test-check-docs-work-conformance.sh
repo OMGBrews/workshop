@@ -318,8 +318,29 @@ queue_bad_sha() {
     write_brief "$1/docs/work/tasks/queued" "queued-task" \
         "finalized-at: 0123456789abcdef0123456789abcdef01234567"
 }
-expect "queued brief with a nonexistent finalized-at commit" 1 queue_bad_sha \
-    "FAIL 11" "does not name a commit"
+expect "queued brief with a nonexistent finalized-at commit warns but conforms" 0 queue_bad_sha \
+    "note  11" "WARN finalized-at history is unavailable" \
+    "docs/work conformance: all evaluated clauses conform"
+
+queue_malformed_sha() {
+    mkdir -p "$1/docs/work/tasks/queued"
+    echo "# queued" >"$1/docs/work/tasks/queued/README.md"
+    write_brief "$1/docs/work/tasks/queued" "queued-task" "finalized-at: not-a-sha"
+}
+expect "queued brief with malformed finalized-at still fails" 1 queue_malformed_sha \
+    "FAIL 11" "not a 40-hex commit SHA"
+
+queue_duplicate_sha() {
+    local sha
+    mkdir -p "$1/docs/work/tasks/queued"
+    echo "# queued" >"$1/docs/work/tasks/queued/README.md"
+    sha="$(git -C "$1" rev-parse HEAD)"
+    write_brief "$1/docs/work/tasks/queued" "queued-task" \
+        "finalized-at: $sha
+finalized-at: $sha"
+}
+expect "queued brief with duplicate finalized-at still fails" 1 queue_duplicate_sha \
+    "FAIL 11" "appears 2 times"
 
 brief_missing_status() {
     grep -v '^status:' "$1/docs/work/tasks/now/a-fixture-task.md" >"$1/t" \

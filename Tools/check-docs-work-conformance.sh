@@ -76,6 +76,8 @@ note()   { printf 'note  %-2s %s\n' "$1" "$2"; notes=$((notes + 1)); }
 # drafts may have open questions and no finalized-at stamp.  The command runs
 # under set -e, so capture exit 1 explicitly and let clause 11 aggregate every
 # malformed brief into its stable FAIL record.
+# Successful WARN lines are returned to clause 11 as visible, non-failing
+# diagnostics; other output remains a format failure.
 #   $1 = brief path, $2 = human or finalized finalized-at policy.
 validate_brief() {
     local out rc=0
@@ -377,7 +379,14 @@ else
             checked=$((checked + 1))
             v=$(validate_brief "$f" "$policy")
             if [ -n "$v" ]; then
-                brief_problems="${brief_problems}${f}: $(printf '%s' "$v" | tr '\n' '; ')"
+                warning_output="$(printf '%s\n' "$v" | sed -n '/^WARN /p')"
+                failure_output="$(printf '%s\n' "$v" | sed '/^WARN /d')"
+                if [ -n "$warning_output" ]; then
+                    note 11 "$f: $(printf '%s' "$warning_output" | tr '\n' '; ')"
+                fi
+                if [ -n "$failure_output" ]; then
+                    brief_problems="${brief_problems}${f}: $(printf '%s' "$failure_output" | tr '\n' '; ')"
+                fi
             fi
         done < <(find "docs/work/tasks/$bucket" -maxdepth 1 -type f -name '*.md' \
                      ! -name 'README.md' ! -name 'focus.md' \

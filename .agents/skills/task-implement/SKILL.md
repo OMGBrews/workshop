@@ -114,11 +114,16 @@ brief reaching this phase has none. If one turns up here anyway, the screen was
 skipped: stop, print the questions, recommend `task-finalize`, and revert the
 Phase 2 claim on the way out.
 
-**Tier B — `finalized-at` present.** Run
-`git log --oneline <finalized-at>..HEAD -- <the brief's Scope paths>` (whole
-repo if the brief names no Scope). Empty output: trust the brief as written.
+**Tier B — `finalized-at` present.** Resolve `task-history-baseline.sh` beside
+the task-finalize checker's physical path, then run `check` with the task
+repository, inspected `HEAD`, and stamp. `STATUS=usable` permits
+`git log --oneline <baseline>..HEAD -- <the brief's Scope paths>` (whole repo
+if the brief names no Scope). Empty output: trust the brief as written.
 Non-empty: re-verify only what moved — read the commits, read the cited
-constructs, and where brief and code disagree, the code wins.
+constructs, and where brief and code disagree, the code wins. `STATUS=reverify`
+demotes the entire brief to Tier C and its reason must be stated. A helper
+execution error is reported; proceed through Tier C only if current files can
+still be inspected, otherwise stop.
 
 The `staleness-check` block's tracked-path guard applies here in full: before
 trusting an empty result, confirm this repo tracks the Scope paths with
@@ -135,7 +140,7 @@ no tier ladder to demote into.
 verification inline before writing code:
 
 1. Read every file the brief cites, in Context, Scope, and the recommended solution. Confirm each cited construct still exists; re-anchor by symbol plus a greppable quote where it moved.
-2. Find the brief's vintage commit (see Repo conventions) and skim `git log --oneline <vintage>..HEAD -- <scoped paths>` for anything touching its claims.
+2. Find the brief's vintage commit (see Repo conventions), classify it with the same helper, and use its range only when `STATUS=usable`. An unavailable creation commit goes straight to direct verification; never retry it, guess a replacement, or use a date window.
 3. Grep the absolute claims — "X is never assigned", "nothing checks Y", "the only caller of Z". Those are the ones that rot silently and the ones a single `grep -rn` settles.
 4. Scale with `effort:` — for `medium`/`large`, fan an `Explore` subagent over the scoped subsystem so verification is not confined to the paths the possibly-stale brief happens to name.
 

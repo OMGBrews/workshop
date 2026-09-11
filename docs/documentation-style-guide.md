@@ -765,7 +765,7 @@ dependencies: []           # task slugs that must land before this one
 ---
 ```
 
-One further field, `finalized-at`, is **machine-written** — `/task-finalize` stamps the commit SHA it verified the task's claims against, and the task-queue worker diffs that SHA against `HEAD` over the scoped paths at pickup. Never fill it by hand.
+One further field, `finalized-at`, is **machine-written** — `/task-finalize` records a conservative comparison baseline shared by the inspected commit and a freshly fetched default branch when possible, falling back to the inspected commit with an explicit limited-durability disclosure. The task-queue worker diffs a usable baseline against `HEAD` over the scoped paths at pickup; unavailable history triggers full direct re-verification without blocking queue admission. Never fill it by hand.
 
 The body, in order:
 

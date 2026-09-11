@@ -51,6 +51,12 @@ if ! task_repo="$(git -C "$(dirname "$task_file")" rev-parse --show-toplevel 2>/
     exit 2
 fi
 task_repo="$(cd -P "$task_repo" && pwd)"
+skill_dir="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+history_helper="$skill_dir/task-history-baseline.sh"
+if [ ! -f "$history_helper" ]; then
+    echo "missing bundled task history helper: '$history_helper'" >&2
+    exit 2
+fi
 
 # Parse frontmatter and the task-format sections once.  Every emitted value is
 # a tab-separated scalar, so the Bash half can use the same parse for the full
@@ -323,8 +329,8 @@ dependencies_issue() {
     return 0
 }
 
-finalized_at_issue() { # <required: 0|1> <check-commit: 0|1>
-    local required="$1" check_commit="$2"
+finalized_at_issue() { # <required: 0|1>
+    local required="$1"
     if [ "$finalized_at_count" -eq 0 ]; then
         if [ "$required" -eq 1 ]; then
             printf 'missing finalized-at — finalized placement requires a verified brief'
@@ -333,10 +339,27 @@ finalized_at_issue() { # <required: 0|1> <check-commit: 0|1>
         printf 'frontmatter field finalized-at appears %s times' "$finalized_at_count"
     elif ! [[ "$finalized_at" =~ ^[0-9a-f]{40}$ ]]; then
         printf 'finalized-at is not a 40-hex commit SHA: %s' "$finalized_at"
-    elif [ "$check_commit" -eq 1 ] && ! git -C "$task_repo" cat-file -e "$finalized_at^{commit}" 2>/dev/null; then
-        printf 'finalized-at %s does not name a commit in this repo' "$finalized_at"
     fi
     return 0
+}
+
+history_status=""
+history_reason=""
+classify_finalized_history() {
+    local line history_output history_rc=0 inspected
+    inspected="$(git -C "$task_repo" rev-parse HEAD)"
+    history_output="$(bash "$history_helper" check "$task_repo" "$inspected" "$finalized_at")" \
+        || history_rc=$?
+    while IFS= read -r line; do
+        case "$line" in
+            STATUS=*) history_status="${line#STATUS=}" ;;
+            REASON=*) history_reason="${line#REASON=}" ;;
+        esac
+    done <<<"$history_output"
+    if [ "$history_rc" -eq 2 ] || [ "$history_status" = error ] || [ -z "$history_status" ]; then
+        history_status="error"
+        [ -n "$history_reason" ] || history_reason="task history helper failed with exit $history_rc"
+    fi
 }
 
 sentinels_issue() {
@@ -375,11 +398,20 @@ if [ "$mode" = "conformance" ]; then
     [ -z "$issue" ] || format_fail "$issue"
 
     if [ "$policy" = "finalized" ] || [ "$policy" = "queued" ]; then
-        issue="$(finalized_at_issue 1 1)"
+        issue="$(finalized_at_issue 1)"
     else
-        issue="$(finalized_at_issue 0 0)"
+        issue="$(finalized_at_issue 0)"
     fi
     [ -z "$issue" ] || format_fail "$issue"
+
+    if [ -z "$issue" ] && { [ "$policy" = "finalized" ] || [ "$policy" = "queued" ]; }; then
+        classify_finalized_history
+        if [ "$history_status" = reverify ]; then
+            printf 'WARN finalized-at history is unavailable — full re-verification required: %s\n' "$history_reason"
+        elif [ "$history_status" = error ]; then
+            format_fail "could not classify finalized-at history: $history_reason"
+        fi
+    fi
 
     issue="$(sentinels_issue)"
     [ -z "$issue" ] || format_fail "$issue"
@@ -450,9 +482,17 @@ else
     pass_rule 7 "priority is '$priority' and dependencies are well-formed"
 fi
 
-issue="$(finalized_at_issue 1 1)"
+issue="$(finalized_at_issue 1)"
 if [ -z "$issue" ]; then
-    pass_rule 8 "finalized-at names a commit in this task file's worktree"
+    classify_finalized_history
+    if [ "$history_status" = usable ]; then
+        pass_rule 8 "finalized-at is a usable ancestor of this task file's worktree HEAD"
+    elif [ "$history_status" = reverify ]; then
+        pass_rule 8 "finalized-at metadata is well-formed"
+        warn_rule 8 "finalized-at history is unavailable — full re-verification required: $history_reason"
+    else
+        fail_rule 8 "could not classify finalized-at history: $history_reason"
+    fi
 else
     fail_rule 8 "$issue"
 fi
