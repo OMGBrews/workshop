@@ -99,6 +99,7 @@ Behavior and exposure, so the tradeoff is explicit:
 
 ## See also
 
+- [`../../cloud-git-lfs.md`](../../cloud-git-lfs.md) — what a repository's `scripts/agent/cloud-env.sh` runs when it tracks files with Git LFS
 - The templates index in the consuming repository — the other copy-paste templates
 - [`secrets-in-workflows.md`](../../secrets-in-workflows.md) — if a pointer check needs a read token for a private upstream
 - [`../../../.agents/skills/ship/SKILL.md`](../../../.agents/skills/ship/SKILL.md) — the `/ship` skill this kit's adoption step links in

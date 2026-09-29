@@ -103,6 +103,10 @@ in SessionStart bootstrap instead. A project with no such work declares `[]` and
 in prose what prepares its sessions. Shared environments always declare `[]`: their
 co-tenants must match byte-for-byte, and a setup script would run for every primary.
 
+A repository that tracks files with Git LFS installs `git-lfs` here and wires
+authentication, the push hook, and hydration at session start; see
+[Git LFS in cloud sessions](cloud-git-lfs.md).
+
 ## Version 1 schema
 
 Every declaration has these fields:
@@ -288,6 +292,7 @@ composition remains declared in `.gitmodules`.
 
 ## See also
 
+- [Git LFS in cloud sessions](cloud-git-lfs.md) — LFS authentication, push hook, and hydration
 - [Definition of done](definition-of-done.md) — evidence required before work is complete
 - [Secrets in workflows](secrets-in-workflows.md) — secret-handling boundaries
 - [Verification terminology](verification-terminology.md) — language for declared and observed evidence
