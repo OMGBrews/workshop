@@ -3,6 +3,13 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- Added `Tools/cloud-git-lfs.sh` and `docs/cloud-git-lfs.md` for repositories
+  that track files with Git LFS in Claude Code on the Web. One `session` call
+  installs the credential fallback git-lfs needs before the session proxy can
+  authorize it, installs git-lfs's `pre-push` hook under Workshop's
+  `core.hooksPath`, and hydrates with a positive census. It is meant to replace the
+  per-repository copies of plunk-godot's fallback helper once consumers adopt it.
+
 - Added a canonical prose template and the `problem-create`, `problem-status`,
   and `problem-audit` skills for recording and reassessing flaws that exist
   today. Kaizen routing and the seeded problems guide now share that template,
