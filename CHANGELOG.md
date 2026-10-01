@@ -3,6 +3,12 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- `Tools/cloud-git-lfs.sh hydrate` now also requires the index to agree with
+  the hydrated files. `git lfs pull` exits 0 even when its index update fails,
+  which leaves `git status` listing every pulled file as modified. A pull now
+  repairs those entries, and `--verify` reports them. The census also stops
+  counting uncommitted edits to LFS files as unhydrated placeholders.
+
 - Added `Tools/cloud-git-lfs.sh` and `docs/cloud-git-lfs.md` for repositories
   that track files with Git LFS in Claude Code on the Web. One `session` call
   installs the credential fallback git-lfs needs before the session proxy can

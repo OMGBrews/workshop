@@ -40,7 +40,9 @@
 #     pre-push that is not git-lfs's is never overwritten.
 #
 #   hydrate — `git lfs pull`, then the positive assertion: at least one file is
-#     LFS-tracked under the patterns and none remains a pointer. A pointer is a
+#     LFS-tracked under the patterns, none remains a pointer, and the index
+#     agrees with the hydrated files (stale_entries explains the failure that
+#     check exists for; a pull repairs it, --verify reports it). A pointer is a
 #     ~130-byte text file, and reading one does not error.
 #
 # Exit: 0 when the step (or every step) achieved its positive property;
@@ -103,10 +105,64 @@ pre_push_hook() {
   fi
 }
 
-# `git lfs ls-files --long`: "<64-hex oid> <-|*> <path>"; `-` pointer, `*` hydrated.
+# `git lfs ls-files --long`: "<64-hex oid> <-|*> <path>". `*` is a hydrated file;
+# `-` is any file whose content is not that object, which includes an edited
+# file as well as a pointer. A pointer is counted only when the file's first
+# line is the pointer header, so uncommitted edits never read as unhydrated.
+# Builtins only: a pointer-only clone lists thousands of `-` entries.
 census() {
-  git -C "$REPO" lfs ls-files --long "${include_args[@]}" \
-    | awk 'length($1) == 64 && ($2 == "-" || $2 == "*") { t++; if ($2 == "-") p++ } END { print t + 0, p + 0 }'
+  local line path first total=0 pointers=0
+  while IFS= read -r line; do
+    [[ "$line" =~ ^[0-9a-f]{64}\ [-*]\  ]] || continue
+    total=$((total + 1))
+    [ "${line:65:1}" = "-" ] || continue
+    path="${line:67}"
+    first=""
+    { IFS= read -r first < "$REPO/$path"; } 2>/dev/null || true
+    case "$first" in "version https://git-lfs.github.com/spec/"*) pointers=$((pointers + 1)) ;; esac
+  done < <(git -C "$REPO" lfs ls-files --long "${include_args[@]}")
+  echo "$total $pointers"
+}
+
+# LFS-tracked paths under the patterns whose index entry is stale: git's stat
+# comparison reports them changed, yet their content matches the index. This is
+# what `git lfs pull` leaves when its index update fails, for example on a held
+# index.lock; it prints "Error updating the Git index" and still exits 0. The
+# index then keeps the pointer's size, git treats a size change as modified
+# without comparing content, so `git status` lists every such file while
+# `git diff` and `update-index --refresh` see nothing to fix. A real edit has a
+# content diff and is not stale. Writes the paths, one per line, to <file>.
+stale_entries() { # <file>
+  local dir
+  dir="$(mktemp -d)"
+  git -C "$REPO" lfs ls-files --name-only "${include_args[@]}" | sort -u > "$dir/lfs"
+  git -C "$REPO" -c core.quotePath=false diff-files --name-only | sort -u > "$dir/stat"
+  git -C "$REPO" -c core.quotePath=false diff --name-only | sort -u > "$dir/content"
+  comm -12 "$dir/lfs" "$dir/stat" | comm -23 - "$dir/content" > "$1"
+  rm -rf "$dir"
+}
+
+# Rewrites stale entries from the index (identical content; git records the real
+# size), unless verifying. Fails while any remain.
+index_agrees() {
+  local list n label="$1"
+  list="$(mktemp)"
+  stale_entries "$list"
+  n="$(wc -l < "$list")"
+  if [ "$n" -gt 0 ] && [ "$verify" -eq 0 ]; then
+    say "$n hydrated files under $label have stale index entries; rewriting them from the index"
+    git -C "$REPO" --literal-pathspecs checkout --pathspec-from-file="$list" || err "git checkout exited $?"
+    stale_entries "$list"
+    n="$(wc -l < "$list")"
+  fi
+  if [ "$n" -gt 0 ]; then
+    err "$n files under $label are hydrated but their index entries are stale, so git status reports them modified:"
+    head -n 5 "$list" | sed 's/^/    /' >&2
+    if [ "$verify" -eq 1 ]; then err "run hydrate without --verify to repair them"; fi
+    rm -f "$list"
+    return 1
+  fi
+  rm -f "$list"
 }
 
 hydrate() {
@@ -130,7 +186,8 @@ hydrate() {
     err "$pointers of $total files under $label are still pointers"
     return 1
   fi
-  say "$total files under $label hydrated, 0 pointers"
+  index_agrees "$label" || return 1
+  say "$total files under $label hydrated, 0 pointers, index current"
 }
 
 [ $# -ge 1 ] || usage
