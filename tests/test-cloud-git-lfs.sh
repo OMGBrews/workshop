@@ -14,6 +14,9 @@
 #   5. hydrate: --verify fails on pointers; a pull hydrates with a positive
 #      count; --include scopes it; patterns matching nothing fail rather than
 #      pass on silence; an unreachable endpoint fails.
+#   5b. hydrate after a pull whose index update failed: --verify reports the
+#      stale entries without changing them, hydrate repairs them and keeps a
+#      real edit, and a still-locked index fails.
 #   6. session end to end: a pointer-only clone is hydrated, and a push of a
 #      new LFS file uploads its object to the remote.
 #   7. usage errors exit 2.
@@ -125,6 +128,38 @@ pointer_clone "$TMP/c5b"
 git -C "$TMP/c5b" config lfs.url "file://$TMP/no-such-remote.git/info/lfs"
 if bash "$TOOL" hydrate "$TMP/c5b" >/dev/null 2>&1; then fail "hydrate passed with an unreachable endpoint"; fi
 echo "ok 5 - hydrate: verify, scope, empty census and unreachable endpoint"
+
+# --- 5b. a pull whose index update failed ------------------------------------
+# A held index.lock makes `git lfs pull` print "Error updating the Git index"
+# and still exit 0: the files are hydrated, the index keeps the pointers' sizes,
+# and git status reports every one modified while git diff reports nothing.
+stale_clone() { # <dir>
+  pointer_clone "$1"
+  git -C "$1" lfs install --local --skip-repo >/dev/null
+  touch "$1/.git/index.lock"
+  git -C "$1" lfs pull >/dev/null 2>&1 || true
+  rm -f "$1/.git/index.lock"
+  [ "$(git -C "$1" status --porcelain | wc -l)" = 2 ] || fail "fixture did not reproduce the stale index"
+}
+stale_clone "$TMP/c5c"
+echo "edited" > "$TMP/c5c/reference/r.bin"  # a real edit: content differs, so it is not stale
+if bash "$TOOL" hydrate --verify "$TMP/c5c" >/dev/null 2>"$TMP/err"; then fail "--verify passed a stale index"; fi
+grep -q 'index entries are stale' "$TMP/err" || fail "--verify did not name the stale index"
+grep -q 'assets/a.bin' "$TMP/err" || fail "--verify did not list the stale path"
+grep -q 'reference/r.bin' "$TMP/err" && fail "--verify reported a real edit as stale"
+[ "$(git -C "$TMP/c5c" status --porcelain | wc -l)" = 2 ] || fail "--verify changed the index"
+bash "$TOOL" hydrate "$TMP/c5c" > "$TMP/out" || fail "hydrate did not repair a stale index: $(cat "$TMP/out")"
+grep -q 'rewriting them from the index' "$TMP/out" || fail "hydrate did not report the repair"
+grep -q '0 pointers, index current' "$TMP/out" || fail "hydrate did not report a current index"
+[ "$(git -C "$TMP/c5c" status --porcelain)" = " M reference/r.bin" ] || fail "after repair, status is not exactly the real edit: $(git -C "$TMP/c5c" status --porcelain)"
+[ "$(cat "$TMP/c5c/reference/r.bin")" = "edited" ] || fail "the repair discarded a real edit"
+
+stale_clone "$TMP/c5d"
+touch "$TMP/c5d/.git/index.lock"
+if bash "$TOOL" hydrate "$TMP/c5d" >/dev/null 2>"$TMP/err"; then fail "hydrate passed while the index stayed locked"; fi
+grep -q 'index entries are stale' "$TMP/err" || fail "a locked index was not reported as stale"
+rm -f "$TMP/c5d/.git/index.lock"
+echo "ok 5b - a stale index: verify reports it, hydrate repairs it, real edits survive, a held lock fails"
 
 # --- 6. session end to end, including the upload -------------------------------
 pointer_clone "$TMP/c6"

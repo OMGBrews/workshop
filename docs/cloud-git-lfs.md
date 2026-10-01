@@ -28,6 +28,14 @@ Three independent failures, each silent or misleading:
   `git lfs install` stops with an error on Workshop's `post-checkout`. Without
   git-lfs's `pre-push` there, a pushed commit references objects the remote
   never received.
+- **A pull can leave the index stale and still exit 0.** When `git lfs pull`
+  cannot update the index, for example because another process holds
+  `index.lock`, it prints `Error updating the Git index` and exits 0. The files
+  are hydrated, but the index keeps each placeholder's size, and git treats a
+  size change as a modification without comparing content. `git status` then
+  lists every such file as modified, while `git diff` and
+  `git update-index --refresh` find nothing to fix. plunk-godot hit this in a
+  session that ran every hook twice: 149 of 322 files showed as modified.
 
 ## The fix
 
@@ -57,7 +65,7 @@ bash workshop/Tools/cloud-git-lfs.sh session --include='assets/**'
 |---|---|
 | `credential-fallback` | Appends a repository-local helper for `https://github.com` that answers `username=git`, `password=placeholder` only after every earlier helper returned nothing. The proxy supplies the real authorization. Idempotent. |
 | `pre-push-hook` | Installs git-lfs's `pre-push` alone into the effective hooks directory, wiring `core.hooksPath` first as the bootstrap would. Never overwrites a foreign `pre-push`. |
-| `hydrate [--verify]` | Pulls, then asserts a positive census: at least one LFS file under the patterns and zero pointers. |
+| `hydrate [--verify]` | Pulls, then asserts a positive census: at least one LFS file under the patterns, zero pointers, and an index that agrees with the hydrated files. A pull rewrites stale entries from the index with `git checkout`, which leaves real edits alone; `--verify` reports them without changing anything. Only a file whose content is a placeholder counts as one, so uncommitted edits never fail the census. |
 
 Omit `--include` to hydrate everything. Hydrate at session start only what
 the repository's checks need; large archives that most sessions never open
