@@ -207,7 +207,10 @@ contradict its declared state.
 
 `primaryRepository` must match the checkout's GitHub `origin`. Validation takes
 a repository root, not an arbitrary subdirectory, so a declaration cannot be
-silently checked against the wrong project.
+silently checked against the wrong project. Inside a Claude Code on the Web
+session, `origin` reads as the session's local Git proxy,
+`http://local_proxy@127.0.0.1:<port>/git/<owner>/<repo>`, and the validator
+reads the repository from that form too.
 
 ## Standard bootstrap adoption
 
