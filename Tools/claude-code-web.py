@@ -25,11 +25,15 @@ DOMAIN = re.compile(
 SECRET_NAME_COMPONENTS = {"KEY", "TOKEN", "PASSWORD", "PASSWD", "SECRET", "CREDENTIAL", "CREDENTIALS"}
 
 # GitHub remote spellings, shared by the checkout identity check and the
-# `.gitmodules` reader below.
+# `.gitmodules` reader below. The last is the Claude Code on the Web session's
+# local Git proxy: inside a session, `git remote get-url origin` returns that
+# rewritten address rather than the stored github.com URL, so without it every
+# configured repository fails validation in its own cloud session.
 GITHUB_URL_PATTERNS = (
     r"^https?://github\.com/([^/]+/[^/]+?)(?:\.git)?$",
     r"^git@github\.com:([^/]+/[^/]+?)(?:\.git)?$",
     r"^ssh://git@github\.com/([^/]+/[^/]+?)(?:\.git)?$",
+    r"^http://local_proxy@127\.0\.0\.1:[0-9]+/git/([^/]+/[^/]+?)(?:\.git)?$",
 )
 
 # Both public spellings of the Workshop remote. The repository was transferred

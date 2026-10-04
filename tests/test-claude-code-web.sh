@@ -185,6 +185,22 @@ make_repo "$case_dir"
 git -C "$case_dir" remote set-url origin https://github.com/example/other.git
 expect_fail "primary repository must match origin" "$case_dir" "does not match the checkout origin"
 
+# Inside a Claude Code on the Web session, origin reads as the local Git proxy.
+case_dir="$TMP/proxy-origin"
+make_repo "$case_dir"
+git -C "$case_dir" remote set-url origin http://local_proxy@127.0.0.1:41337/git/example/project
+expect_pass "cloud session proxy origin" "$case_dir"
+
+case_dir="$TMP/proxy-origin-mismatch"
+make_repo "$case_dir"
+git -C "$case_dir" remote set-url origin http://local_proxy@127.0.0.1:41337/git/example/other
+expect_fail "proxy origin must still match the primary repository" "$case_dir" "does not match the checkout origin"
+
+case_dir="$TMP/non-github-origin"
+make_repo "$case_dir"
+git -C "$case_dir" remote set-url origin http://example.com/git/example/project
+expect_fail "a non-GitHub origin is not read as GitHub" "$case_dir" "origin is not a supported GitHub repository URL"
+
 case_dir="$TMP/not-configured"
 mkdir -p "$case_dir/docs/work"
 git init -q "$case_dir"

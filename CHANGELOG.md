@@ -3,6 +3,12 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- `Tools/claude-code-web.py validate` now accepts a Claude Code on the Web
+  session's proxy origin, `http://local_proxy@127.0.0.1:<port>/git/<owner>/<repo>`.
+  Inside a session, `git remote get-url origin` returns that address, so every
+  configured repository failed validation in its own cloud session with "origin
+  is not a supported GitHub repository URL".
+
 - `Tools/cloud-git-lfs.sh hydrate` now also requires the index to agree with
   the hydrated files. `git lfs pull` exits 0 even when its index update fails,
   which leaves `git status` listing every pulled file as modified. A pull now
