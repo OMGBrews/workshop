@@ -74,7 +74,7 @@ docs/
 ├── features/           # Feature-specific documentation
 ├── guides/             # How-to guides, tutorials
 ├── operations/         # Ports, scripts, troubleshooting
-├── planning/           # Human thinking only — strategic plans, ideas, roadmaps
+├── planning/           # Human thinking — strategic plans, roadmaps, ideas/
 ├── reference/          # Lookup material (libraries, dimensions)
 ├── setup/              # Initial setup, configuration
 ├── style-guides/       # Conventions (docs, code, READMEs)
@@ -102,7 +102,7 @@ docs/
 | `features/` | Documentation for implemented features | `achievements.md`, `prerequisite-graph.md` |
 | `guides/` | Step-by-step how-to guides | `adding-a-new-screen.md` |
 | `operations/` | Operational concerns, scripts, ports | `port-assignments.md`, `backup-procedures.md` |
-| `planning/` | Strategic plans, ideas, roadmaps | `v2-improvements.md`, `ideas/` |
+| `planning/` | Strategic plans, roadmaps, and idea documents in `ideas/` (see [Idea documents](#idea-documents)) | `v2-improvements.md`, `ideas/` |
 | `reference/` | Lookup material that changes infrequently | `libraries.md`, `game-dimensions.md` |
 | `setup/` | Initial setup and configuration | `development-environment.md` |
 | `style-guides/` | Coding and documentation conventions | `csharp-style-guide.md` |
@@ -728,6 +728,36 @@ What follows from this decision (positive and negative).
 - Links to related docs
 ```
 
+### Idea documents
+
+Located in `docs/planning/ideas/`, one flat folder with one kebab-case file per idea. An idea document preserves a direction — a possible feature, design, or project — that nothing is planned for yet: it leads with the problem and the proposed direction and keeps its open questions open. It describes a possible future, never shipped state, and may sit indefinitely; when the direction is pursued, its concrete work graduates into tasks.
+
+**Template**: [`templates/idea-doc.md`](./templates/idea-doc.md). **Folder README seed**: [`templates/ideas/README.md`](./templates/ideas/README.md), which says when to add a document, what keeps it an idea, and how one graduates, and keeps no index.
+
+The `thought-finalize` skill writes an idea document here, on the user's confirmation, when a thought turns out to be a direction rather than work, and seeds the folder where a repository has none. A repository whose ideas folder predates the genre keeps its own README and layout; the skill follows them.
+
+```markdown
+# Idea title
+
+What direction this document explores (scope statement).
+
+## Problem statement
+
+What is missing or hard today, and for whom.
+
+## Proposed direction
+
+The shape of a possible answer.
+
+## Open questions
+
+- What would have to be decided first
+
+## See also
+
+- Links to related docs
+```
+
 ### Directory READMEs
 
 Source code directories benefit from a short `README.md` that orients developers. These are distinct from documentation directory READMEs (covered in [File organization](#file-organization)) — they describe code, not docs.
@@ -812,7 +842,7 @@ A criterion is `- [ ]` (not done) or `- [x]` (done). A third marker, `- [~]`, is
 - **Constraints are acceptance criteria**, not background. Must work offline, must support both platforms — these get checkboxes.
 - **Delete unused optional sections** rather than leaving them empty.
 - **Completed tasks are deleted.** Git history preserves them; there is no `done` status. Reprioritize by moving the file between buckets — `/task-move` for one, `/task-reprioritize` for a rebalance.
-- **Slash commands**: `/task-list` (inventory), `/task-status` (liveness and closure verdicts), `/task-next` (what to work on), `/task-create`, `/task-move`, `/task-reprioritize`, `/task-audit` (validity against the codebase), `/task-finalize` (verify and resolve questions), `/task-implement` (execute in-session), `/task-queue` (the autonomous runner), `/problem-create`, `/problem-status`, `/problem-audit`, and `/focus-update` (write or replace the repository's direction). They were renamed from verb-first names — `/list-tasks` → `/task-list` — in the 2026-07-26 convergence.
+- **Slash commands**: `/task-list` (inventory), `/task-status` (liveness and closure verdicts), `/task-next` (what to work on), `/task-create`, `/task-move`, `/task-reprioritize`, `/task-audit` (validity against the codebase), `/task-finalize` (verify and resolve questions), `/task-implement` (execute in-session), `/task-queue` (the autonomous runner), `/problem-create`, `/problem-status`, `/problem-audit`, `/thought-create` (capture a note into `docs/work/thoughts/`), `/thought-finalize` (decide what a thought becomes), and `/focus-update` (write or replace the repository's direction). They were renamed from verb-first names — `/list-tasks` → `/task-list` — in the 2026-07-26 convergence.
 
 #### Metadata policy
 
