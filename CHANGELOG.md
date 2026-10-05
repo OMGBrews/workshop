@@ -3,6 +3,17 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- Added the `thought-create` and `thought-finalize` skills for a repository's
+  `docs/work/thoughts/` folder. `thought-create` captures a note there,
+  creating and seeding the folder where it is absent. `thought-finalize`
+  decides with the user what a thought becomes — a task, a problem record, an
+  idea document, a record, an amendment, a kaizen entry, or nothing — hands it
+  to that artifact's owner, and deletes the thought in the same commit. The
+  thoughts-folder seed is `docs/templates/thoughts/README.md`. A new
+  idea-document genre ships with them: `docs/templates/idea-doc.md`, a
+  `docs/templates/ideas/README.md` seed for `docs/planning/ideas/`, and a
+  matching section in the documentation style guide.
+
 - `Tools/claude-code-web.py validate` now accepts a Claude Code on the Web
   session's proxy origin, `http://local_proxy@127.0.0.1:<port>/git/<owner>/<repo>`.
   Inside a session, `git remote get-url origin` returns that address, so every
