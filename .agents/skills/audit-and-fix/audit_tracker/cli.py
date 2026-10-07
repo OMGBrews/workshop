@@ -9,6 +9,7 @@ from pathlib import Path
 
 from . import git_utils, queries, records
 from .config import (
+    SELF_REPOSITORY,
     Config,
     ConfigError,
     KINDS,
@@ -19,6 +20,7 @@ from .config import (
 )
 from .db import connect, init_schema
 from .refresh import refresh
+from .repositories import RepositoryContext, SubjectRepositoryError, resolve_all
 
 # A repo without the opt-in config gets this dedicated code — never
 # conflatable with "no candidates" (0) or a broken tracker (1). The selector
@@ -53,8 +55,15 @@ def _build_parser() -> argparse.ArgumentParser:
     under_help = (
         "Restrict to the given path and its descendants. Must be repo-relative; "
         "leading './' and trailing '/' are stripped, and absolute paths or '..' "
-        "segments are rejected."
+        "segments are rejected. When the config declares repositories, "
+        "--under also needs --repository."
     )
+    repository_help = (
+        "Repository to act on: 'self' (the control repository) or a name "
+        "declared under [repositories] in the config. Paths are relative to "
+        "that repository's root."
+    )
+    scope_help = repository_help + " Default: every configured repository."
 
     p_next = sub.add_parser("next", help="Print the next path(s) to audit for a type")
     p_next.add_argument("audit_type")
@@ -78,6 +87,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Restrict to files or directories only",
     )
     p_next.add_argument("--under", metavar="PATH", help=under_help)
+    p_next.add_argument("--repository", metavar="NAME", help=scope_help)
     p_next.add_argument(
         "--format",
         dest="output_format",
@@ -94,6 +104,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Restrict to files or directories only",
     )
     p_status.add_argument("--under", metavar="PATH", help=under_help)
+    p_status.add_argument("--repository", metavar="NAME", help=scope_help)
 
     p_done = sub.add_parser(
         "done",
@@ -103,6 +114,9 @@ def _build_parser() -> argparse.ArgumentParser:
     p_done.add_argument("audit_type")
     p_done.add_argument("--commit", help="Override the commit SHA (default: current HEAD)")
     p_done.add_argument("--note", help="Optional free-form note for the audit record")
+    p_done.add_argument(
+        "--repository", metavar="NAME", help=repository_help + " Default: self."
+    )
 
     p_validate = sub.add_parser(
         "validate-path",
@@ -111,6 +125,9 @@ def _build_parser() -> argparse.ArgumentParser:
     p_validate.add_argument("path")
     p_validate.add_argument("audit_type")
     p_validate.add_argument("--kind", choices=["file", "directory"])
+    p_validate.add_argument(
+        "--repository", metavar="NAME", help=repository_help + " Default: self."
+    )
     p_validate.add_argument(
         "--format",
         dest="output_format",
@@ -132,12 +149,32 @@ def _positive_int(value: str) -> int:
     return parsed
 
 
-def _cmd_refresh(conn: sqlite3.Connection, cfg: Config) -> int:
-    summary = refresh(conn, cfg)
-    state = records.read_refresh_state()
+def _labelled(cfg: Config) -> bool:
+    """Whether output names repositories: only once the config declares one.
+
+    A single-repository config keeps every text line exactly as before.
+    """
+    return bool(cfg.repositories)
+
+
+def _roots(contexts: list[RepositoryContext]) -> dict[str, Path]:
+    return {context.name: context.root for context in contexts}
+
+
+def _subject_paths(cfg: Config | None) -> list[str]:
+    """Control-relative paths of every declared subject."""
+    return [] if cfg is None else [repo.path for repo in cfg.repositories.values()]
+
+
+def _cmd_refresh(
+    conn: sqlite3.Connection, cfg: Config, contexts: list[RepositoryContext]
+) -> int:
+    summary = refresh(conn, cfg, contexts)
+    state = records.read_refresh_state(repository=contexts[0].name)
     when = state["last_refreshed_at"] if state else "unknown"
+    across = f" in {len(contexts)} repositories" if _labelled(cfg) else ""
     print(
-        f"Refreshed at {when}: {summary.total_paths} paths "
+        f"Refreshed at {when}: {summary.total_paths} paths{across} "
         f"(+{summary.added_paths} new, -{summary.removed_paths} removed), "
         f"{summary.applicability_rows} applicability rows across "
         f"{len(cfg.audit_types)} audit types"
@@ -145,23 +182,44 @@ def _cmd_refresh(conn: sqlite3.Connection, cfg: Config) -> int:
     return 0
 
 
-def _cmd_list_types(conn: sqlite3.Connection, cfg: Config) -> int:
-    state = records.read_refresh_state()
-    if state is not None:
-        commit = state["last_refresh_commit"] or "?"
-        print(f"Last refresh: {state['last_refreshed_at']} (commit {commit})")
-    else:
-        print("Last refresh: never recorded")
+def _cmd_list_types(
+    conn: sqlite3.Connection, cfg: Config, contexts: list[RepositoryContext]
+) -> int:
+    labelled = _labelled(cfg)
+    for context in contexts:
+        state = records.read_refresh_state(repository=context.name)
+        heading = f"Last refresh ({context.name})" if labelled else "Last refresh"
+        if state is not None:
+            commit = state["last_refresh_commit"] or "?"
+            print(f"{heading}: {state['last_refreshed_at']} (commit {commit})")
+        else:
+            print(f"{heading}: never recorded")
     print()
-    configured = set(cfg.audit_types)
-    known = set(queries.list_types(conn))
-    for type_name in sorted(configured | known):
-        present = "configured" if type_name in configured else "orphaned"
-        stats = queries.status(conn, type_name)
-        print(
-            f"{type_name:<20}  {present:<11}  "
-            f"total={stats.total} audited={stats.audited} never={stats.never} stale={stats.stale}"
-        )
+    roots = _roots(contexts)
+    for context in contexts:
+        configured = {
+            type_name
+            for type_name, audit_type in cfg.audit_types.items()
+            if any(rule.repository == context.name for rule in audit_type.targets)
+        }
+        if not labelled:
+            # Historical behaviour: every configured type gets a row.
+            configured = set(cfg.audit_types)
+        known = set(queries.list_types(conn, context.name))
+        for type_name in sorted(configured | known):
+            present = "configured" if type_name in configured else "orphaned"
+            stats = queries.status(
+                conn,
+                type_name,
+                repository=context.name,
+                roots=roots,
+                subject_paths=_subject_paths(cfg),
+            )
+            repository = f"{context.name:<12}  " if labelled else ""
+            print(
+                f"{type_name:<20}  {repository}{present:<11}  "
+                f"total={stats.total} audited={stats.audited} never={stats.never} stale={stats.stale}"
+            )
     return 0
 
 
@@ -180,6 +238,10 @@ def _cmd_next(
     kind: PathKind | None,
     under: str | None,
     output_format: str,
+    *,
+    repository: str | None = None,
+    contexts: list[RepositoryContext] | None = None,
+    cfg: Config | None = None,
 ) -> int:
     try:
         prefix = _resolve_prefix(under)
@@ -194,12 +256,17 @@ def _cmd_next(
         only_stale=only_stale,
         kind=kind,
         path_prefix=prefix,
+        repository=repository,
+        roots=_roots(contexts) if contexts else None,
+        subject_paths=_subject_paths(cfg),
     )
     if not candidates:
         if output_format == "json":
             print(json.dumps({"outcome": "empty", "candidates": []}))
             return 0
         scope = f" under {prefix!r}" if prefix else ""
+        if repository is not None and repository != SELF_REPOSITORY:
+            scope += f" in repository {repository!r}"
         print(f"No candidates for {audit_type!r}{scope}.")
         return 0
     if output_format == "json":
@@ -209,6 +276,7 @@ def _cmd_next(
                     "outcome": "selected",
                     "candidates": [
                         {
+                            "repository": c.repository,
                             "path": c.path,
                             "kind": c.kind,
                             "reason": c.reason,
@@ -228,7 +296,8 @@ def _cmd_next(
             detail = f"{c.commits_since_audit} commit(s) since audit at {c.last_audited_at}"
         else:
             detail = f"last audited {c.last_audited_at}"
-        print(f"{c.path}\t[{c.kind}]\t{detail}")
+        shown = c.path if c.repository == SELF_REPOSITORY else f"{c.repository}:{c.path}"
+        print(f"{shown}\t[{c.kind}]\t{detail}")
     return 0
 
 
@@ -237,23 +306,42 @@ def _cmd_status(
     audit_type: str,
     kind: PathKind | None,
     under: str | None,
+    *,
+    cfg: Config | None = None,
+    contexts: list[RepositoryContext] | None = None,
 ) -> int:
     try:
         prefix = _resolve_prefix(under)
     except ValueError as e:
         print(str(e), file=sys.stderr)
         return 2
-    s = queries.status(conn, audit_type, kind=kind, path_prefix=prefix)
-    scope_bits: list[str] = []
-    if kind:
-        scope_bits.append(f"{'directories' if kind == 'directory' else 'files'} only")
-    if prefix:
-        scope_bits.append(f"under {prefix}")
-    scope = f" ({', '.join(scope_bits)})" if scope_bits else ""
-    print(
-        f"{s.audit_type}{scope}: total={s.total} audited={s.audited} "
-        f"never={s.never} stale={s.stale}"
+    labelled = cfg is not None and _labelled(cfg)
+    names: list[str | None] = (
+        [context.name for context in contexts] if labelled and contexts else [None]
     )
+    roots = _roots(contexts) if contexts else None
+    for name in names:
+        s = queries.status(
+            conn,
+            audit_type,
+            kind=kind,
+            path_prefix=prefix,
+            repository=name,
+            roots=roots,
+            subject_paths=_subject_paths(cfg),
+        )
+        scope_bits: list[str] = []
+        if name is not None:
+            scope_bits.append(f"repository {name}")
+        if kind:
+            scope_bits.append(f"{'directories' if kind == 'directory' else 'files'} only")
+        if prefix:
+            scope_bits.append(f"under {prefix}")
+        scope = f" ({', '.join(scope_bits)})" if scope_bits else ""
+        print(
+            f"{s.audit_type}{scope}: total={s.total} audited={s.audited} "
+            f"never={s.never} stale={s.stale}"
+        )
     return 0
 
 
@@ -263,16 +351,33 @@ def _cmd_done(
     audit_type: str,
     commit: str | None,
     note: str | None,
+    *,
+    cfg: Config | None = None,
+    context: RepositoryContext | None = None,
 ) -> int:
     try:
         validated = queries.validate_explicit_path(
-            path, conn=conn, audit_type=audit_type
+            path,
+            conn=conn,
+            audit_type=audit_type,
+            repository=context,
+            declared=cfg.repositories if cfg is not None else None,
         )
-        queries.done(conn, validated.path, audit_type, commit=commit, note=note)
+        sha = queries.done(
+            conn, validated.path, audit_type, commit=commit, note=note, repository=context
+        )
     except ValueError as e:
         print(str(e), file=sys.stderr)
         return 1
-    print(f"Marked {validated.path} as audited for {audit_type}.")
+    if context is None or context.is_self:
+        print(f"Marked {validated.path} as audited for {audit_type}.")
+    else:
+        record = records.records_path(audit_type, repository=context.name)
+        print(
+            f"Marked {validated.path} in repository {context.name} as audited for "
+            f"{audit_type} at {sha}. Record: "
+            f"{record.relative_to(git_utils.repo_root()).as_posix()}"
+        )
     return 0
 
 
@@ -284,6 +389,8 @@ def _cmd_validate_path(
     *,
     conn: sqlite3.Connection | None,
     configured: bool,
+    cfg: Config | None = None,
+    context: RepositoryContext | None = None,
 ) -> int:
     try:
         validated = queries.validate_explicit_path(
@@ -291,6 +398,8 @@ def _cmd_validate_path(
             conn=conn,
             audit_type=audit_type if configured else None,
             expected_kind=kind,
+            repository=context,
+            declared=cfg.repositories if cfg is not None else None,
         )
     except ValueError as exc:
         print(f"audit_tracker: {exc}", file=sys.stderr)
@@ -307,6 +416,7 @@ def _cmd_validate_path(
             json.dumps(
                 {
                     "outcome": "valid",
+                    "repository": validated.repository,
                     "path": validated.path,
                     "kind": validated.kind,
                     "audit_type": audit_type,
@@ -324,9 +434,10 @@ def _auto_refresh_reason(
     head: str,
     config_digest: str,
     index_fingerprint: str,
+    repository: str = SELF_REPOSITORY,
 ) -> str | None:
-    """Return a short reason string when the tracker should auto-refresh
-    before serving a command, or ``None`` when the cache is fresh.
+    """Return a short reason string when ``repository`` should auto-refresh
+    before serving a command, or ``None`` when its cache is fresh.
 
     Reasons (cheapest checks first):
     - ``"empty"`` — SQLite cache holds no paths yet (fresh clone / deleted DB)
@@ -334,10 +445,17 @@ def _auto_refresh_reason(
       clone, or upgrading from a version that kept it beside the records)
     - ``"head-changed"`` — HEAD moved since the last recorded refresh,
       so the path set may have shifted (adds, deletes, renames)
+    - ``"config-changed"`` / ``"index-changed"`` — the config's content or
+      the repository's Git index changed since then
+
+    Each repository is judged against its own HEAD and index, so a change
+    confined to one repository never refreshes another.
     """
-    if conn.execute("SELECT 1 FROM paths LIMIT 1").fetchone() is None:
+    if conn.execute(
+        "SELECT 1 FROM paths WHERE repository = ? LIMIT 1", (repository,)
+    ).fetchone() is None:
         return "empty"
-    state = records.read_refresh_state()
+    state = records.read_refresh_state(repository=repository)
     if state is None:
         return "first-run"
     if state["last_refresh_commit"] != head:
@@ -358,8 +476,10 @@ def _has_shipped_type(audit_type: str) -> bool:
     return any((prompts / f"{audit_type}-{kind}.md").is_file() for kind in KINDS)
 
 
-def _record_refresh_inputs(config_digest: str, index_fingerprint: str) -> None:
-    state = records.read_refresh_state()
+def _record_refresh_inputs(
+    config_digest: str, index_fingerprint: str, repository: str = SELF_REPOSITORY
+) -> None:
+    state = records.read_refresh_state(repository=repository)
     if state is None:
         return
     records.write_refresh_state(
@@ -367,7 +487,39 @@ def _record_refresh_inputs(config_digest: str, index_fingerprint: str) -> None:
         last_refresh_commit=state["last_refresh_commit"],
         config_digest=config_digest,
         index_fingerprint=index_fingerprint,
+        repository=repository,
     )
+
+
+_SCOPED_TO_ONE = ("done", "validate-path")
+"""Commands that act on one repository, ``self`` unless --repository names
+another. Every other command reads every configured repository unless
+--repository narrows it."""
+
+
+def _scope(args: argparse.Namespace, cfg: Config) -> list[str] | str:
+    """Repository names this invocation reads, or an error message."""
+    requested = getattr(args, "repository", None)
+    if requested is not None and requested not in cfg.repository_names():
+        return (
+            f"unknown repository {requested!r}; configured repositories: "
+            + ", ".join(cfg.repository_names())
+        )
+    if (
+        getattr(args, "under", None) is not None
+        and requested is None
+        and cfg.repositories
+    ):
+        return (
+            "--under needs --repository when the config declares repositories: "
+            "a subtree path means something different in each one "
+            f"(configured: {', '.join(cfg.repository_names())})"
+        )
+    if requested is not None:
+        return [requested]
+    if args.command in _SCOPED_TO_ONE:
+        return [SELF_REPOSITORY]
+    return cfg.repository_names()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -383,6 +535,14 @@ def main(argv: list[str] | None = None) -> int:
         if audit_type is not None and not _has_shipped_type(audit_type):
             print(
                 f"audit_tracker: unknown shipped audit type {audit_type!r}",
+                file=sys.stderr,
+            )
+            return 2
+        requested = getattr(args, "repository", None)
+        if requested not in (None, SELF_REPOSITORY):
+            print(
+                f"audit_tracker: unknown repository {requested!r}: repositories are "
+                f"declared in the audit config, and none exists ({config_path})",
                 file=sys.stderr,
             )
             return 2
@@ -428,6 +588,21 @@ def main(argv: list[str] | None = None) -> int:
         print(f"audit_tracker: {exc}", file=sys.stderr)
         return 2
 
+    scope = _scope(args, cfg)
+    if isinstance(scope, str):
+        print(f"audit_tracker: {scope}", file=sys.stderr)
+        return 2
+    # Every repository this command reads is resolved before anything is
+    # served: a missing or uninitialized subject is an error, never an
+    # empty queue. Repositories outside the scope are not touched, so a
+    # broken subject blocks only the commands that read it.
+    try:
+        contexts = resolve_all(cfg, scope)
+    except (SubjectRepositoryError, git_utils.NotARepositoryError) as exc:
+        print(f"audit_tracker: {exc}", file=sys.stderr)
+        return 2
+    requested = getattr(args, "repository", None)
+
     try:
         conn = connect(args.db)
     except git_utils.NotARepositoryError as exc:
@@ -439,24 +614,41 @@ def main(argv: list[str] | None = None) -> int:
         # The explicit ``refresh`` subcommand will refresh below — no
         # need to do it twice in the same invocation.
         if args.command != "refresh":
-            head = git_utils.head_sha()
-            index = git_utils.index_fingerprint()
-            reason = _auto_refresh_reason(conn, head, config_digest, index)
-            if reason is not None:
-                print(f"audit_tracker: auto-refresh ({reason})", file=sys.stderr)
-                refresh(conn, cfg)
-                _record_refresh_inputs(config_digest, git_utils.index_fingerprint())
+            stale: list[RepositoryContext] = []
+            for context in contexts:
+                head = git_utils.head_sha(context.root)
+                index = git_utils.index_fingerprint(context.root)
+                reason = _auto_refresh_reason(
+                    conn, head, config_digest, index, repository=context.name
+                )
+                if reason is not None:
+                    where = "" if context.is_self else f" for repository {context.name!r}"
+                    print(f"audit_tracker: auto-refresh ({reason}){where}", file=sys.stderr)
+                    stale.append(context)
+            if stale:
+                refresh(conn, cfg, stale)
+                for context in stale:
+                    _record_refresh_inputs(
+                        config_digest,
+                        git_utils.index_fingerprint(context.root),
+                        context.name,
+                    )
         # Always reload audit records from the JSON source of truth so
         # manual edits (or text-merge resolutions) are picked up without
         # a separate sync step.
-        records.load_into_db(conn)
+        records.load_into_db(conn, repositories=[context.name for context in contexts])
 
         if args.command == "refresh":
-            result = _cmd_refresh(conn, cfg)
-            _record_refresh_inputs(config_digest, git_utils.index_fingerprint())
+            result = _cmd_refresh(conn, cfg, contexts)
+            for context in contexts:
+                _record_refresh_inputs(
+                    config_digest,
+                    git_utils.index_fingerprint(context.root),
+                    context.name,
+                )
             return result
         if args.command == "list-types":
-            return _cmd_list_types(conn, cfg)
+            return _cmd_list_types(conn, cfg, contexts)
         if args.command == "next":
             return _cmd_next(
                 conn,
@@ -467,11 +659,24 @@ def main(argv: list[str] | None = None) -> int:
                 args.kind,
                 args.under,
                 args.output_format,
+                repository=requested,
+                contexts=contexts,
+                cfg=cfg,
             )
         if args.command == "status":
-            return _cmd_status(conn, args.audit_type, args.kind, args.under)
+            return _cmd_status(
+                conn, args.audit_type, args.kind, args.under, cfg=cfg, contexts=contexts
+            )
         if args.command == "done":
-            return _cmd_done(conn, args.path, args.audit_type, args.commit, args.note)
+            return _cmd_done(
+                conn,
+                args.path,
+                args.audit_type,
+                args.commit,
+                args.note,
+                cfg=cfg,
+                context=contexts[0],
+            )
         if args.command == "validate-path":
             return _cmd_validate_path(
                 args.path,
@@ -480,6 +685,8 @@ def main(argv: list[str] | None = None) -> int:
                 args.output_format,
                 conn=conn,
                 configured=True,
+                cfg=cfg,
+                context=contexts[0],
             )
         print(f"Unknown command: {args.command}", file=sys.stderr)
         return 2

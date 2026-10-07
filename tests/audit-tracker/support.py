@@ -135,30 +135,37 @@ class FakeGit:
         self.symlink_files: set[str] = set()
 
     def install(self, test: unittest.TestCase) -> FakeGit:
-        """Patch ``git_utils`` for the duration of ``test``."""
+        """Patch ``git_utils`` for the duration of ``test``.
+
+        The fakes stand in for the control repository only: each accepts the
+        optional ``root`` the real functions take and ignores it. Tests of a
+        declared subject repository use real nested Git repositories instead.
+        """
         test.enterContext(
-            mock.patch.object(git_utils, "ls_files", lambda: list(self.files))
+            mock.patch.object(git_utils, "ls_files", lambda root=None: list(self.files))
         )
-        test.enterContext(mock.patch.object(git_utils, "head_sha", lambda: self.head))
+        test.enterContext(
+            mock.patch.object(git_utils, "head_sha", lambda root=None: self.head)
+        )
         test.enterContext(
             mock.patch.object(
                 git_utils,
                 "submodule_owned_paths",
-                lambda: set(self.submodule_owned),
+                lambda root=None: set(self.submodule_owned),
             )
         )
         test.enterContext(
             mock.patch.object(
-                git_utils, "empty_blob_paths", lambda: set(self.empty_files)
+                git_utils, "empty_blob_paths", lambda root=None: set(self.empty_files)
             )
         )
         test.enterContext(
             mock.patch.object(
-                git_utils, "symlink_paths", lambda: set(self.symlink_files)
+                git_utils, "symlink_paths", lambda root=None: set(self.symlink_files)
             )
         )
 
-        def _commits_since(since_sha: str, path: str) -> int:
+        def _commits_since(since_sha: str, path: str, root=None) -> int:
             if since_sha in self.unknown_shas:
                 raise git_utils.UnknownCommitError(f"unknown sha: {since_sha}")
             return self.commits_by_path.get((since_sha, path), 0)
@@ -167,7 +174,9 @@ class FakeGit:
             mock.patch.object(git_utils, "commits_since", _commits_since)
         )
 
-        def _commits_since_many(since_sha: str, paths: list[str]) -> dict[str, int]:
+        def _commits_since_many(
+            since_sha: str, paths: list[str], root=None
+        ) -> dict[str, int]:
             if since_sha in self.unknown_shas:
                 raise git_utils.UnknownCommitError(f"unknown sha: {since_sha}")
             return {
@@ -182,7 +191,7 @@ class FakeGit:
             mock.patch.object(
                 git_utils,
                 "commits_since_many_by_sha",
-                lambda requests: {
+                lambda requests, root=None, ignore=(): {
                     sha: {
                         path: self.commits_by_path.get((sha, path), 0)
                         for path in paths

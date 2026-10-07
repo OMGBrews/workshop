@@ -7,7 +7,8 @@ skill](../README.md); read that first for consumer onboarding and the opt-in
 config.
 
 > **About to merge a branch?** Audit records are stored as text in
-> `docs/work/audits/records/<type>.json` so concurrent branches merge cleanly.
+> `docs/work/audits/records/<type>.json` (and `records/<repository>/<type>.json`
+> for declared nested repositories) so concurrent branches merge cleanly.
 > See [Merging audit records](#merging-audit-records) below for the
 > conflict-resolution playbook.
 
@@ -43,6 +44,19 @@ config.
   marker still appears in the directory-kind pools.
 - **Audits** are one row per `(path, audit_type)` — the last time you audited
   that path for that type, at which commit, with an optional note.
+- **Repositories.** Every path, applicability row, audit, and cached
+  staleness result also carries the repository it belongs to: `self`, the
+  control repository the process runs in, or a subject declared under
+  `[repositories.<name>]` with a control-root-relative `path`. A target rule
+  with `repository = "<name>"` applies to that subject, matching paths
+  relative to the subject's own root. Each subject is read with its own
+  `git ls-files`, drops its own gitlinks and symlinks, and is judged against
+  its own HEAD and history. [`repositories.py`](./repositories.py) resolves
+  a declaration and refuses it unless its path is exactly a Git worktree
+  root with no symlink component and at least one commit — the single check
+  that turns an uninitialized submodule, a plain directory, or a moved
+  repository into an error rather than an empty pool. The README one level
+  up has the consumer-facing example.
 
 Staleness is computed on the fly from Git. Paths sharing an audit commit are
 classified by one `git log --name-only` history walk rather than two Git
@@ -84,6 +98,11 @@ python3 .agents/skills/audit-and-fix/tracker.py validate-path /absolute/path/in/
 # Mark something as audited (records current HEAD)
 python3 .agents/skills/audit-and-fix/tracker.py done app/features/suggestions/engine.py code-quality
 python3 .agents/skills/audit-and-fix/tracker.py done docs/architecture doc-quality --note "swept structure"
+
+# A declared nested repository: paths are relative to its root
+python3 .agents/skills/audit-and-fix/tracker.py next code-quality --repository library --under src
+python3 .agents/skills/audit-and-fix/tracker.py validate-path src/core.py code-quality --repository library
+python3 .agents/skills/audit-and-fix/tracker.py done src/core.py code-quality --repository library
 ```
 
 ### Exit codes
@@ -91,8 +110,8 @@ python3 .agents/skills/audit-and-fix/tracker.py done docs/architecture doc-quali
 | Code | Meaning |
 |------|---------|
 | 0 | success (including `empty` and JSON `not-configured` outcomes) |
-| 1 | `done` refused: path not applicable for that type |
-| 2 | bad arguments, or config missing on disk but explicitly passed / invalid |
+| 1 | `done` refused: path not applicable for that type, or a nested repository's commit is unknown there or outside its HEAD's history |
+| 2 | bad arguments, or config missing on disk but explicitly passed / invalid, an unknown repository, `--under` without `--repository` when repositories are declared, or a declared repository that cannot be read (missing, uninitialized, moved, plain, symlinked, no commits) |
 | 4 | **not opted in** in legacy text mode. JSON `next` reports `{"outcome":"not-configured"}` with exit 0; `validate-path` remains available without config. |
 
 ### Filters on `next`
@@ -103,11 +122,19 @@ python3 .agents/skills/audit-and-fix/tracker.py done docs/architecture doc-quali
 - `--kind file|directory` — restrict to one kind.
 - `--under <path>` — restrict to a subtree. Must be repo-relative; leading
   `./` and trailing `/` are stripped, and absolute paths or `..` segments are
-  rejected.
+  rejected. When the config declares repositories it requires
+  `--repository`, because the same subtree path means different things in
+  each.
+- `--repository <name>` — restrict to `self` or one declared repository.
+  Without it every configured repository's paths compete in one queue, and
+  every one of them must be readable. Also accepted by `status`;
+  `validate-path` and `done` take it to mean "the path is in this
+  repository" and default to `self`.
 - `-n / --limit` — number of candidates to return (default `1`, must be `>= 1`).
 - `--format json` — emit one structured result. `selected` contains a
-  `candidates` array; `empty` contains an empty one; an unconfigured repo gets
-  the distinct `not-configured` outcome. Errors stay non-zero and never emit a
+  `candidates` array, each carrying its `repository` (`"self"` included);
+  `empty` contains an empty one; an unconfigured repo gets the distinct
+  `not-configured` outcome. Errors stay non-zero and never emit a
   success-shaped object.
 
 ### Explicit path validation
@@ -120,13 +147,22 @@ that type's applicability rules. Without a tracker config it performs the Git
 ownership checks directly and verifies the shipped type/kind prompt without
 creating a cache; JSON output marks this as `"configured": false`.
 
+With `--repository <name>`, the path is relative to that repository's root
+(absolute paths inside it are accepted) and the same checks run against its
+own index. Without the flag, a path that lands inside a declared repository
+is refused with an error naming `--repository <name>` and the
+subject-relative spelling. JSON results carry `repository`.
+
 ### Global options
 
 Both come before the subcommand:
 
 - `--db <path>` — SQLite cache path (default:
   `<git-dir>/audit-tracker/cache.sqlite3`, outside the committed tree).
-  Repopulated from `docs/work/audits/records/*.json` on every invocation.
+  Repopulated from `docs/work/audits/records/*.json` (and each declared
+  repository's `records/<name>/*.json`) on every invocation. The file carries
+  a schema version and is dropped and rebuilt when it was written by another
+  tracker version.
 - `--config <path>` — audit config TOML path (default:
   `docs/work/audits/config.toml`). Passing one opts that invocation in even
   without the default file.
@@ -137,10 +173,16 @@ Both come before the subcommand:
 - Config: `<repo>/docs/work/audits/config.toml` (consumer-owned, hand-written)
 - **Audit records (source of truth):**
   `<repo>/docs/work/audits/records/<audit-type>.json` — one file per audit
-  type, committed.
+  type, committed. A declared nested repository's records sit in
+  `records/<repository>/<audit-type>.json`, still in the control repository,
+  with paths relative to that repository's root and `last_audit_commit` a
+  full SHA from its history. Trackers that predate repository support read
+  only the top-level files, so they ignore those folders.
 - **Refresh state:** `<git-dir>/audit-tracker/refresh-state.json` —
   timestamp/commit plus config-content and Git-index fingerprints, written
-  every time `refresh()` runs (explicit or implicit bootstrap). The extra
+  every time `refresh()` runs (explicit or implicit bootstrap). The control
+  repository's state is at the top level; each declared repository's is
+  under `repositories.<name>`, so refreshing one never marks another fresh. The extra
   fingerprints invalidate staged path/config changes before HEAD moves. It
   lives under the git dir, so it is
   never committed and never conflicts: when it lived beside the records as a
@@ -231,6 +273,21 @@ git diff main..feature-branch -- docs/work/audits/records/
 
 - Renames drop audit history (cascade delete when a path disappears from
   `git ls-files`). Re-audit after a rename.
+- A nested repository's record names a commit in that repository. `done`
+  checks it exists there and is in the history of its checked-out HEAD; it
+  never fetches and never asks whether the commit has landed. If the commit
+  later leaves that history (a squash merge, a rebase before pushing), the
+  path reads as stale, the same rule the control repository follows for a
+  vanished audit commit.
+- A control commit that only moves a declared subject's gitlink does not stale
+  a control directory audit that contains it: the subject's change belongs to
+  the subject's own records. (An undeclared submodule's gitlink still counts,
+  as it always has.) Git commands run in a subject drop the caller's
+  repository-local variables (`GIT_DIR`, `GIT_INDEX_FILE`, …), which describe
+  the control repository, for instance inside a hook.
+- Removing a `[repositories.<name>]` declaration prunes its cache rows on the
+  next refresh; its committed `records/<name>/` folder stays until a human
+  deletes it.
 - `done` on an empty file fails with `not applicable … run refresh or check
   the config`, because `done()` gates on applicability. That is the exclusion
   working, not a stale cache — `next` no longer offers such a path.

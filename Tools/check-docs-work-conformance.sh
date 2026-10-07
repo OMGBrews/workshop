@@ -417,9 +417,10 @@ note 15 "scripts/repair_doc_links.py is opt-in and owned by the repo that keeps 
 # docs/work/audits/ holds the shared audit tracker's per-consumer state. The
 # config file IS the opt-in ("declared, not assumed"): a directory without it
 # is a half-adopted tree the tracker refuses to serve rather than silently
-# treat as empty, and records/ is where its text-mergeable records land.
-# Record files must stay parseable JSON — the tracker re-reads them on every
-# invocation.
+# treat as empty, and records/ is where its text-mergeable records land:
+# records/<type>.json for the repository itself, records/<repository>/<type>.json
+# for each nested repository the config declares. Record files must stay
+# parseable JSON — the tracker re-reads them on every invocation.
 if [ ! -d docs/work/audits ]; then
     absent 16 "docs/work/audits/ not opted in — no tracked-audit state"
 elif [ ! -s docs/work/audits/config.toml ]; then
@@ -428,7 +429,7 @@ elif [ ! -d docs/work/audits/records ]; then
     fail 16 "docs/work/audits/records/ does not exist — the tracker writes records there"
 else
     bad_json=""
-    for f in docs/work/audits/records/*.json; do
+    for f in docs/work/audits/records/*.json docs/work/audits/records/*/*.json; do
         [ -e "$f" ] || continue
         if ! python3 -m json.tool "$f" >/dev/null 2>&1; then
             bad_json="$bad_json $f"

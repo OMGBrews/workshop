@@ -63,9 +63,14 @@ EXIT_MALFORMED_OUTPUT = 3
 EXIT_TRACKER_NOT_CONFIGURED = 4
 
 class SelectedResult(TypedDict):
-    """A validated tracker candidate."""
+    """A validated tracker candidate.
+
+    ``path`` is relative to ``repository``'s root: ``self`` for the control
+    repository, otherwise a subject declared in the audit config.
+    """
 
     outcome: Literal["selected"]
+    repository: str
     path: str
     kind: str
     reason: str
@@ -135,7 +140,12 @@ def repo_root() -> Path:
     return Path(result.stdout.strip())
 
 
-def build_command(audit_type: str, kind: str | None, under: str | None) -> list[str]:
+def build_command(
+    audit_type: str,
+    kind: str | None,
+    under: str | None,
+    repository: str | None = None,
+) -> list[str]:
     """The tracker invocation, built from the skill's own arguments.
 
     The launcher at ``tracker.py`` sits beside this file's *physical*
@@ -160,6 +170,8 @@ def build_command(audit_type: str, kind: str | None, under: str | None) -> list[
         command += ["--kind", kind]
     if under is not None:
         command += ["--under", under]
+    if repository is not None:
+        command += ["--repository", repository]
     return command
 
 
@@ -247,6 +259,15 @@ def interpret(run: TrackerRun) -> SelectionResult:
     path = candidate.get("path")
     kind = candidate.get("kind")
     reason = candidate.get("reason")
+    # A tracker that predates repository identity sends no field; it can only
+    # have meant the control repository.
+    repository = candidate.get("repository", "self")
+    if not isinstance(repository, str) or not repository:
+        raise SelectorError(
+            "candidate repository must be a non-empty string",
+            EXIT_MALFORMED_OUTPUT,
+            diagnostics,
+        )
     if not isinstance(path, str) or not path:
         raise SelectorError("candidate path is empty", EXIT_MALFORMED_OUTPUT, diagnostics)
     if kind not in ("file", "directory"):
@@ -260,6 +281,7 @@ def interpret(run: TrackerRun) -> SelectionResult:
 
     return SelectedResult(
         outcome="selected",
+        repository=repository,
         path=path,
         kind=kind,
         reason=reason,
@@ -298,12 +320,20 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="PATH",
         help="Restrict the tracker's candidates to a repo-relative subtree",
     )
+    parser.add_argument(
+        "--repository",
+        metavar="NAME",
+        help=(
+            "Restrict the tracker to one repository: 'self' or a name declared "
+            "in the audit config (default: every configured repository)"
+        ),
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
-    command = build_command(args.audit_type, args.kind, args.under)
+    command = build_command(args.audit_type, args.kind, args.under, args.repository)
     try:
         root = repo_root()
     except RuntimeError as exc:

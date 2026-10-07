@@ -1,16 +1,24 @@
 """Thin wrappers around the ``git`` CLI used by the audit tracker.
 
-All functions run from the repository root so that paths are repo-relative.
-The root is wherever the **process** was started, not where this module
-physically lives: the package ships inside a consumer's pinned ``workshop/``
-mount, so ``__file__`` anchors at the mount while the audited tree is the
-consumer repo around it. Every entry point documents running from the
-consumer root, and ``git rev-parse`` resolves from there — through worktrees
-and submodules too, where ``.git`` is a file rather than a directory.
+All functions run from a repository root so that paths are repo-relative.
+By default that is the **control** repository: wherever the process was
+started, not where this module physically lives. The package ships inside a
+consumer's pinned ``workshop/`` mount, so ``__file__`` anchors at the mount
+while the audited tree is the consumer repo around it. Every entry point
+documents running from the consumer root, and ``git rev-parse`` resolves from
+there — through worktrees and submodules too, where ``.git`` is a file rather
+than a directory.
+
+Functions that read a tree or its history take an optional ``root``: pass a
+declared subject repository's worktree root (see
+:mod:`audit_tracker.repositories`) to read that repository instead.
 """
 
 import hashlib
+import os
 import subprocess
+from collections.abc import Collection
+from functools import lru_cache
 from pathlib import Path
 
 _cached_repo_root: Path | None = None
@@ -70,9 +78,41 @@ def absolute_git_dir() -> Path:
     return Path(result.stdout.strip())
 
 
+@lru_cache(maxsize=1)
+def _local_env_vars() -> tuple[str, ...]:
+    """Git's repository-local environment variables (``GIT_DIR``,
+    ``GIT_INDEX_FILE``, ``GIT_WORK_TREE``, …), as Git itself lists them."""
+    result = subprocess.run(
+        ["git", "rev-parse", "--local-env-vars"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return tuple(result.stdout.split())
+
+
+def _env_for(root: Path | None) -> dict[str, str] | None:
+    """The environment for a Git command run in ``root``.
+
+    ``None`` (inherit everything) for the control repository, exactly as
+    before. For any other root, Git's repository-local variables are
+    stripped: a caller's ``GIT_DIR`` or ``GIT_INDEX_FILE`` — set inside a
+    hook, for instance — describes the control repository, and inherited by
+    a command in a subject it would read the control's index, or make a
+    plain directory look like a worktree root.
+    """
+    if root is None or Path(root) == repo_root():
+        return None
+    env = dict(os.environ)
+    for name in _local_env_vars():
+        env.pop(name, None)
+    return env
+
+
 def _run(
     args: list[str], cwd: Path | None = None, *, input_text: str | None = None
 ) -> str:
+    env = _env_for(cwd)
     cwd = cwd or repo_root()
     result = subprocess.run(
         ["git", *args],
@@ -80,26 +120,27 @@ def _run(
         capture_output=True,
         text=True,
         input=input_text,
+        env=env,
         check=True,
     )
     return result.stdout
 
 
-def ls_files() -> list[str]:
+def ls_files(root: Path | None = None) -> list[str]:
     """Return every tracked file, repo-relative with POSIX separators."""
-    out = _run(["ls-files", "-z"])
+    out = _run(["ls-files", "-z"], root)
     return [path for path in out.split("\0") if path]
 
 
 GITLINK_MODE = "160000"
 SYMLINK_MODE = "120000"
 
-def empty_blob_sha() -> str:
+def empty_blob_sha(root: Path | None = None) -> str:
     """Return Git's empty-blob object id in this repository's object format."""
-    return _run(["hash-object", "--stdin"], input_text="").strip()
+    return _run(["hash-object", "--stdin"], root, input_text="").strip()
 
 
-def _ls_files_staged() -> list[tuple[str, str, str]]:
+def _ls_files_staged(root: Path | None = None) -> list[tuple[str, str, str]]:
     """Return ``(mode, object_sha, path)`` for every index entry.
 
     ``--stage`` exposes both fields. The mode is the only thing
@@ -109,7 +150,7 @@ def _ls_files_staged() -> list[tuple[str, str, str]]:
     containing unusual bytes, and a quoted path would silently fail to match
     the same path as reported by :func:`ls_files`.
     """
-    out = _run(["ls-files", "--stage", "-z"])
+    out = _run(["ls-files", "--stage", "-z"], root)
     entries: list[tuple[str, str, str]] = []
     for record in out.split("\0"):
         if not record:
@@ -121,7 +162,7 @@ def _ls_files_staged() -> list[tuple[str, str, str]]:
     return entries
 
 
-def empty_blob_paths() -> set[str]:
+def empty_blob_paths(root: Path | None = None) -> set[str]:
     """Return tracked paths whose indexed content is empty.
 
     Read out of the index rather than off the filesystem: it reports what
@@ -130,15 +171,15 @@ def empty_blob_paths() -> set[str]:
     object is a commit and a symlink's blob holds its (non-empty) target, so
     comparing the SHA alone cannot misclassify either kind.
     """
-    empty_sha = empty_blob_sha()
+    empty_sha = empty_blob_sha(root)
     return {
         path
-        for _mode, object_sha, path in _ls_files_staged()
+        for _mode, object_sha, path in _ls_files_staged(root)
         if object_sha == empty_sha
     }
 
 
-def symlink_paths() -> set[str]:
+def symlink_paths(root: Path | None = None) -> set[str]:
     """Return every tracked symlink path from the index.
 
     Symlinks are not safe audit subjects even when their targets stay inside
@@ -146,12 +187,12 @@ def symlink_paths() -> set[str]:
     changes to the target content an auditor would actually read.
     """
     return {
-        path for mode, _object_sha, path in _ls_files_staged()
+        path for mode, _object_sha, path in _ls_files_staged(root)
         if mode == SYMLINK_MODE
     }
 
 
-def index_fingerprint() -> str:
+def index_fingerprint(root: Path | None = None) -> str:
     """Return a digest of the current Git index entries.
 
     Unlike HEAD, this changes for staged adds, deletes, renames, and content
@@ -162,14 +203,15 @@ def index_fingerprint() -> str:
     """
     result = subprocess.run(
         ["git", "ls-files", "--stage", "-z"],
-        cwd=repo_root(),
+        cwd=root or repo_root(),
         capture_output=True,
+        env=_env_for(root),
         check=True,
     )
     return hashlib.sha256(result.stdout).hexdigest()
 
 
-def submodule_owned_paths() -> set[str]:
+def submodule_owned_paths(root: Path | None = None) -> set[str]:
     """Return tracked paths this repo cannot keep a change to.
 
     Two kinds qualify. A **gitlink** (mode ``160000``) is a submodule root
@@ -187,25 +229,78 @@ def submodule_owned_paths() -> set[str]:
 
     Returns an empty set in a repo with no submodules.
     """
-    entries = _ls_files_staged()
-    roots = {path for mode, _object_sha, path in entries if mode == GITLINK_MODE}
-    if not roots:
+    base = root or repo_root()
+    entries = _ls_files_staged(base)
+    gitlinks = {path for mode, _object_sha, path in entries if mode == GITLINK_MODE}
+    if not gitlinks:
         return set()
 
-    resolved_roots = [(repo_root() / root).resolve() for root in roots]
-    owned = set(roots)
+    resolved_roots = [(base / gitlink).resolve() for gitlink in gitlinks]
+    owned = set(gitlinks)
     for mode, _object_sha, path in entries:
         if mode != SYMLINK_MODE:
             continue
-        target = (repo_root() / path).resolve()
-        if any(target == root or root in target.parents for root in resolved_roots):
+        target = (base / path).resolve()
+        if any(target == r or r in target.parents for r in resolved_roots):
             owned.add(path)
     return owned
 
 
-def head_sha() -> str:
+def head_sha(root: Path | None = None) -> str:
     """Return the current HEAD commit SHA."""
-    return _run(["rev-parse", "HEAD"]).strip()
+    return _run(["rev-parse", "HEAD"], root).strip()
+
+
+class SubjectRepositoryError(Exception):
+    """A declared subject repository cannot be read safely.
+
+    Raised for a missing, uninitialized, moved, non-Git, symlinked, or
+    escaping root, and for a subject with no commits. Callers report it and
+    exit non-zero: a broken subject must never read as an empty queue.
+    """
+
+
+def toplevel(directory: Path) -> Path | None:
+    """``git rev-parse --show-toplevel`` from ``directory``; ``None`` outside Git."""
+    result = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        cwd=directory,
+        capture_output=True,
+        text=True,
+        env=_env_for(directory),
+        check=False,
+    )
+    if result.returncode != 0:
+        return None
+    return Path(result.stdout.strip())
+
+
+def resolve_commit(root: Path, revision: str) -> str | None:
+    """Full SHA of ``revision`` as a commit in ``root``; ``None`` if unknown."""
+    result = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", "--end-of-options", f"{revision}^{{commit}}"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        env=_env_for(root),
+        check=False,
+    )
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip() or None
+
+
+def is_ancestor_of_head(root: Path, sha: str) -> bool:
+    """True iff ``sha`` is ``HEAD`` or one of its ancestors in ``root``."""
+    result = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", sha, "HEAD"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        env=_env_for(root),
+        check=False,
+    )
+    return result.returncode == 0
 
 
 class UnknownCommitError(Exception):
@@ -217,7 +312,7 @@ class UnknownCommitError(Exception):
     """
 
 
-def commits_since(since_sha: str, path: str) -> int:
+def commits_since(since_sha: str, path: str, root: Path | None = None) -> int:
     """Count commits touching ``path`` between ``since_sha`` and HEAD.
 
     Works for both files and directories (git natively recurses into a
@@ -226,14 +321,16 @@ def commits_since(since_sha: str, path: str) -> int:
     ``since_sha`` is not a commit object in this repo.
     """
     try:
-        _run(["cat-file", "-e", f"{since_sha}^{{commit}}"])
+        _run(["cat-file", "-e", f"{since_sha}^{{commit}}"], root)
     except subprocess.CalledProcessError as exc:
         raise UnknownCommitError(f"{since_sha!r} is not a known commit in this repo") from exc
-    out = _run(["rev-list", "--count", f"{since_sha}..HEAD", "--", path])
+    out = _run(["rev-list", "--count", f"{since_sha}..HEAD", "--", path], root)
     return int(out.strip() or "0")
 
 
-def commits_since_many(since_sha: str, paths: list[str]) -> dict[str, int]:
+def commits_since_many(
+    since_sha: str, paths: list[str], root: Path | None = None
+) -> dict[str, int]:
     """Count touching commits for many file/directory paths in one Git walk.
 
     The former one-path-at-a-time implementation spawned two Git processes per
@@ -243,7 +340,7 @@ def commits_since_many(since_sha: str, paths: list[str]) -> dict[str, int]:
     the directory, matching ``rev-list --count ... -- <directory>``.
     """
     try:
-        return commits_since_many_by_sha({since_sha: paths})[since_sha]
+        return commits_since_many_by_sha({since_sha: paths}, root)[since_sha]
     except KeyError as exc:
         raise UnknownCommitError(
             f"{since_sha!r} is not a reachable commit in this repo"
@@ -252,6 +349,8 @@ def commits_since_many(since_sha: str, paths: list[str]) -> dict[str, int]:
 
 def commits_since_many_by_sha(
     requests: dict[str, list[str]],
+    root: Path | None = None,
+    ignore: Collection[str] = (),
 ) -> dict[str, dict[str, int]]:
     """Count path-touching commits for every requested audit SHA in one walk.
 
@@ -263,6 +362,11 @@ def commits_since_many_by_sha(
 
     SHAs not reachable from HEAD are omitted. Callers classify those records
     as stale because the prior audit can no longer be proved current.
+
+    Names in ``ignore`` never count as changes. The control repository
+    passes its declared subjects' paths: a commit that only moves a
+    subject's gitlink changed that subject, which has its own history and
+    records, not any content the control repository audits.
     """
     if not requests:
         return {}
@@ -275,7 +379,8 @@ def commits_since_many_by_sha(
             "-z",
             "HEAD",
             "--",
-        ]
+        ],
+        root,
     )
     graph: dict[str, tuple[tuple[str, ...], set[str]]] = {}
     for commit_record in raw.split("\x1e"):
@@ -291,6 +396,8 @@ def commits_since_many_by_sha(
             for value in fields[2:]
             if value.lstrip("\n")
         }
+        if ignore:
+            changed.difference_update(ignore)
         graph[sha] = (parents, changed)
 
     all_commits = set(graph)
