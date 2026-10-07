@@ -79,10 +79,10 @@ def refresh(
     with conn:
         placeholders = ", ".join("?" for _ in declared)
         conn.execute(f"DELETE FROM paths WHERE repository NOT IN ({placeholders})", declared)
-        conn.execute(
-            f"DELETE FROM path_audit_applicability WHERE repository NOT IN ({placeholders})",
-            declared,
-        )
+        for table in ("path_audit_applicability", "staleness_cache"):
+            conn.execute(
+                f"DELETE FROM {table} WHERE repository NOT IN ({placeholders})", declared
+            )
     added = removed = total = applicable = 0
     for context in contexts:
         summary = _refresh_repository(conn, config, context)
