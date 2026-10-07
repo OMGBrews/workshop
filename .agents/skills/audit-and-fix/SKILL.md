@@ -9,15 +9,15 @@ Run a full audit loop on a file or directory for a given audit type — either t
 
 **Compatibility**: Git is required. Python 3.11+ is required for tracker selection, explicit-path validation, and recording; review-only path mode can run without it. Parallel review and task-list capabilities are optional.
 
-**Arguments**: `<audit-type> [--kind file|directory] [--path <path>] [--under <path>]`. If no arguments are given, print usage and stop.
+**Arguments**: `<audit-type> [--kind file|directory] [--path <path>] [--under <path>] [--repository <name>]`. If no arguments are given, print usage and stop.
 
 ## Usage
 
 If no arguments were given, print usage and stop:
 
-> Usage: `audit-and-fix <audit-type> [--kind file|directory] [--path <path>] [--under <path>]`
+> Usage: `audit-and-fix <audit-type> [--kind file|directory] [--path <path>] [--under <path>] [--repository <name>]`
 > Types: `code-quality`, `doc-quality`, `readme-quality`, `test-quality`, `code-test-coverage`
-> Notes: `readme-quality` only supports `--kind directory`. `--path` overrides the tracker and targets a specific path; `--kind` is inferred from the filesystem when `--path` is given. `--under <path>` restricts the tracker's candidate set to that subtree (ignored when `--path` is given).
+> Notes: `readme-quality` only supports `--kind directory`. `--path` overrides the tracker and targets a specific path; `--kind` is inferred from the filesystem when `--path` is given. `--under <path>` restricts the tracker's candidate set to that subtree (ignored when `--path` is given). `--repository <name>` targets a nested repository declared in the audit config; `--path` and `--under` are then relative to that repository's root, and when the config declares any repository `--under` needs `--repository`.
 > Examples:
 > - `audit-and-fix code-quality --kind file`
 > - `audit-and-fix code-quality --path app/features/suggestions/engine.py`
@@ -25,8 +25,12 @@ If no arguments were given, print usage and stop:
 > - `audit-and-fix code-quality --under app/features/suggestions --kind file`
 > - `audit-and-fix test-quality --kind file`
 > - `audit-and-fix code-test-coverage --path app/api/config.py`
+> - `audit-and-fix code-quality --repository library --under src`
+> - `audit-and-fix code-quality --repository library --path src/core.py`
 
-Parse the arguments into `<audit-type>`, optional `--kind <kind>`, optional `--path <path>`, and optional `--under <path>`. If `--kind` is omitted and `--path` is not given, let the tracker choose both. If `--path` is given, ignore `--under`.
+Parse the arguments into `<audit-type>`, optional `--kind <kind>`, optional `--path <path>`, optional `--under <path>`, and optional `--repository <name>`. If `--kind` is omitted and `--path` is not given, let the tracker choose both. If `--path` is given, ignore `--under`.
+
+Run every command in this skill from the root of the repository that holds the audit config (the **control** repository), including audits of a nested repository.
 
 ## Step 1 — Resolve the subject
 
@@ -35,20 +39,20 @@ Two branches, depending on whether the user supplied `--path`.
 **Branch A — `--path` is given.** Validate and canonicalize it through the tracker:
 
 ```bash
-python3 .agents/skills/audit-and-fix/tracker.py validate-path <path> <audit-type> [--kind <kind>] --format json
+python3 .agents/skills/audit-and-fix/tracker.py validate-path <path> <audit-type> [--kind <kind>] [--repository <name>] --format json
 ```
 
-Run it from the repository root and wait for completion. Do not replace it with filesystem tests or `realpath`: validation also rejects untracked paths, paths owned by a submodule, symlinks that escape the repository, unsupported type/kind combinations, and (in configured repositories) paths outside applicability rules. It accepts harmless spellings such as `./app/x.py` and in-repo absolute paths, returning their canonical repo-relative POSIX spelling.
+Run it from the repository root and wait for completion. Do not replace it with filesystem tests or `realpath`: validation also rejects untracked paths, paths owned by a submodule, symlinks that escape the repository, unsupported type/kind combinations, and (in configured repositories) paths outside applicability rules. It accepts harmless spellings such as `./app/x.py` and in-repo absolute paths, returning their canonical repo-relative POSIX spelling. A path inside a declared nested repository is refused without `--repository`; the error names the flag and the subject-relative spelling to use instead.
 
 - **Non-zero exit** — report the validation error and stop.
-- **`{"outcome": "valid", "path": ..., "kind": ..., "configured": ...}`** — record the returned canonical `<path>` and inferred `<kind>`, plus `<reason>` as `user-supplied via --path`. Keep `configured`: `false` means the audit can run safely in explicit-path mode but cannot be written to the shared audit records.
+- **`{"outcome": "valid", "repository": ..., "path": ..., "kind": ..., "configured": ...}`** — record the returned `<repository>`, canonical `<path>`, and inferred `<kind>`, plus `<reason>` as `user-supplied via --path`. Keep `configured`: `false` means the audit can run safely in explicit-path mode but cannot be written to the shared audit records.
 
 If Python 3.11+ is unavailable, tracker validation and recording are unavailable. A review-only explicit-path audit may proceed only when the available Git and filesystem tools can establish that the spelling is canonical and repo-relative, the subject is tracked and owned by this repository (not a submodule), and no symlink component escapes the repository. Set `configured` to `false` for that run. If any property cannot be proved, stop; do not weaken the path guard to keep the audit moving.
 
 **Branch B — no `--path`.** Let the tracker pick, through this skill's selector:
 
 ```bash
-python3 .agents/skills/audit-and-fix/select_next.py <audit-type> [--kind <kind>] [--under <path>]
+python3 .agents/skills/audit-and-fix/select_next.py <audit-type> [--kind <kind>] [--under <path>] [--repository <name>]
 ```
 
 Run it from the repository root, and **wait for the command to finish**. If the harness hands back a still-running job instead of a completed command, poll that job until it exits — never interpret partial tool output.
@@ -62,11 +66,17 @@ Branch on the **exit status first, the JSON second**:
 - **Non-zero exit** — the tracker failed, or printed something the selector would not validate; its stderr names which. Report that to the user and stop. This is never "nothing to audit".
 - **`{"outcome": "not-configured", ...}`** — this repo has not opted in to tracked audits: `docs/work/audits/config.toml` does not exist (see this skill's README for the opt-in). Say so plainly — the audit runs in `--path` mode only here — and never present this outcome as "nothing to audit".
 - **`{"outcome": "empty", ...}`** — the tracker said in as many words that it has no applicable path. Tell the user (mention the subtree if `--under` was set) and stop.
-- **`{"outcome": "selected", "path": ..., "kind": ..., "reason": ...}`** — record `<path>`, `<kind>`, and `<reason>` from those fields, and set `configured` to `true`.
+- **`{"outcome": "selected", "repository": ..., "path": ..., "kind": ..., "reason": ...}`** — record `<repository>`, `<path>`, `<kind>`, and `<reason>` from those fields, and set `configured` to `true`. Without `--repository`, the tracker chooses across every configured repository.
 
 Every result also carries `diagnostics`: the tracker's stderr lines (auto-refresh notices, orphan-record warnings). Surface them if they matter to the user, but never treat one as a path or as evidence of an empty queue.
 
 In both branches, tell the user which path was chosen and why (one sentence).
+
+**When `<repository>` is not `self`**, the subject lives in a separately versioned repository nested in this one. Its root, `<subject-root>`, is the `path` declared under `[repositories.<repository>]` in `docs/work/audits/config.toml`, and `<path>` is relative to that root. For the rest of this skill:
+
+- Name the subject to the user and to reviewers as `<subject-root>/<path>`, so it can be found from the control root.
+- Read the instruction files of both repositories (`AGENTS.md`, `CLAUDE.md`, and what they link) before reviewing, and read the subject repository's `docs/work/definition-of-done.md` when it has one. The subject's conventions govern its content and its required evidence; the control repository's govern the audit record.
+- Write nothing into the subject except the reviewed fixes: no config, records, task files, or skill links.
 
 ## Step 2 — Read the subject, then run every lens
 
@@ -80,7 +90,7 @@ If a `readme-quality` subject has no `README.md`, do not run lenses whose artifa
 
 From this read, draft a **2–3 sentence orientation** of the subject: what the artifact is, the role it plays in the codebase, and its rough shape (size, key sections, notable contents). Keep it; Step 3 presents it to the user so they have context before ruling on findings.
 
-Read `prompts/<audit-type>-<kind>.md` relative to this skill. Its numbered entries under `## Lenses` define the fan-out count; run every one. It may also contain a scope-framing paragraph above that heading. Substitute `<subject>` with the target path in the framing paragraph and each lens prompt.
+Read `prompts/<audit-type>-<kind>.md` relative to this skill. Its numbered entries under `## Lenses` define the fan-out count; run every one. It may also contain a scope-framing paragraph above that heading. Substitute `<subject>` with the target path in the framing paragraph and each lens prompt — `<subject-root>/<path>` for a nested repository.
 
 | Audit type           | Kind        | Prompt file                                      |
 |----------------------|-------------|--------------------------------------------------|
@@ -131,7 +141,7 @@ If the user asks you to fix issues (e.g., "Create a TODO list to keep on track a
 
 1. Create one tracking item per issue the user wants fixed. Use the harness's task list when available; otherwise maintain an explicit in-session checklist.
 2. For each item: mark it in progress, delegate independent fixes in parallel when that capability exists, and give each fixer a self-contained prompt describing the issue, the file(s) involved, and the fix to apply. Without delegation, implement the items sequentially in-session. Mark each complete only after its changes are verified.
-3. After all fixes land, run the project's pre-commit verification locally where applicable (the pre-commit hooks will run on commit anyway — use this step to catch issues early for trivial fixes).
+3. After all fixes land, run the project's pre-commit verification locally where applicable (the pre-commit hooks will run on commit anyway — use this step to catch issues early for trivial fixes). For a nested repository, that is the subject repository's verification, run as its own instructions say.
 
 If the user declines to fix anything, skip to Step 5 with no file changes.
 
@@ -145,6 +155,8 @@ The audit record must name the commit that contains the fixes. If Step 4 changed
 
 If there were no fixes, keep the current `HEAD` as the reviewed commit and do not create an empty content commit.
 
+For a nested repository, make this commit **inside the subject** (`git -C <subject-root> status`, `git -C <subject-root> commit …`), following the subject's own commit convention. Its `HEAD` is the reviewed commit. Do not stage the subject's gitlink in the control repository. Pushing the subject, opening or merging a pull request, moving the control repository's submodule pointer, and releasing are all outside this workflow and are not authorized by it.
+
 If repository policy or the user's authorization does not permit committing, stop here with the verified working tree intact. Do not run `done` against the pre-fix `HEAD`, because that would make the new record stale as soon as the fixes are eventually committed.
 
 ## Step 6 — Mark the reviewed commit audited
@@ -152,10 +164,10 @@ If repository policy or the user's authorization does not permit committing, sto
 When Step 1 returned `configured: false`, say that this explicit-path audit cannot be recorded until the repository opts in, and stop after any authorized fix commit. Otherwise run:
 
 ```bash
-python3 .agents/skills/audit-and-fix/tracker.py done <path> <audit-type>
+python3 .agents/skills/audit-and-fix/tracker.py done <path> <audit-type> [--repository <repository>]
 ```
 
-Use the canonical `<path>` and exact `<audit-type>` from Step 1. This writes the record to `docs/work/audits/records/<audit-type>.json` (the SQLite cache under `.git/` is derived, never committed).
+Use the canonical `<path>`, exact `<audit-type>`, and — when it is not `self` — the `<repository>` from Step 1. This writes the record to `docs/work/audits/records/<audit-type>.json`, or to `docs/work/audits/records/<repository>/<audit-type>.json` for a nested repository (the SQLite cache under `.git/` is derived, never committed). For a nested repository, `done` records the subject's current `HEAD` and refuses a commit that is not in that `HEAD`'s history; it never fetches.
 
 If the tracker reports "not applicable", run:
 
@@ -167,7 +179,7 @@ and retry `done` once. If it still is not applicable, report that the validated 
 
 ## Step 7 — Commit the audit record
 
-Show `git status` and the record diff. Commit only `docs/work/audits/records/<audit-type>.json` in a separate metadata commit, using the repository's commit convention. A typical message is `chore(audits): record <audit-type> review of <path>`.
+Show `git status` and the record diff. Commit only the record file `done` wrote — `docs/work/audits/records/<audit-type>.json`, or `docs/work/audits/records/<repository>/<audit-type>.json` — in a separate metadata commit in the control repository, using its commit convention. Stage it by explicit pathspec (`git add -- <record-file>`), never with `git add -A`, `-u`, or `.`. After a nested-repository fix, the subject's gitlink shows as modified in the control repository; leave it out of this commit. A typical message is `chore(audits): record <audit-type> review of <path>` (`<repository>:<path>` for a nested repository).
 
 This two-commit ordering is intentional: `done` stores the current `HEAD`, so running it before the fix commit would immediately make the subject stale. The later record-only commit does not change the audited path.
 
@@ -181,3 +193,4 @@ This two-commit ordering is intentional: `done` stores the current `HEAD`, so ru
 - Honor agents that say "fewer than five real issues" — do not pressure them into padding.
 - Do not fix anything until the user explicitly directs it in Step 4.
 - Never record a pre-fix `HEAD`: commit fixes first, then run `done`, then commit the record alone.
+- A nested-repository record names a local subject commit. If that commit later leaves the subject's history — a squash merge or a rebase before it lands — the tracker reports the path as stale rather than silently current. Once the landed commit is checked out in the subject, `audit-done <path> <audit-type> --repository <name>` re-records it without a new review.

@@ -3,6 +3,21 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- The audit skill family can audit a separately versioned repository nested
+  inside the one that holds the audit config — a submodule or a plain nested
+  clone — without installing anything in it. Declare it under
+  `[repositories.<name>]` in `docs/work/audits/config.toml`, point target
+  rules at it with `repository = "<name>"`, and pass `--repository <name>` to
+  `audit-and-fix`, `audit-next`, `audit-done`, the selector, or the tracker's
+  `next`, `status`, `validate-path`, and `done`. Its records join the existing
+  `docs/work/audits/records/<type>.json` layout one level down, at
+  `records/<name>/<type>.json`, still committed in the control repository, and
+  its staleness follows its own history. A missing or uninitialized nested
+  repository is an error, never an empty queue. JSON results now always carry
+  a `repository` field (`"self"` for the control repository), and the tracker's
+  derived cache rebuilds itself once on upgrade. Single-repository configs,
+  records, commands, and selection order are unchanged.
+
 - Added the `thought-create` and `thought-finalize` skills for a repository's
   `docs/work/thoughts/` folder. `thought-create` captures a note there,
   creating and seeding the folder where it is absent. `thought-finalize`
