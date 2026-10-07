@@ -43,7 +43,7 @@ class RefreshSpy:
         self.calls = 0
         self.head_fn = head_fn
 
-    def __call__(self, conn, _config) -> RefreshSummary:
+    def __call__(self, conn, _config, _contexts=None) -> RefreshSummary:
         self.calls += 1
         # Match real refresh: seed at least one path so subsequent
         # ``_auto_refresh_reason`` calls don't fire the ``"empty"`` reason.
@@ -288,6 +288,7 @@ class NotConfiguredTest(support.RepoTestCase):
             json.loads(out.getvalue()),
             {
                 "outcome": "valid",
+                "repository": "self",
                 "path": "app/main.py",
                 "kind": "file",
                 "audit_type": "code-quality",

@@ -50,6 +50,7 @@ class InterpretTest(unittest.TestCase):
             result,
             {
                 "outcome": "selected",
+                "repository": "self",
                 "path": "app/api/routes.py",
                 "kind": "file",
                 "reason": "never-audited",
@@ -65,6 +66,7 @@ class InterpretTest(unittest.TestCase):
             result,
             {
                 "outcome": "selected",
+                "repository": "self",
                 "path": "docs/architecture",
                 "kind": "directory",
                 "reason": "stale",

@@ -16,6 +16,19 @@ SCHEMA_PATH = Path(__file__).resolve().parent / "schema.sql"
 CACHE_DIRNAME = "audit-tracker"
 CACHE_DB_FILENAME = "cache.sqlite3"
 
+SCHEMA_VERSION = 2
+"""Shape of ``schema.sql``, stored as ``PRAGMA user_version``. A cache written
+by any other version (0 is every tracker before repository identity) is
+dropped and rebuilt: it holds nothing the records and Git cannot regenerate."""
+
+_DERIVED_TABLES = (
+    "path_audit_applicability",
+    "audits",
+    "audit_type_state",
+    "staleness_cache",
+    "paths",
+)
+
 
 def cache_dir(git_dir: Path | None = None) -> Path:
     """The tracker's private directory inside the repo's git dir."""
@@ -39,6 +52,13 @@ def connect(db_path: Path | None = None) -> sqlite3.Connection:
 
 
 def init_schema(conn: sqlite3.Connection) -> None:
-    """Create tables and indexes if they don't exist."""
+    """Create tables and indexes, rebuilding a cache from another schema version."""
+    version = conn.execute("PRAGMA user_version").fetchone()[0]
+    if version != SCHEMA_VERSION:
+        conn.execute("PRAGMA foreign_keys = OFF")
+        for table in _DERIVED_TABLES:
+            conn.execute(f"DROP TABLE IF EXISTS {table}")
+        conn.commit()
     conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+    conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     conn.commit()

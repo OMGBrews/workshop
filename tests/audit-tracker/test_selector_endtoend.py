@@ -164,6 +164,7 @@ class SelectorEndToEndTest(support.RepoTestCase):
             json.loads(stdout),
             {
                 "outcome": "selected",
+                "repository": "self",
                 "path": "app/api/routes.py",
                 "kind": "file",
                 "reason": "never-audited",
