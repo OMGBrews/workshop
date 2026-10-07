@@ -191,7 +191,7 @@ class FakeGit:
             mock.patch.object(
                 git_utils,
                 "commits_since_many_by_sha",
-                lambda requests, root=None: {
+                lambda requests, root=None, ignore=(): {
                     sha: {
                         path: self.commits_by_path.get((sha, path), 0)
                         for path in paths

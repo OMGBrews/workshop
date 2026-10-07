@@ -161,6 +161,11 @@ def _roots(contexts: list[RepositoryContext]) -> dict[str, Path]:
     return {context.name: context.root for context in contexts}
 
 
+def _subject_paths(cfg: Config | None) -> list[str]:
+    """Control-relative paths of every declared subject."""
+    return [] if cfg is None else [repo.path for repo in cfg.repositories.values()]
+
+
 def _cmd_refresh(
     conn: sqlite3.Connection, cfg: Config, contexts: list[RepositoryContext]
 ) -> int:
@@ -203,7 +208,13 @@ def _cmd_list_types(
         known = set(queries.list_types(conn, context.name))
         for type_name in sorted(configured | known):
             present = "configured" if type_name in configured else "orphaned"
-            stats = queries.status(conn, type_name, repository=context.name, roots=roots)
+            stats = queries.status(
+                conn,
+                type_name,
+                repository=context.name,
+                roots=roots,
+                subject_paths=_subject_paths(cfg),
+            )
             repository = f"{context.name:<12}  " if labelled else ""
             print(
                 f"{type_name:<20}  {repository}{present:<11}  "
@@ -230,6 +241,7 @@ def _cmd_next(
     *,
     repository: str | None = None,
     contexts: list[RepositoryContext] | None = None,
+    cfg: Config | None = None,
 ) -> int:
     try:
         prefix = _resolve_prefix(under)
@@ -246,6 +258,7 @@ def _cmd_next(
         path_prefix=prefix,
         repository=repository,
         roots=_roots(contexts) if contexts else None,
+        subject_paths=_subject_paths(cfg),
     )
     if not candidates:
         if output_format == "json":
@@ -309,7 +322,13 @@ def _cmd_status(
     roots = _roots(contexts) if contexts else None
     for name in names:
         s = queries.status(
-            conn, audit_type, kind=kind, path_prefix=prefix, repository=name, roots=roots
+            conn,
+            audit_type,
+            kind=kind,
+            path_prefix=prefix,
+            repository=name,
+            roots=roots,
+            subject_paths=_subject_paths(cfg),
         )
         scope_bits: list[str] = []
         if name is not None:
@@ -642,6 +661,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.output_format,
                 repository=requested,
                 contexts=contexts,
+                cfg=cfg,
             )
         if args.command == "status":
             return _cmd_status(

@@ -15,7 +15,10 @@ declared subject repository's worktree root (see
 """
 
 import hashlib
+import os
 import subprocess
+from collections.abc import Collection
+from functools import lru_cache
 from pathlib import Path
 
 _cached_repo_root: Path | None = None
@@ -75,9 +78,41 @@ def absolute_git_dir() -> Path:
     return Path(result.stdout.strip())
 
 
+@lru_cache(maxsize=1)
+def _local_env_vars() -> tuple[str, ...]:
+    """Git's repository-local environment variables (``GIT_DIR``,
+    ``GIT_INDEX_FILE``, ``GIT_WORK_TREE``, …), as Git itself lists them."""
+    result = subprocess.run(
+        ["git", "rev-parse", "--local-env-vars"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return tuple(result.stdout.split())
+
+
+def _env_for(root: Path | None) -> dict[str, str] | None:
+    """The environment for a Git command run in ``root``.
+
+    ``None`` (inherit everything) for the control repository, exactly as
+    before. For any other root, Git's repository-local variables are
+    stripped: a caller's ``GIT_DIR`` or ``GIT_INDEX_FILE`` — set inside a
+    hook, for instance — describes the control repository, and inherited by
+    a command in a subject it would read the control's index, or make a
+    plain directory look like a worktree root.
+    """
+    if root is None or Path(root) == repo_root():
+        return None
+    env = dict(os.environ)
+    for name in _local_env_vars():
+        env.pop(name, None)
+    return env
+
+
 def _run(
     args: list[str], cwd: Path | None = None, *, input_text: str | None = None
 ) -> str:
+    env = _env_for(cwd)
     cwd = cwd or repo_root()
     result = subprocess.run(
         ["git", *args],
@@ -85,6 +120,7 @@ def _run(
         capture_output=True,
         text=True,
         input=input_text,
+        env=env,
         check=True,
     )
     return result.stdout
@@ -169,6 +205,7 @@ def index_fingerprint(root: Path | None = None) -> str:
         ["git", "ls-files", "--stage", "-z"],
         cwd=root or repo_root(),
         capture_output=True,
+        env=_env_for(root),
         check=True,
     )
     return hashlib.sha256(result.stdout).hexdigest()
@@ -230,6 +267,7 @@ def toplevel(directory: Path) -> Path | None:
         cwd=directory,
         capture_output=True,
         text=True,
+        env=_env_for(directory),
         check=False,
     )
     if result.returncode != 0:
@@ -244,6 +282,7 @@ def resolve_commit(root: Path, revision: str) -> str | None:
         cwd=root,
         capture_output=True,
         text=True,
+        env=_env_for(root),
         check=False,
     )
     if result.returncode != 0:
@@ -258,6 +297,7 @@ def is_ancestor_of_head(root: Path, sha: str) -> bool:
         cwd=root,
         capture_output=True,
         text=True,
+        env=_env_for(root),
         check=False,
     )
     return result.returncode == 0
@@ -310,6 +350,7 @@ def commits_since_many(
 def commits_since_many_by_sha(
     requests: dict[str, list[str]],
     root: Path | None = None,
+    ignore: Collection[str] = (),
 ) -> dict[str, dict[str, int]]:
     """Count path-touching commits for every requested audit SHA in one walk.
 
@@ -321,6 +362,11 @@ def commits_since_many_by_sha(
 
     SHAs not reachable from HEAD are omitted. Callers classify those records
     as stale because the prior audit can no longer be proved current.
+
+    Names in ``ignore`` never count as changes. The control repository
+    passes its declared subjects' paths: a commit that only moves a
+    subject's gitlink changed that subject, which has its own history and
+    records, not any content the control repository audits.
     """
     if not requests:
         return {}
@@ -350,6 +396,8 @@ def commits_since_many_by_sha(
             for value in fields[2:]
             if value.lstrip("\n")
         }
+        if ignore:
+            changed.difference_update(ignore)
         graph[sha] = (parents, changed)
 
     all_commits = set(graph)

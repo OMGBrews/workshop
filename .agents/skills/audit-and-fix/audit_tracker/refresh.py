@@ -114,6 +114,17 @@ def _refresh_repository(
     # becomes auditable only by being declared itself.
     owned = git_utils.submodule_owned_paths(root) | git_utils.symlink_paths(root)
     files = [path for path in git_utils.ls_files(root) if path not in owned]
+    if context.is_self:
+        # A declared subject's tree belongs to the subject even if the
+        # control index still lists files there (it tracked them before the
+        # path became a nested repository): auditing them here would create
+        # entries that `done` refuses to record.
+        subject_roots = [repo.path for repo in config.repositories.values()]
+        files = [
+            path
+            for path in files
+            if not any(path == s or path.startswith(s + "/") for s in subject_roots)
+        ]
     directories = _derive_directories(files)
 
     current: dict[str, PathKind] = {}

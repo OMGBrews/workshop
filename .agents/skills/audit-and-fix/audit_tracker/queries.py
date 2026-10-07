@@ -14,7 +14,7 @@ through the default control root.
 import hashlib
 import sqlite3
 from collections import defaultdict, deque
-from collections.abc import Mapping
+from collections.abc import Collection, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -358,8 +358,14 @@ def _classify_audited_rows(
     conn: sqlite3.Connection,
     rows: list[sqlite3.Row],
     roots: Mapping[str, Path] | None = None,
+    subject_paths: Collection[str] = (),
 ) -> list[tuple[AuditReason, NextCandidate]]:
-    """Classify audited rows with one Git history walk per repository and SHA."""
+    """Classify audited rows with one Git history walk per repository and SHA.
+
+    ``subject_paths`` are the control-relative paths of declared subjects;
+    changes at exactly those names (gitlink moves) never stale a control
+    repository audit.
+    """
     by_repository: dict[str, list[sqlite3.Row]] = defaultdict(list)
     for row in rows:
         by_repository[row["repository"]].append(row)
@@ -367,7 +373,11 @@ def _classify_audited_rows(
     for repository, repository_rows in by_repository.items():
         classified.extend(
             _classify_repository_rows(
-                conn, repository, repository_rows, _root_for(roots, repository)
+                conn,
+                repository,
+                repository_rows,
+                _root_for(roots, repository),
+                subject_paths if repository == SELF_REPOSITORY else (),
             )
         )
     return classified
@@ -378,6 +388,7 @@ def _classify_repository_rows(
     repository: str,
     rows: list[sqlite3.Row],
     root: Path | None,
+    ignore: Collection[str] = (),
 ) -> list[tuple[AuditReason, NextCandidate]]:
     """Classify one repository's audited rows against its own HEAD."""
     grouped: dict[str, list[sqlite3.Row]] = defaultdict(list)
@@ -415,7 +426,7 @@ def _classify_repository_rows(
         for sha, sha_rows in grouped.items()
     }
     missing = {sha: paths for sha, paths in missing.items() if paths}
-    computed = git_utils.commits_since_many_by_sha(missing, root) if missing else {}
+    computed = git_utils.commits_since_many_by_sha(missing, root, ignore) if missing else {}
     cache_writes: list[tuple[str, str, str, str, int]] = []
     for sha, paths in missing.items():
         counts = computed.get(sha)
@@ -473,6 +484,7 @@ def next_paths(
     path_prefix: str | None = None,
     repository: str | None = None,
     roots: Mapping[str, Path] | None = None,
+    subject_paths: Collection[str] = (),
 ) -> list[NextCandidate]:
     """Return the next path(s) to audit for ``audit_type``.
 
@@ -524,7 +536,7 @@ def next_paths(
     stale: list[NextCandidate] = []
     audited_clean: list[NextCandidate] = []
     audited_rows = [row for row in rows if row["last_audited_at"] is not None]
-    for reason, candidate in _classify_audited_rows(conn, audited_rows, roots):
+    for reason, candidate in _classify_audited_rows(conn, audited_rows, roots, subject_paths):
         (stale if reason == "stale" else audited_clean).append(candidate)
 
     stale.sort(key=lambda c: (-c.commits_since_audit, c.path, c.repository))
@@ -641,6 +653,7 @@ def status(
     path_prefix: str | None = None,
     repository: str | None = None,
     roots: Mapping[str, Path] | None = None,
+    subject_paths: Collection[str] = (),
 ) -> AuditTypeStatus:
     """Summary counts for one audit type.
 
@@ -656,7 +669,7 @@ def status(
     audited_rows = [row for row in rows if row["last_audited_at"] is not None]
     audited = len(audited_rows)
     stale = 0
-    for reason, _ in _classify_audited_rows(conn, audited_rows, roots):
+    for reason, _ in _classify_audited_rows(conn, audited_rows, roots, subject_paths):
         if reason == "stale":
             stale += 1
     return AuditTypeStatus(

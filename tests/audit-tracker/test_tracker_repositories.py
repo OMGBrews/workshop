@@ -28,6 +28,7 @@ import sqlite3
 import subprocess
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import support
 
@@ -697,6 +698,106 @@ class LifecycleTest(SubjectRepositoryTestCase):
         target.write_text(target.read_text(encoding="utf-8") + "# later\n", encoding="utf-8")
         commit_all(self.library, "later change")
         self.assertIn(("library", path), self.identities("--stale"))
+
+
+class NestedSubjectPathTest(SubjectRepositoryTestCase):
+    """A subject mounted inside a directory the control repository audits."""
+
+    config_text = """
+[repositories.inner]
+path = "vendor/inner"
+
+[audit_types.code-quality]
+[[audit_types.code-quality.targets]]
+kind = "file"
+include = ["**/*.py"]
+
+[[audit_types.code-quality.targets]]
+kind = "directory"
+include = ["vendor"]
+
+[[audit_types.code-quality.targets]]
+repository = "inner"
+kind = "file"
+include = ["**/*.py"]
+"""
+
+    def setUp(self) -> None:
+        super().setUp()
+        support.write_file(self.repo / "vendor/other.py", "OTHER = 1\n")
+        git(
+            self.repo,
+            "-c",
+            "protocol.file.allow=always",
+            "submodule",
+            "add",
+            "-q",
+            str(self.upstream),
+            "vendor/inner",
+        )
+        self.inner = self.repo / "vendor/inner"
+        commit_all(self.repo, "vendor a second subject")
+
+    def test_moving_a_subject_gitlink_does_not_stale_a_control_directory(self) -> None:
+        code, _out, err = self.run_cli("done", "vendor", "code-quality")
+        self.assertEqual(code, 0, err)
+        support.write_file(self.inner / "src/core.py", "VALUE = 7\n")
+        commit_all(self.inner, "subject change")
+        git(self.repo, "add", "vendor/inner")
+        git(self.repo, "commit", "-qm", "bump vendor/inner")
+        self.assertNotIn(("self", "vendor"), self.identities("--stale"))
+        self.assertIn(("inner", "src/core.py"), self.identities("--never"))
+
+        # A change to content the control owns in that directory still counts.
+        support.write_file(self.repo / "vendor/other.py", "OTHER = 2\n")
+        commit_all(self.repo, "control change in vendor")
+        self.assertIn(("self", "vendor"), self.identities("--stale"))
+
+
+class EnvironmentIsolationTest(SubjectRepositoryTestCase):
+    """A caller's repository-local Git variables describe the control
+    repository; commands in a subject must not inherit them."""
+
+    def test_git_dir_cannot_make_a_plain_directory_a_subject(self) -> None:
+        support.write_file(self.repo / "plain/module.py")
+        commit_all(self.repo, "plain directory")
+        self.write_config(CONFIG + '\n[repositories.plain]\npath = "plain"\n')
+        with mock.patch.dict(os.environ, {"GIT_DIR": str(self.repo / ".git")}):
+            code, out, err = self.run_cli(
+                "next", "code-quality", "--repository", "plain", "--format", "json"
+            )
+        self.assertEqual(code, 2, out)
+        self.assertEqual(out, "")
+        self.assertIn("is not a Git worktree root", err)
+
+    def test_git_index_file_does_not_replace_the_subject_index(self) -> None:
+        expected = {("library", "tool.py"), ("library", "src/core.py"), ("library", "src")}
+        with mock.patch.dict(os.environ, {"GIT_INDEX_FILE": str(self.repo / ".git/index")}):
+            self.assertEqual(self.identities("--repository", "library"), expected)
+
+
+class ControlFilesUnderASubjectTest(support.RepoTestCase):
+    def test_control_entries_under_a_declared_path_belong_to_the_subject(self) -> None:
+        support.write_file(self.repo / "top.py")
+        support.write_file(self.repo / "sub/a.py")
+        commit_all(self.repo, "control tracks sub/ for now")
+        # sub/ becomes its own repository while the control index still
+        # lists sub/a.py.
+        git(self.repo / "sub", "init", "-q", ".")
+        commit_all(self.repo / "sub", "sub initial")
+        support.write_file(
+            self.repo / "docs/work/audits/config.toml",
+            '[repositories.sub]\npath = "sub"\n\n'
+            '[audit_types.code-quality]\n'
+            'targets = [{ kind = "file", include = ["**/*.py"] },'
+            ' { repository = "sub", kind = "file", include = ["*.py"] }]\n',
+        )
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            code = cli.main(["next", "code-quality", "-n", "10", "--format", "json"])
+        self.assertEqual(code, 0)
+        identities = {(c["repository"], c["path"]) for c in json.loads(out.getvalue())["candidates"]}
+        self.assertEqual(identities, {("self", "top.py"), ("sub", "a.py")})
 
 
 class SingleRepositoryCompatibilityTest(support.RepoTestCase):

@@ -279,6 +279,12 @@ git diff main..feature-branch -- docs/work/audits/records/
   later leaves that history (a squash merge, a rebase before pushing), the
   path reads as stale, the same rule the control repository follows for a
   vanished audit commit.
+- A control commit that only moves a declared subject's gitlink does not stale
+  a control directory audit that contains it: the subject's change belongs to
+  the subject's own records. (An undeclared submodule's gitlink still counts,
+  as it always has.) Git commands run in a subject drop the caller's
+  repository-local variables (`GIT_DIR`, `GIT_INDEX_FILE`, …), which describe
+  the control repository, for instance inside a hook.
 - Removing a `[repositories.<name>]` declaration prunes its cache rows on the
   next refresh; its committed `records/<name>/` folder stays until a human
   deletes it.
