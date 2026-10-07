@@ -522,6 +522,23 @@ audits_bad_record() {
 expect "unparseable audit record named" 1 audits_bad_record \
     "FAIL 16" "not valid JSON"
 
+audits_bad_subject_record() {
+    mkdir -p "$1/docs/work/audits/records/library"
+    printf '[audit_types.code-quality]\n' >"$1/docs/work/audits/config.toml"
+    printf '{"audits": {}}\n' >"$1/docs/work/audits/records/code-quality.json"
+    printf 'not json at all\n' >"$1/docs/work/audits/records/library/code-quality.json"
+}
+expect "unparseable nested-repository audit record named" 1 audits_bad_subject_record \
+    "FAIL 16" "records/library/code-quality.json"
+
+audits_subject_green() {
+    mkdir -p "$1/docs/work/audits/records/library"
+    printf '[audit_types.code-quality]\n' >"$1/docs/work/audits/config.toml"
+    printf '{"audits": {}}\n' >"$1/docs/work/audits/records/library/code-quality.json"
+}
+expect "nested-repository records alone are green" 0 audits_subject_green \
+    "declaring config and parseable records"
+
 # Absent is a verdict too: an unopted-in repo must still print clause 16's line.
 audits_absent_visible() { :; }
 expect "unopted-in repo reports clause 16 as absent" 0 audits_absent_visible \
