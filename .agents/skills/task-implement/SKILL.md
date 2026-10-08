@@ -238,7 +238,7 @@ Then re-read the criteria one at a time and confirm each `[x]` against the
 diff. A criterion you cannot point at evidence for is not met: untick it and
 either finish it or go to Phase 5.
 
-### 6c — Check inbound links before deleting
+### 6c — Check inbound references before deleting
 
 Deleting a task file breaks links in files the diff never touches, which is why
 the completing commit is the canonical generator of that breakage (observed
@@ -248,9 +248,11 @@ twice in one repo, 2026-07-23 and 2026-07-30). Before removing the brief:
 grep -rn "<task-slug>" --exclude-dir=.git .
 ```
 
-Every hit outside the task file itself is an inbound link. A README index entry
-and a "see also" in another brief are the usual two. Sort them into two classes
-before touching anything, because 6d treats them differently:
+Every hit outside the task file itself is an inbound reference. A README index
+entry and a "see also" in another brief are the usual two. A hit can also be a
+longer slug that merely contains this one; read each hit rather than counting
+them. Sort them into three classes before touching anything, because 6d treats
+them differently:
 
 - **Broken by the deletion** — correct today, dangling once the brief is gone.
   Fix these *in the completing commit*, and only on a confirmed close-out. On a
@@ -259,23 +261,42 @@ before touching anything, because 6d treats them differently:
   before you arrived. These are not contingent on the deletion, so fix them
   either way. This class is not hypothetical: of the three hits in this skill's
   first live run, two were already pointing at the wrong bucket.
+- **Dependency entries** — this slug as an item in another brief's frontmatter
+  `dependencies:` list. Closing this task satisfies that dependency, so on a
+  confirmed close-out remove the item *in the completing commit*, leaving
+  `dependencies: []` when the list empties. On a decline the dependency is still
+  unmet: leave it exactly as it is. A stale entry would not block anything —
+  `task-next` and the runner both read a slug whose brief is gone as finished —
+  but every later reader would have to prove that from git history, and the
+  dependent's brief would go on claiming a wait that ended. Two limits:
+  - **Never edit a brief under `<tasks>/queued/`.** The runner owns that tree,
+    and a worker may be rewriting or deleting the very file you would edit; that
+    is how concurrent closures collide. The runner resolves the entry from
+    history, so leaving it costs nothing.
+  - **Remove the entry; change nothing else about the dependent.** If its list
+    empties, or it carries `status: blocked` on this task alone, name it in the
+    report as now unblocked. Whether to clear its status or re-bucket it is a
+    decision for the human or the `task-move` skill, not a side effect of this
+    close-out.
 
-List both classes in the closing report, with which ones you actually changed.
+List all three classes in the closing report, with which ones you actually
+changed.
 
 ### 6d — Ask before deleting
 
 Everything above is a check you run. This is the one call you do not make alone.
 
 Present what 6a–6c found — each criterion and the evidence behind it, the checks
-that ran and what they printed, the inbound links you would fix — and then ask,
-plainly, whether to close the task. Deleting the brief is what tells every later
-reader the work is finished; the human is the one entitled to say that.
+that ran and what they printed, the inbound references you would fix and the
+dependency entries you would remove — and then ask, plainly, whether to close
+the task. Deleting the brief is what tells every later reader the work is
+finished; the human is the one entitled to say that.
 
-- **Confirmed** → 6e: delete the brief, with both classes of link fix, and
+- **Confirmed** → 6e: delete the brief, with all three classes of 6c fix, and
   commit them with the work.
 - **Declined** → commit the implementation and any *already-wrong* link fixes
   *without* the deletion, leave the links that only the deletion would have
-  broken exactly as they are, leave the brief in its bucket with
+  broken and the dependency entries exactly as they are, leave the brief in its bucket with
   `status: in-progress` (which is then simply true), and say what is
   outstanding. Never end a decline with a dirty tree — a half-committed refusal
   is worse than either answer. Where the work was already committed as it went,
@@ -294,7 +315,8 @@ look afterwards like it covered them.
 
 Completed tasks are deleted, not archived; git preserves the history and
 `git log --diff-filter=D` finds them. `git rm <tasks>/<bucket>/<task>.md` and
-commit it together with the final implementation change and any link fixes, so
+commit it together with the final implementation change, any link fixes, and
+any dependency entries removed from other briefs, so
 one commit shows the work and the brief's removal as the single event they are.
 
 Before committing, read `git status --short` and confirm the brief shows `D`.
@@ -322,5 +344,6 @@ is that the human cannot inspect a branch the way a runner can:
 - What Phase 3 verification found (what drifted, or "no drift").
 - Each acceptance criterion and the evidence it was met by.
 - Which checks ran and what they printed.
-- Inbound links found and how each was handled.
+- Inbound references found and how each was handled, including the briefs
+  whose `dependencies:` lost this slug and any that are now unblocked.
 - Anything deliberately left undone, and why.
