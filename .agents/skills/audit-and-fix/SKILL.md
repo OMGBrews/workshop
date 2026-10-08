@@ -17,7 +17,7 @@ If no arguments were given, print usage and stop:
 
 > Usage: `audit-and-fix <audit-type> [--kind file|directory] [--path <path>] [--under <path>] [--repository <name>]`
 > Types: `code-quality`, `doc-quality`, `readme-quality`, `test-quality`, `code-test-coverage`
-> Notes: `readme-quality` only supports `--kind directory`. `--path` overrides the tracker and targets a specific path; `--kind` is inferred from the filesystem when `--path` is given. `--under <path>` restricts the tracker's candidate set to that subtree (ignored when `--path` is given). `--repository <name>` targets a nested repository declared in the audit config; `--path` and `--under` are then relative to that repository's root, and when the config declares any repository `--under` needs `--repository`.
+> Notes: `readme-quality` only supports `--kind directory`. `--path` overrides the tracker and targets a specific path; `--kind` is inferred from the filesystem when `--path` is given. `--under <path>` restricts the tracker's candidate set to that subtree (ignored when `--path` is given). `--repository <name>` targets a nested repository declared in the audit config; `--path` and `--under` are then relative to that repository's root, and when the config declares any repository `--under` needs `--repository`. A repository's root is the path `.`.
 > Examples:
 > - `audit-and-fix code-quality --kind file`
 > - `audit-and-fix code-quality --path app/features/suggestions/engine.py`
@@ -27,6 +27,7 @@ If no arguments were given, print usage and stop:
 > - `audit-and-fix code-test-coverage --path app/api/config.py`
 > - `audit-and-fix code-quality --repository library --under src`
 > - `audit-and-fix code-quality --repository library --path src/core.py`
+> - `audit-and-fix readme-quality --repository library --path .`
 
 Parse the arguments into `<audit-type>`, optional `--kind <kind>`, optional `--path <path>`, optional `--under <path>`, and optional `--repository <name>`. If `--kind` is omitted and `--path` is not given, let the tracker choose both. If `--path` is given, ignore `--under`.
 
@@ -74,7 +75,7 @@ In both branches, tell the user which path was chosen and why (one sentence).
 
 **When `<repository>` is not `self`**, the subject lives in a separately versioned repository nested in this one. Its root, `<subject-root>`, is the `path` declared under `[repositories.<repository>]` in `docs/work/audits/config.toml`, and `<path>` is relative to that root. For the rest of this skill:
 
-- Name the subject to the user and to reviewers as `<subject-root>/<path>`, so it can be found from the control root.
+- Name the subject to the user and to reviewers as `<subject-root>/<path>`, so it can be found from the control root — or as `<subject-root>` alone when `<path>` is `.`, the subject's root.
 - Read the instruction files of both repositories (`AGENTS.md`, `CLAUDE.md`, and what they link) before reviewing, and read the subject repository's `docs/work/definition-of-done.md` when it has one. The subject's conventions govern its content and its required evidence; the control repository's govern the audit record.
 - Write nothing into the subject except the reviewed fixes: no config, records, task files, or skill links.
 
@@ -90,7 +91,7 @@ If a `readme-quality` subject has no `README.md`, do not run lenses whose artifa
 
 From this read, draft a **2–3 sentence orientation** of the subject: what the artifact is, the role it plays in the codebase, and its rough shape (size, key sections, notable contents). Keep it; Step 3 presents it to the user so they have context before ruling on findings.
 
-Read `prompts/<audit-type>-<kind>.md` relative to this skill. Its numbered entries under `## Lenses` define the fan-out count; run every one. It may also contain a scope-framing paragraph above that heading. Substitute `<subject>` with the target path in the framing paragraph and each lens prompt — `<subject-root>/<path>` for a nested repository.
+Read `prompts/<audit-type>-<kind>.md` relative to this skill. Its numbered entries under `## Lenses` define the fan-out count; run every one. It may also contain a scope-framing paragraph above that heading. Substitute `<subject>` with the target path in the framing paragraph and each lens prompt — `<subject-root>/<path>` for a nested repository, `<subject-root>` for its root. A `.` path in the control repository is its root: substitute `.`, so `<subject>/README.md` reads `./README.md`.
 
 | Audit type           | Kind        | Prompt file                                      |
 |----------------------|-------------|--------------------------------------------------|
@@ -181,7 +182,7 @@ and retry `done` once. If it still is not applicable, report that the validated 
 
 Show `git status` and the record diff. Commit only the record file `done` wrote — `docs/work/audits/records/<audit-type>.json`, or `docs/work/audits/records/<repository>/<audit-type>.json` — in a separate metadata commit in the control repository, using its commit convention. Stage it by explicit pathspec (`git add -- <record-file>`), never with `git add -A`, `-u`, or `.`. After a nested-repository fix, the subject's gitlink shows as modified in the control repository; leave it out of this commit. A typical message is `chore(audits): record <audit-type> review of <path>` (`<repository>:<path>` for a nested repository).
 
-This two-commit ordering is intentional: `done` stores the current `HEAD`, so running it before the fix commit would immediately make the subject stale. The later record-only commit does not change the audited path.
+This two-commit ordering is intentional: `done` stores the current `HEAD`, so running it before the fix commit would immediately make the subject stale. The later record-only commit does not stale the audited path — the tracker never counts a records change against a directory above the records folder, including the root `.`.
 
 ---
 

@@ -30,7 +30,7 @@ def applicability(conn) -> set[tuple[str, str]]:
 
 
 class RefreshTest(support.RepoTestCase):
-    # 1. files are tracked and their parents derived as directories ----------
+    # 1. files are tracked and their parents, root included, derived as directories
     def test_refresh_populates_files_and_derived_directories(self) -> None:
         fake = self.fake_git()
         fake.files = ["app/api/routes.py", "docs/README.md"]
@@ -50,14 +50,15 @@ class RefreshTest(support.RepoTestCase):
             {
                 "app/api/routes.py": "file",
                 "docs/README.md": "file",
+                ".": "directory",
                 "app": "directory",
                 "app/api": "directory",
                 "docs": "directory",
             },
         )
-        self.assertEqual(summary.added_paths, 5)
+        self.assertEqual(summary.added_paths, 6)
         self.assertEqual(summary.removed_paths, 0)
-        self.assertEqual(summary.total_paths, 5)
+        self.assertEqual(summary.total_paths, 6)
 
     # 2. applicability filters by each rule, includes and excludes ------------
     @unittest.skipUnless(

@@ -16,10 +16,11 @@ SCHEMA_PATH = Path(__file__).resolve().parent / "schema.sql"
 CACHE_DIRNAME = "audit-tracker"
 CACHE_DB_FILENAME = "cache.sqlite3"
 
-SCHEMA_VERSION = 2
-"""Shape of ``schema.sql``, stored as ``PRAGMA user_version``. A cache written
-by any other version (0 is every tracker before repository identity) is
-dropped and rebuilt: it holds nothing the records and Git cannot regenerate."""
+SCHEMA_VERSION = 3
+"""Shape and meaning of the cache, stored as ``PRAGMA user_version``. A cache
+written by any other version (0 is every tracker before repository identity;
+2 predates root rows and record-blind directory staleness) is dropped and
+rebuilt: it holds nothing the records and Git cannot regenerate."""
 
 _DERIVED_TABLES = (
     "path_audit_applicability",

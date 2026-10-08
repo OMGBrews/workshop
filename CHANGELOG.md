@@ -3,6 +3,17 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- A repository's root is now an audit target: the directory `.`, selected only
+  by the literal include pattern `"."` (no wildcard reaches it, so existing
+  configs gain no new candidates). `include = ["."]` on a `readme-quality`
+  directory rule audits the top-level `README.md`, of the control repository or
+  — with `repository = "<name>"` — of a declared nested repository, which
+  `--repository <name> --path .` also targets. A root audit is stale after any
+  content commit, but in the control repository a commit that only changes
+  audit records no longer stales the root or any directory above
+  `docs/work/audits/records/`. The tracker's derived cache rebuilds itself once
+  on upgrade.
+
 - The audit skill family can audit a separately versioned repository nested
   inside the one that holds the audit config — a submodule or a plain nested
   clone — without installing anything in it. Declare it under

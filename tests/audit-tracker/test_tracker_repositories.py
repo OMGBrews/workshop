@@ -754,6 +754,117 @@ include = ["**/*.py"]
         self.assertIn(("self", "vendor"), self.identities("--stale"))
 
 
+class RepositoryRootTest(SubjectRepositoryTestCase):
+    """A repository's root is the directory ``.``, targeted only by name."""
+
+    config_text = """
+[repositories.library]
+path = "library"
+
+[audit_types.readme-quality]
+[[audit_types.readme-quality.targets]]
+kind = "directory"
+include = [".", "docs"]
+
+[[audit_types.readme-quality.targets]]
+repository = "library"
+kind = "directory"
+include = ["."]
+
+[audit_types.code-quality]
+[[audit_types.code-quality.targets]]
+repository = "library"
+kind = "directory"
+include = ["*", "**"]
+"""
+
+    def setUp(self) -> None:
+        super().setUp()
+        support.write_file(self.repo / "docs/guide.md", "guide\n")
+        commit_all(self.repo, "control docs and audit config")
+
+    def readme(self, *args: str) -> dict[tuple[str, str], dict[str, object]]:
+        code, out, err = self.run_cli(
+            "next", "readme-quality", "-n", "50", "--format", "json", *args
+        )
+        self.assertEqual(code, 0, err)
+        payload = json.loads(out)
+        return {(c["repository"], c["path"]): c for c in payload["candidates"]}
+
+    def validate(self, *args: str) -> tuple[int, dict[str, object] | None, str]:
+        code, out, err = self.run_cli("validate-path", *args, "--format", "json")
+        return code, (json.loads(out) if code == 0 else None), err
+
+    def done(self, *args: str) -> None:
+        code, _out, err = self.run_cli("done", *args)
+        self.assertEqual(code, 0, err)
+
+    def test_roots_are_candidates_only_where_named(self) -> None:
+        self.assertEqual(
+            set(self.readme()), {("self", "."), ("self", "docs"), ("library", ".")}
+        )
+        self.assertEqual(self.readme()[("library", ".")]["kind"], "directory")
+        # Wildcards that match every other directory never reach the root.
+        directories = self.identities("--repository", "library", "--kind", "directory")
+        self.assertIn(("library", "src"), directories)
+        self.assertNotIn(("library", "."), directories)
+
+    def test_root_validates_in_every_spelling(self) -> None:
+        cases = [
+            (spelling, "library") for spelling in (".", "./", str(self.library))
+        ] + [(spelling, "self") for spelling in (".", str(self.repo))]
+        for spelling, repository in cases:
+            with self.subTest(spelling=spelling, repository=repository):
+                code, payload, err = self.validate(
+                    spelling, "readme-quality", "--repository", repository
+                )
+                self.assertEqual(code, 0, err)
+                self.assertEqual(payload["repository"], repository)
+                self.assertEqual(payload["path"], ".")
+                self.assertEqual(payload["kind"], "directory")
+
+    def test_control_spelling_of_a_subject_root_names_the_working_spelling(self) -> None:
+        code, _payload, err = self.validate("library", "readme-quality")
+        self.assertEqual(code, 2)
+        self.assertIn("root of declared repository 'library'", err)
+        self.assertIn("--repository library with the path '.'", err)
+
+    def test_a_subject_root_goes_stale_on_any_subject_commit(self) -> None:
+        self.done(".", "readme-quality", "--repository", "library")
+        record = json.loads(
+            self.record_file("library", "readme-quality").read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            record["audits"]["."]["last_audit_commit"], git(self.library, "rev-parse", "HEAD")
+        )
+        self.assertNotIn(("library", "."), self.readme("--stale"))
+
+        support.write_file(self.library / "tool.py", "def tool():\n    return 2\n")
+        commit_all(self.library, "library change outside any README")
+        stale = self.readme("--stale")
+        self.assertIn(("library", "."), stale)
+        self.assertEqual(stale[("library", ".")]["commits_since_audit"], 1)
+
+    def test_the_control_root_survives_its_own_record_commit(self) -> None:
+        self.done(".", "readme-quality")
+        self.done("docs", "readme-quality")
+        record = "docs/work/audits/records/readme-quality.json"
+        git(self.repo, "add", "--", record)
+        git(self.repo, "commit", "-qm", "chore(audits): record readme-quality reviews")
+        self.assertEqual(self.readme("--stale"), {})
+
+        # Moving a subject's gitlink changed the subject, not the control.
+        support.write_file(self.library / "src/core.py", "VALUE = 3\n")
+        commit_all(self.library, "subject change")
+        git(self.repo, "add", "library")
+        git(self.repo, "commit", "-qm", "bump library")
+        self.assertEqual(self.readme("--stale"), {})
+
+        support.write_file(self.repo / "tool.py", "def control_tool():\n    return 9\n")
+        commit_all(self.repo, "control content change")
+        self.assertEqual(set(self.readme("--stale")), {("self", ".")})
+
+
 class EnvironmentIsolationTest(SubjectRepositoryTestCase):
     """A caller's repository-local Git variables describe the control
     repository; commands in a subject must not inherit them."""
