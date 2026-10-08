@@ -8,8 +8,10 @@
 # helper supports single-line inline links, images, and reference definitions.
 # Their destinations must be angle-bracketed, or whitespace-free without
 # parentheses; optional titles are preserved.  URI, absolute, and fragment-only
-# targets are left alone.  Active link syntax outside that grammar is refused,
-# rather than guessed at or silently copied unchanged.
+# targets are left alone.  Footnote definitions (`[^label]:`) are not reference
+# definitions; their text is scanned like any other line.  Active link syntax
+# outside that grammar is refused, rather than guessed at or silently copied
+# unchanged.
 set -euo pipefail
 
 usage() {
@@ -122,11 +124,11 @@ awk -v mode="$mode" -v old_path="$old_path" -v new_path="$new_path" '
     }
     before = substr(inside, 1, target_start - 1)
     after = substr(inside, target_end + 1)
-    rewritten = substr(line, start, open) before newtarget after ")"
+    rewritten = substr(line, start, open - start + 1) before newtarget after ")"
     return end_paren
   }
   function process_reference(line,    pos,inside,before,after,newtarget) {
-    if (line !~ /^[[:space:]]*\[[^]]+\]:/) return line
+    if (line !~ /^[[:space:]]*\[[^]^][^]]*\]:/) return line
     pos = index(line, ":")
     inside = substr(line, pos + 1)
     if (!parse_destination(inside)) fail("reference destination is outside the supported grammar")
@@ -141,7 +143,7 @@ awk -v mode="$mode" -v old_path="$old_path" -v new_path="$new_path" '
   fence { if (mode == "rewrite") print; next }
   {
     line = $0
-    if (line ~ /^[[:space:]]*\[[^]]+\]:/) {
+    if (line ~ /^[[:space:]]*\[[^]^][^]]*\]:/) {
       result = process_reference(line)
       if (mode == "rewrite") print result
       next
