@@ -134,6 +134,7 @@ expect "a conformant repo is green" 0 NONE
 
 # --- one mutation per check ---------------------------------------------------
 wrapper_outgrows_root() { printf '%.0spadding padding padding\n' {1..80} >> CLAUDE.md; }
+drop_bridge_file()      { rm CLAUDE.md; }
 drop_bridge_import()    { grep -v '^@AGENTS\.md$' CLAUDE.md > t && mv t CLAUDE.md; }
 unlink_standing_rule()  { sed 's|\[`workshop/docs/signal-hygiene.md`\](workshop/docs/signal-hygiene.md)|the signal-hygiene rule|' AGENTS.md > t && mv t AGENTS.md; }
 import_from_root()      { echo '@workshop/docs/signal-hygiene.md' >> AGENTS.md; }
@@ -156,6 +157,11 @@ split_standing_routes() {
 }
 
 expect "wrapper larger than root"            1 wrapper_outgrows_root "FAIL 1"
+# Claude Code now reads AGENTS.md when no CLAUDE.md exists, so a missing bridge no
+# longer silences the instructions; it silences the standing-rule imports, which
+# is worse because nothing looks broken. The message must name that consequence.
+expect "no bridge at all"                    1 drop_bridge_file      "FAIL 1"
+expect "no bridge names the lost imports"    1 drop_bridge_file      "standing-rule imports have no home"
 expect "no @AGENTS.md in the wrapper"        1 drop_bridge_import    "FAIL 2"
 expect "imported doc not linked from AGENTS" 1 unlink_standing_rule  "FAIL 3"
 expect "@-import inside AGENTS.md"           1 import_from_root      "FAIL 4"

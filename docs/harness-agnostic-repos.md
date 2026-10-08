@@ -40,12 +40,12 @@ Everything below is an application of these.
 
 ## The five agent-facing surfaces
 
-Every repo exposes five surfaces to an agent. Each has a canonical home and, where a
-holdout demands it, exactly one bridge.
+Every repo exposes five surfaces to an agent. Each has a canonical home and, where one
+harness needs syntax or a path that no other reads, exactly one bridge.
 
 | Surface | Canonical (harness-neutral) | Bridge | What breaks without the bridge |
 |---------|------------------------------|--------|-------------------------------|
-| **Instructions** | `AGENTS.md` at repo root | `CLAUDE.md` containing `@AGENTS.md` + Claude-only sections | Claude Code reads no project instructions at all |
+| **Instructions** | `AGENTS.md` at repo root | `CLAUDE.md` containing `@AGENTS.md` + Claude-only sections | The standing rules stop loading eagerly while `AGENTS.md` still loads, so nothing looks broken |
 | **Skills** | `.agents/skills/<name>/SKILL.md` | per-skill symlink `.claude/skills/<name> -> ../../.agents/skills/<name>` | Claude Code sees no skills |
 | **Bootstrap** | a plain script, e.g. `scripts/agent/session-start.sh` | thin `.claude/hooks/*.sh` wrapper that emits the hook JSON envelope | Non-Claude sessions start on a stale checkout with uninitialized submodules |
 | **Tool config (MCP)** | none — genuinely per-harness | `.mcp.json` (Claude Code, Cursor); `.vscode/mcp.json` uses a different key | Only the harnesses you wrote config for get the servers |
@@ -63,11 +63,26 @@ works right up until someone opens the repo in another one.
 AGENTS.md      # canonical, harness-neutral: everything every agent needs
 CLAUDE.md      # thin Claude Code bridge:
                #   @AGENTS.md
-               #   @devtools/docs/signal-hygiene.md
-               #   @devtools/docs/definition-of-done.md
-               #   @devtools/docs/verification-terminology.md
+               #   @workshop/docs/signal-hygiene.md
+               #   @workshop/docs/definition-of-done.md
+               #   @workshop/docs/verification-terminology.md
                #   <Claude Code-specific sections only>
 ```
+
+### Why the bridge still exists
+
+Claude Code reads `AGENTS.md` natively (v2.1.277; v2.1.281 on Bedrock, Vertex, Foundry,
+gateways, and telemetry-off sessions), but by default **only when no `CLAUDE.md`,
+`.claude/CLAUDE.md`, or `CLAUDE.local.md` exists in the working directory or any
+directory above it** ([memory docs](https://code.claude.com/docs/en/memory#agents-md)).
+Once any of those exists, Claude reads the `CLAUDE.md` files only, and a nested
+`AGENTS.md` beneath them is never loaded on its own. The setting that changes this is
+read from user and managed settings only, so a repository cannot opt in for its readers.
+
+The bridge exists because the three standing-rule imports need a home, and invariant 3
+keeps `@` lines out of `AGENTS.md`. While it exists it **must** import `AGENTS.md`:
+without that line Claude sees only the wrapper. The `@AGENTS.md` import loads the file
+once, exactly as native support would, so keeping it costs nothing.
 
 ### The placement rule is audience, not topic
 
@@ -109,9 +124,10 @@ standing rules qualify — `signal-hygiene.md`, `definition-of-done.md`, and
   probing for an instruction file must probe for `AGENTS.md`.
 - **Nested files:** monorepos may nest `AGENTS.md` per sub-project — other harnesses
   resolve nearest-file-wins, and it is the only way to give a sub-project real detail
-  without paying for it in every session at the root. Claude Code loads nested
-  instruction files on demand **only** under the name `CLAUDE.md`, so each nested
-  `AGENTS.md` needs a one-line sibling `CLAUDE.md` containing `@AGENTS.md`.
+  without paying for it in every session at the root. The root bridge switches off
+  Claude Code's native `AGENTS.md` reading for everything beneath it, and Claude loads
+  a nested `CLAUDE.md` on demand, so each nested `AGENTS.md` needs a one-line sibling
+  `CLAUDE.md` containing `@AGENTS.md`.
 
 ## Surface 2 — skills
 
@@ -362,25 +378,20 @@ that is the breakage check 8 exists to name.
 - **Two maintained copies plus a drift check.** Detects drift instead of making it
   impossible. Invariant 1.
 - **Per-tool instruction files.** The standard exists precisely to replace them.
-- **Waiting for Claude Code to support `AGENTS.md` natively.** The request has been open
-  since August 2025 with no roadmap signal. The bridge is byte-for-byte equivalent
-  today; adopt now and delete the wrapper's first line if the day ever comes.
+- **Dropping the bridge now that Claude Code reads `AGENTS.md`.** Native reading
+  only applies when no `CLAUDE.md` exists, and the standing-rule imports have no other
+  home: delete the bridge and the rules stop arriving while everything else still loads,
+  so nothing looks broken. Deleting only the bridge's `@AGENTS.md` line is worse still —
+  the bridge's presence keeps native reading off, so Claude sees only the wrapper.
 
-## Ecosystem facts, as of August 2026
+## Ecosystem facts
 
-Re-verify before reusing this section — the Claude Code line is the one most likely to
-change.
+Re-verify before reusing this section — the Claude Code lines are the ones most likely to
+change. Each fact here backs a rule above.
 
-- **`AGENTS.md`** was proposed by OpenAI with Google, Cursor, Factory, and Sourcegraph in
-  August 2025 and donated to the Linux Foundation's **Agentic AI Foundation** in December
-  2025. Adoption is past 60,000 public repositories, with native support in 30+ tools
-  including Codex, GitHub Copilot, Cursor, Jules, Gemini CLI, Devin, Zed, Amp, Factory,
-  Warp, RooCode, opencode, goose, JetBrains Junie, Windsurf, and Aider.
-- **Claude Code does not read `AGENTS.md`** — at any level, with no fallback. The claim
-  that it falls back when `CLAUDE.md` is absent is false.
-  [anthropics/claude-code#6235](https://github.com/anthropics/claude-code/issues/6235) is
-  the tracker's largest open feature request. Anthropic's own memory docs instead
-  document the import bridge this standard uses.
+- **Claude Code reads `AGENTS.md` only when no `CLAUDE.md` exists** in or above the
+  working directory (v2.1.277; v2.1.281 on Bedrock, Vertex, Foundry, gateways, and
+  telemetry-off sessions). See [Why the bridge still exists](#why-the-bridge-still-exists).
 - **`@path` imports** load eagerly at session launch, resolve relative to the importing
   file, recurse to a maximum of four hops, and are skipped inside code spans and fenced
   blocks. In-project imports load silently; one resolving outside the working directory
@@ -389,14 +400,11 @@ change.
 - **The `AGENTS.md` spec has no import or include mechanism.** This single fact drives
   the whole wrapper design.
 - **Codex truncates** the merged chain at 32 KiB (`project_doc_max_bytes`), global
-  `~/.codex/AGENTS.md` included. Repeatedly reported as the top production issue.
+  `~/.codex/AGENTS.md` included.
 - **Several harnesses read only the root file** — Copilot code review, Copilot CLI, early
   Windsurf. Anything universal belongs at the root.
-- **Agent Skills** was published as an open specification in December 2025 and is
-  supported by ~40 products, including Claude Code, Codex, Copilot, VS Code, Cursor,
-  Gemini CLI, goose, and opencode. `.agents/skills/` is the cross-client discovery
-  convention. Claude Code does not yet read it
-  ([anthropics/claude-code#31005](https://github.com/anthropics/claude-code/issues/31005));
+- **`.agents/skills/` is the cross-client skill discovery path, and Claude Code does not
+  yet read it** ([anthropics/claude-code#31005](https://github.com/anthropics/claude-code/issues/31005));
   it reads `.claude/skills/`, and follows per-skill directory symlinks correctly.
 
 ## See also
@@ -416,4 +424,4 @@ change.
 - [Agent Skills specification](https://agentskills.io/specification) — the authoritative
   skill format reference
 - [Claude Code memory docs](https://code.claude.com/docs/en/memory) — `CLAUDE.md`
-  mechanics and the documented interop bridge
+  mechanics, the `@AGENTS.md` import, and when `AGENTS.md` loads natively

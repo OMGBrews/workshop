@@ -153,7 +153,7 @@ echo "== agent surfaces: $root"
 if [ ! -f AGENTS.md ]; then
     fail 1 "AGENTS.md is missing — the canonical instruction file does not exist"
 elif [ ! -f CLAUDE.md ]; then
-    fail 1 "CLAUDE.md is missing — no bridge, so Claude Code reads no instructions"
+    fail 1 "CLAUDE.md is missing — AGENTS.md still loads natively, but the standing-rule imports have no home, so the rules silently stop arriving"
 else
     a=$(bytes AGENTS.md); c=$(bytes CLAUDE.md)
     if [ "$a" -gt "$c" ]; then
