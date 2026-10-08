@@ -8,7 +8,7 @@
 # false-firing) on the same input. A test that only checks the fix cannot tell
 # you whether it still exercises the bug.
 #
-# The two naive screens below are not invented for the test. Both are mistakes
+# The three naive screens below are not invented for the test. All are mistakes
 # that were actually made while building this script:
 #
 #   NAIVE_BOUNDARY — the first draft anchored command names on whitespace, so
@@ -21,6 +21,11 @@
 #     fires on the sanctioned redirect-then-read form, which ends in `tail`.
 #     A screen that denies the correct idiom is worse than none: it teaches the
 #     wrong lesson every time it fires.
+#
+#   NAIVE_ANYWHERE — the fix for NAIVE_BOUNDARY matched command names anywhere
+#     after a non-word character, so a script NAME given as an argument read as
+#     a run: `grep -n x tests/verify-a.sh | head` was denied. Every one of the
+#     30 denials in hq's pilot review was a false alarm of this kind.
 #
 # The corpus assertion is what holds the screens narrow over time. It asserts
 # ZERO hits across this repository's own tracked shell scripts and the standing rules —
@@ -72,6 +77,26 @@ denies "inside command substitution"    'OLD=$(git push -q origin main 2>&1 | ta
 denies "inside backticks"               'OUT=`npm test | tail -5`'
 denies "verify-*.sh into tail"          'bash tests/verify-thing.sh | tail -1'
 denies "through an intermediate stage"  'npm test | grep -i error | tail -5'
+# Command position reaches through what can stand in front of a run.
+denies "executed script, path prefix"   './tests/verify-x.sh | head'
+denies "make test into tail"            'make test | tail'
+denies "pytest into tail -5"            'pytest | tail -5'
+denies "under timeout and an interpreter" 'timeout 600 bash tests/run-tests.sh | tail'
+denies "interpreter with options"       'bash -x tests/verify-a.sh | head'
+denies "inside a subshell"              '( make test ) | tail'
+denies "after cd &&"                    'cd sub && make check | tail'
+denies "behind env and assignments"     'env CI=1 npm test | tail'
+denies "behind a bare assignment"       'CI=1 pytest | tail'
+denies "behind time"                    'time make test | tail'
+denies "through a package runner"       'uv run pytest | tail'
+denies "through python -m"              'python3 -m pytest -q | tail'
+denies "through npx"                    'npx jest | tail'
+denies "a pnpm-run binary"              'pnpm tsc | tail'
+denies "by path into a venv"            '.venv/bin/pytest -q | tail'
+denies "inside a mid-command substitution" 'echo $(npm test | tail -1)'
+# Decision on finalization: echoing PIPESTATUS keeps the status but tail still
+# discards the output the standing rule requires.
+denies "PIPESTATUS still trims the output" 'git push origin b 2>&1 | tail -3; echo "push exit=${PIPESTATUS[0]}"'
 
 diagnostic=$(bash "$CHECK" 'bash tests/run-tests.sh | tail -40' 2>&1 || true)
 if [[ $diagnostic == *"verdict-bearing command"* ]]; then
@@ -91,6 +116,8 @@ denies "backgrounded, no verdict at all" 'bash tests/verify-thing.sh > out.txt 2
 denies "verdict outside the braces"      'bash tests/run-tests.sh > out.txt 2>&1; echo "EXIT=$?" &'
 denies "harness-backgrounded, unbraced"  --background 'bash tests/run-tests.sh > out.txt 2>&1; echo "EXIT=$?"'
 denies "harness-backgrounded, no verdict" --background 'npm run build > b.log 2>&1'
+denies "backgrounded after cd &&"        'cd sub && npm test > o.log 2>&1 &'
+allows "a backgrounded search is not a run" 'grep -rn pytest . > hits.txt &'
 
 # --- 3. what must never fire ------------------------------------------------
 hr "3 — the sanctioned form and ordinary recall stay clean"
@@ -105,6 +132,14 @@ allows "find into head (recall)"           'find . -name "*.sh" | head -20'
 allows "recall inside substitution"        'X=$(git log --oneline | head -1)'
 allows "a check run plainly"               'bash tests/run-tests.sh'
 allows "a commit with no pipe"             'git commit -m "wip" && git push'
+# Reading a test script is not running it. Each of these was denied in hq's
+# pilot review, when the pattern matched a script name in argument position.
+allows "grep over a verify script"         'grep -n x tests/verify-a.sh | head'
+allows "cat of a test script"              'cat tests/test-audit-tracker.sh | head -30'
+allows "sed over a verify script"          'sed -n 1,60p tests/verify-cloud-token-scope.sh | head'
+allows "git log over a verify script"      'git log --oneline a..HEAD -- tests/verify-command-signal-hygiene-corpus.sh | head -30'
+allows "grep for a runner name"            'grep -n pytest notes.txt | head'
+allows "installing a runner is not running it" 'npm install jest | tail'
 
 # --- 4. the exit-2 contract -------------------------------------------------
 hr "4 — cannot-decide is 2, never 0 by accident"
@@ -137,6 +172,21 @@ else
   bad "the sanctioned form no longer contains 'tail' — this test is decorative, repair it"
 fi
 allows "the shipped screen leaves the sanctioned form alone" "$SANCTIONED"
+
+# --- 10. PAIRED: matching anywhere reads a script name as a run ---------------
+# The anywhere-matching boundary that fixed section 5 then fired on every read of
+# a test script: in hq's pilot, all 30 of 872 commands it denied were false
+# alarms. Frozen here as it shipped, script-name alternative only.
+hr "10 — PAIRED: an anywhere match denies reading a test script"
+READ_NOT_RUN='grep -n x tests/verify-a.sh | head'
+NAIVE_ANYWHERE='(^|[^A-Za-z0-9_-])(run-tests|verify-[A-Za-z0-9_.-]+|test-[A-Za-z0-9_.-]+|check-[A-Za-z0-9_.-]+)\.sh([^A-Za-z0-9_-]|$)'
+naive_stage1=${READ_NOT_RUN%%|*}
+if [[ $naive_stage1 =~ $NAIVE_ANYWHERE ]]; then
+  ok "the naive anywhere match fires on a grep over the script (the false positive)"
+else
+  bad "the naive anywhere match no longer fires — this test is decorative, repair it"
+fi
+allows "the shipped screen leaves the read alone" "$READ_NOT_RUN"
 
 # --- 7. --scan over markdown: fenced shell blocks only ---------------------
 hr "7 — --scan reads fenced shell blocks, honours the counter-example marker"

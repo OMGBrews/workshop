@@ -85,25 +85,123 @@ MARKER='signal-hygiene: counter-example'
 # `git status`, `ls`, `cat` and friends are deliberately absent — piping those
 # into head is ordinary recall, not a discarded verdict.
 #
-# The boundaries are `not a word character` rather than `whitespace`, and that
-# is load-bearing: the first draft used whitespace and silently missed
+# The pattern is matched at COMMAND POSITION — against the word a stage actually
+# executes — never anywhere in the text. Two lessons put it there:
+#
+# The first draft anchored names on whitespace and silently missed
 # `$(git push ... | tail -2)`, because the character before `git` is `(`. It
 # reported hq's corpus clean while hq's own regression test contained the exact
 # idiom — this screen false-passing on the defect it exists to detect, which is
 # the pattern it was written to stop. Command substitution, backticks, quotes
 # and `{` are all ordinary ways a command starts.
-B='(^|[^A-Za-z0-9_-])'      # left boundary
+#
+# The fix for that — a `not a word character` left boundary, matched anywhere —
+# then over-fired the other way. In hq's pilot review every one of 30 denials
+# across 872 commands was a false alarm, most of them a script NAME read as an
+# argument: `grep -n x tests/verify-a.sh | head` is recall over a file, not a
+# run of it. So `executed_heads` below strips what can stand in front of a
+# command — subshell and substitution openers, assignments, prefix commands,
+# interpreters and package runners — and only the head words it reaches are
+# tested. The right boundary still guards against `tsc-watch` and friends.
+#
+# Known under-fire, accepted: `xargs`, `find -exec` and `bash -c "..."` hand a
+# command to another program as arguments, and telling those apart from data
+# needs each program's argument semantics.
 E='([^A-Za-z0-9_-]|$)'      # right boundary
-VERDICT_BEARING_RE="$B(pytest|tsc|basedpyright|pyright|mypy|ruff|shellcheck|eslint|jest|vitest|phpunit|rspec|ctest)$E"
-VERDICT_BEARING_RE+="|$B(npm|yarn|pnpm|bun)[[:space:]]+(run[[:space:]]+)?(test|build|lint|typecheck|check)$E"
-VERDICT_BEARING_RE+="|${B}make[[:space:]]+(test|check|build|lint|ci|all)$E"
-VERDICT_BEARING_RE+="|$B(cargo|go|dotnet|mvn|gradle)[[:space:]]+(test|build|check|vet|clippy|verify)$E"
-VERDICT_BEARING_RE+="|${B}git[[:space:]]+(commit|push)$E"
-VERDICT_BEARING_RE+="|$B(run-tests|verify-[A-Za-z0-9_.-]+|test-[A-Za-z0-9_.-]+|check-[A-Za-z0-9_.-]+)\.sh$E"
+VERDICT_BEARING_RE="^(pytest|tsc|basedpyright|pyright|mypy|ruff|shellcheck|eslint|jest|vitest|phpunit|rspec|ctest)$E"
+VERDICT_BEARING_RE+="|^(npm|yarn|pnpm|bun)[[:space:]]+(run[[:space:]]+)?(test|build|lint|typecheck|check)$E"
+VERDICT_BEARING_RE+="|^make[[:space:]]+(test|check|build|lint|ci|all)$E"
+VERDICT_BEARING_RE+="|^(cargo|go|dotnet|mvn|gradle)[[:space:]]+(test|build|check|vet|clippy|verify)$E"
+VERDICT_BEARING_RE+="|^git[[:space:]]+(commit|push)$E"
+VERDICT_BEARING_RE+="|^(run-tests|verify-[A-Za-z0-9_.-]+|test-[A-Za-z0-9_.-]+|check-[A-Za-z0-9_.-]+)\.sh$E"
 
 trim() { local s=$1; s="${s#"${s%%[![:space:]]*}"}"; printf '%s' "${s%"${s##*[![:space:]]}"}"; }
 
-is_verdict_bearing() { [[ $1 =~ $VERDICT_BEARING_RE ]]; }
+# Prints, one per line, every command-position reading of one pipeline stage:
+# the stage itself, then what remains after each wrapper is stripped. A
+# launcher's own reading is kept as well as the command it launches, so both
+# `npm test` and the `tsc` in `pnpm tsc` are seen. Reads dequoted text.
+executed_heads() {
+  local s=$1 w ticks launcher
+  # A pipe inside an unclosed `$(` or backtick belongs to the innermost one:
+  # in `echo $(npm test | tail -1)` the stage is `npm test`, not `echo`.
+  if [[ $s == *"\$("* && ${s##*"\$("} != *')'* ]]; then s=${s##*"\$("}; fi
+  ticks=${s//[!\`]/}
+  if (( ${#ticks} % 2 == 1 )); then s=${s##*\`}; fi
+  while :; do
+    s=${s#"${s%%[![:space:]]*}"}
+    [[ -n $s ]] || return 0
+    case $s in
+      "\$("*) s=${s:2}; continue ;;
+      ['({`!']*) s=${s:1}; continue ;;
+    esac
+    # NAME=value assignments, including NAME=$( and NAME=` openers.
+    if [[ $s =~ ^[A-Za-z_][A-Za-z0-9_]*=(\$\(|\`) ]]; then s=${s:${#BASH_REMATCH[0]}}; continue; fi
+    if [[ $s =~ ^[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*([[:space:]]|$) ]]; then s=${s:${#BASH_REMATCH[0]}}; continue; fi
+    # A path to a program is the program: `./tests/verify-x.sh`, `.venv/bin/pytest`.
+    w=${s%%[[:space:]]*}
+    [[ $w == */* ]] && s=${w##*/}${s:${#w}}
+    printf '%s\n' "$s"
+    w=${s%%[[:space:]]*}
+    s=${s:${#w}}
+    case $w in
+      time|nohup|command|exec|builtin|sudo|stdbuf|xvfb-run|env|nice|timeout|npx|bunx|pnpx|uvx|run|npm|yarn|pnpm|bun|uv|poetry|pipenv|pdm|hatch|rye)
+        # Prefix commands and package runners: skip their options (and the
+        # argument the common ones take), then read on. `timeout` also takes
+        # its duration; `env`'s NAME=value words fall to the assignment rule.
+        launcher=$w
+        while s=${s#"${s%%[![:space:]]*}"}; [[ $s == -* ]]; do
+          w=${s%%[[:space:]]*}; s=${s:${#w}}
+          case $w in
+            -k|-s|-n|-u|-C|-a|--signal|--kill-after|--adjustment|--unset|--chdir)
+              s=${s#"${s%%[![:space:]]*}"}; s=${s#"${s%%[[:space:]]*}"} ;;
+          esac
+        done
+        if [[ $launcher == timeout ]]; then s=${s#"${s%%[[:space:]]*}"}; fi
+        ;;
+      bash|sh|zsh|dash|ksh|source|.)
+        # An interpreter runs its script: skip options, read the script name.
+        while s=${s#"${s%%[![:space:]]*}"}; [[ $s == [-+]* ]]; do
+          w=${s%%[[:space:]]*}; s=${s:${#w}}
+          case $w in
+            -o|+o|-O|+O) s=${s#"${s%%[![:space:]]*}"}; s=${s#"${s%%[[:space:]]*}"} ;;
+            --) break ;;
+          esac
+        done
+        ;;
+      python|python[0-9]*)
+        # `python -m pytest` runs pytest; a script path runs nothing screened.
+        while s=${s#"${s%%[![:space:]]*}"}; [[ $s == -* ]]; do
+          w=${s%%[[:space:]]*}; s=${s:${#w}}
+          [[ $w == -m ]] && break
+        done
+        ;;
+      *) return 0 ;;
+    esac
+  done
+}
+
+# Does this one pipeline stage execute a verdict-bearing command?
+runs_verdict_bearing() {
+  local head
+  while IFS= read -r head; do
+    [[ $head =~ $VERDICT_BEARING_RE ]] && return 0
+  done < <(executed_heads "$1")
+  return 1
+}
+
+# Does any stage of any command in this (dequoted) text?
+any_runs_verdict_bearing() {
+  local seg stage
+  local -a stages
+  while IFS= read -r seg; do
+    IFS='|' read -r -a stages <<<"$seg"
+    for stage in "${stages[@]}"; do
+      runs_verdict_bearing "$stage" && return 0
+    done
+  done < <(split_segments "$1")
+  return 1
+}
 
 # One segment per line. `&&`, `||`, `;` and newlines separate commands; a single
 # `|` does not, because a pipeline is one command and its stages are what the f1
@@ -157,7 +255,7 @@ screen_segment() {
   if [[ $seg == *"|"* ]]; then
     stage1=${seg%%|*}
     rest=${seg#*|}
-    if [[ $rest =~ (^|[[:space:]|])(tail|head)([[:space:]]|$) ]] && is_verdict_bearing "$stage1"; then
+    if [[ $rest =~ (^|[[:space:]|])(tail|head)([[:space:]]|$) ]] && runs_verdict_bearing "$stage1"; then
       REASON="A verdict-bearing command is piped into tail/head, so the pipeline reports tail's exit status, not the producer's: a failed run announces itself as success and the output explaining the failure is discarded. Redirect first, then read:
   $SANCTIONED
 The trailing tail is fine there — it is a separate command reading a file after the verdict was captured. What is not fine is the pipe."
@@ -180,9 +278,13 @@ The trailing tail is fine there — it is a separate command reading a file afte
 # both look fine. As one command it is the 2026-07-22 observation exactly — the
 # redirect binds to the producer alone, so the verdict is written somewhere nobody
 # reads. Only the braced group puts the verdict in the artifact.
+#
+# What makes the command verdict-bearing is still read at command position: any
+# stage of any segment that executes a verdict-bearing program, so a backgrounded
+# `grep -rn pytest . > hits.txt &` is a search, not a run.
 screen_background() {
   local cmd=$1
-  is_verdict_bearing "$cmd" || return 1
+  any_runs_verdict_bearing "$(dequote "$cmd")" || return 1
   if [[ $cmd =~ \{[^}]*EXIT=[^}]*\}[[:space:]]*\> ]]; then
     return 1   # braced verdict, redirected into the artifact — the sanctioned form
   fi
