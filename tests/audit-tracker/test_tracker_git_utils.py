@@ -219,7 +219,7 @@ class BatchHistoryTest(support.RepoTestCase):
         support.write_file(self.repo / "pkg/c.py", "c2\n")
         self.commit("third")
 
-        paths = ["a.py", "b.py", "pkg", "pkg/c.py"]
+        paths = [".", "a.py", "b.py", "pkg", "pkg/c.py"]
         all_batched = git_utils.commits_since_many_by_sha(
             {first: paths, second: paths}
         )
@@ -231,6 +231,38 @@ class BatchHistoryTest(support.RepoTestCase):
                 }
                 self.assertEqual(batched, individual)
                 self.assertEqual(all_batched[sha], individual)
+
+    def test_metadata_changes_never_count_for_directories_above_them(self) -> None:
+        support.write_file(self.repo / "a.py", "a0\n")
+        support.write_file(self.repo / "docs/guide.md", "g0\n")
+        support.write_file(self.repo / "docs/records/r.json", "{}\n")
+        audited = self.commit("audited")
+        support.write_file(self.repo / "docs/records/r.json", '{"x": 1}\n')
+        self.commit("record only")
+
+        paths = [".", "docs", "docs/records", "docs/records/r.json", "a.py"]
+        counts = git_utils.commits_since_many_by_sha(
+            {audited: paths}, metadata_dir="docs/records"
+        )[audited]
+        self.assertEqual(
+            counts,
+            {".": 0, "docs": 0, "docs/records": 1, "docs/records/r.json": 1, "a.py": 0},
+        )
+        # Without the metadata directory the same commit stales every ancestor.
+        plain = git_utils.commits_since_many_by_sha({audited: paths})[audited]
+        self.assertEqual(plain["."], 1)
+        self.assertEqual(plain["docs"], 1)
+
+        # A content change in the same commit as a record still counts.
+        support.write_file(self.repo / "docs/guide.md", "g1\n")
+        support.write_file(self.repo / "docs/records/r.json", '{"x": 2}\n')
+        self.commit("content and record")
+        counts = git_utils.commits_since_many_by_sha(
+            {audited: paths}, metadata_dir="docs/records"
+        )[audited]
+        self.assertEqual(counts["."], 1)
+        self.assertEqual(counts["docs"], 1)
+        self.assertEqual(counts["docs/records"], 2)
 
     def test_index_fingerprint_is_read_only_and_tracks_staging(self) -> None:
         support.write_file(self.repo / "a.py", "a0\n")

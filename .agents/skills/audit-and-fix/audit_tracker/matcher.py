@@ -10,6 +10,10 @@ Patterns are gitignore-style, matched against repo-relative POSIX paths:
 - ``*`` and ``?`` stay within one segment (they never match ``/``).
 - Everything else in a segment is literal. Character classes are not
   supported; the configs this ships with only use literals and ``*``.
+- The repository root is the path ``.``, and only the literal pattern ``.``
+  matches it. No wildcard does: ``*`` or ``**`` reaching the root would
+  silently queue a whole-repository audit in every config written before the
+  root was a candidate.
 
 The reference semantics were measured against ``pathlib.PurePosixPath
 .full_match`` on CPython 3.13, which the tracker previously required; this
@@ -22,7 +26,7 @@ from __future__ import annotations
 import re
 from functools import lru_cache
 
-from .config import TargetRule
+from .config import ROOT, TargetRule
 
 
 @lru_cache(maxsize=None)
@@ -57,8 +61,9 @@ def _pattern_regex(pattern: str) -> re.Pattern[str]:
     return re.compile("".join(tokens))
 
 
-
 def _matches_any(path: str, patterns: list[str]) -> bool:
+    if path == ROOT:
+        return ROOT in patterns
     return any(_pattern_regex(pattern).fullmatch(path) for pattern in patterns)
 
 

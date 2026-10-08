@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
-from .git_utils import NotARepositoryError, repo_root
+from .git_utils import ROOT, NotARepositoryError, repo_root
 
 PathKind = Literal["file", "directory"]
 KINDS: tuple[str, ...] = ("file", "directory")
@@ -295,6 +295,7 @@ __all__ = [
     "ConfigError",
     "NotARepositoryError",
     "PathKind",
+    "ROOT",
     "Repository",
     "SELF_REPOSITORY",
     "TargetRule",

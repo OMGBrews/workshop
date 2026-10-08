@@ -21,6 +21,10 @@ from collections.abc import Collection
 from functools import lru_cache
 from pathlib import Path
 
+ROOT = "."
+"""The path of a repository's own root directory: a directory candidate like
+any other, matched only by the literal include pattern ``"."``."""
+
 _cached_repo_root: Path | None = None
 
 
@@ -351,6 +355,7 @@ def commits_since_many_by_sha(
     requests: dict[str, list[str]],
     root: Path | None = None,
     ignore: Collection[str] = (),
+    metadata_dir: str | None = None,
 ) -> dict[str, dict[str, int]]:
     """Count path-touching commits for every requested audit SHA in one walk.
 
@@ -367,6 +372,15 @@ def commits_since_many_by_sha(
     passes its declared subjects' paths: a commit that only moves a
     subject's gitlink changed that subject, which has its own history and
     records, not any content the control repository audits.
+
+    Names under ``metadata_dir`` never count for a directory that contains
+    it. The control repository passes its records directory: the record
+    commit that follows every audit is bookkeeping, and counting it would
+    stale an audit of the root, or of any directory above the records, the
+    moment it was recorded. A path at or inside ``metadata_dir`` still sees
+    those changes.
+
+    The root, ``.``, counts every commit that changed any remaining name.
     """
     if not requests:
         return {}
@@ -416,13 +430,30 @@ def commits_since_many_by_sha(
             if node is not None:
                 pending.extend(node[0])
         counts = dict.fromkeys(paths, 0)
+        metadata_prefix = f"{metadata_dir}/" if metadata_dir else None
+        above_metadata = {
+            path
+            for path in paths
+            if metadata_prefix
+            and (path == ROOT or metadata_dir.startswith(path + "/"))
+        }
         for commit_sha in all_commits - ancestors:
             changed = graph[commit_sha][1]
             if not changed:
                 continue
+            content = (
+                {name for name in changed if not name.startswith(metadata_prefix)}
+                if above_metadata
+                else changed
+            )
             for path in paths:
-                prefix = path + "/"
-                if path in changed or any(name.startswith(prefix) for name in changed):
+                names = content if path in above_metadata else changed
+                if path == ROOT:
+                    touched = bool(names)
+                else:
+                    prefix = path + "/"
+                    touched = path in names or any(name.startswith(prefix) for name in names)
+                if touched:
                     counts[path] += 1
         result[audit_sha] = counts
     return result

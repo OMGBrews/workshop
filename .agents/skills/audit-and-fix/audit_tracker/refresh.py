@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from . import git_utils, records
-from .config import Config, PathKind, TargetRule
+from .config import ROOT, Config, PathKind, TargetRule
 from .matcher import matches_rule
 from .repositories import RepositoryContext, resolve_all
 
@@ -29,9 +29,11 @@ class RefreshSummary:
 
 
 def _derive_directories(files: Iterable[str]) -> set[str]:
-    """Every parent directory of any tracked file (repo-relative, POSIX)."""
+    """Every parent directory of any tracked file (repo-relative, POSIX),
+    including the repository root as ``.`` once any file is tracked."""
     dirs: set[str] = set()
     for file_path in files:
+        dirs.add(ROOT)
         parts = file_path.split("/")
         for depth in range(1, len(parts)):
             dirs.add("/".join(parts[:depth]))

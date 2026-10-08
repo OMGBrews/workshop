@@ -12,7 +12,7 @@ that already happened, after the reviewed content has been committed.
 **Compatibility**: Requires Git, Python 3.11+, and the sibling
 `audit-and-fix` skill, which owns the tracker engine.
 
-**Arguments**: `<path> <audit-type> [--note "..."] [--repository <name>]` — at least the path and the audit type are required. `--repository` names a nested repository declared in the audit config; `<path>` is then relative to that repository's root.
+**Arguments**: `<path> <audit-type> [--note "..."] [--repository <name>]` — at least the path and the audit type are required. `--repository` names a nested repository declared in the audit config; `<path>` is then relative to that repository's root, and `.` is the root itself.
 
 ## Usage
 

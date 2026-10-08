@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Literal
 
 from . import git_utils, records
-from .config import SELF_REPOSITORY, PathKind, Repository
+from .config import ROOT, SELF_REPOSITORY, PathKind, Repository
 from .repositories import RepositoryContext, control
 
 AuditReason = Literal["never-audited", "stale", "clean"]
@@ -90,8 +90,8 @@ def canonicalize_explicit_path(
 
     Relative paths are taken from ``root`` (default: the control root), not
     the process CWD. Absolute paths are accepted only when their lexical path
-    is inside that root. Target resolution and ownership checks belong to
-    :func:`validate_explicit_path`.
+    is inside that root. The root itself canonicalizes to ``.``. Target
+    resolution and ownership checks belong to :func:`validate_explicit_path`.
     """
     cleaned = raw.strip()
     if not cleaned:
@@ -106,8 +106,7 @@ def canonicalize_explicit_path(
     except ValueError as exc:
         raise ValueError(f"path is outside {label}: {raw!r}") from exc
     if relative == Path("."):
-        root_label = "the repository root" if repository == SELF_REPOSITORY else f"the root of {label}"
-        raise ValueError(f"{root_label} is not an auditable tracked path")
+        return ROOT, lexical
     if any(part == ".." for part in relative.parts):
         raise ValueError(f"path is outside {label}: {raw!r}")
     return relative.as_posix(), lexical
@@ -126,7 +125,7 @@ def _reject_subject_spelling(
             raise ValueError(
                 f"path {canonical!r} is the root of declared repository "
                 f"{declaration.name!r}; pass --repository {declaration.name} "
-                "with a path inside it"
+                "with the path '.'"
             )
         if canonical.startswith(declaration.path + "/"):
             inner = canonical[len(declaration.path) + 1 :]
@@ -185,7 +184,7 @@ def validate_explicit_path(
     if conn is None:
         owned = git_utils.submodule_owned_paths(root) | git_utils.symlink_paths(root)
         files = set(git_utils.ls_files(root)) - owned
-        directories: set[str] = set()
+        directories: set[str] = {ROOT} if files else set()
         for file_path in files:
             parts = file_path.split("/")
             directories.update("/".join(parts[:depth]) for depth in range(1, len(parts)))
@@ -364,7 +363,8 @@ def _classify_audited_rows(
 
     ``subject_paths`` are the control-relative paths of declared subjects;
     changes at exactly those names (gitlink moves) never stale a control
-    repository audit.
+    repository audit. Neither do record-file changes for a directory above
+    the records directory, the root included.
     """
     by_repository: dict[str, list[sqlite3.Row]] = defaultdict(list)
     for row in rows:
@@ -391,6 +391,8 @@ def _classify_repository_rows(
     ignore: Collection[str] = (),
 ) -> list[tuple[AuditReason, NextCandidate]]:
     """Classify one repository's audited rows against its own HEAD."""
+    # Records live in the control repository; a subject's history has none.
+    metadata_dir = records.RECORDS_SUBDIR if repository == SELF_REPOSITORY else None
     grouped: dict[str, list[sqlite3.Row]] = defaultdict(list)
     classified: list[tuple[AuditReason, NextCandidate]] = []
     for row in rows:
@@ -426,7 +428,11 @@ def _classify_repository_rows(
         for sha, sha_rows in grouped.items()
     }
     missing = {sha: paths for sha, paths in missing.items() if paths}
-    computed = git_utils.commits_since_many_by_sha(missing, root, ignore) if missing else {}
+    computed = (
+        git_utils.commits_since_many_by_sha(missing, root, ignore, metadata_dir)
+        if missing
+        else {}
+    )
     cache_writes: list[tuple[str, str, str, str, int]] = []
     for sha, paths in missing.items():
         counts = computed.get(sha)

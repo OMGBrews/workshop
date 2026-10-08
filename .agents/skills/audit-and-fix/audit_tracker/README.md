@@ -18,9 +18,12 @@ config.
   `docs/work/audits/config.toml` — its existence is the tracker's opt-in. Each
   type has `targets`: a list of `{kind, include, exclude}` rules. `kind` is
   `file` or `directory`. Includes/excludes are gitignore-style globs (`**`
-  spans whole segments and needs at least one).
+  spans whole segments and needs at least one). The repository root is the
+  path `.`, matched only by the literal pattern `"."`: a wildcard reaching it
+  would have queued a whole-repository audit in every config written before
+  the root was a candidate.
 - **Paths** are every tracked file (from `git ls-files`) plus every parent
-  directory, regardless of audit type — **except paths owned by a submodule
+  directory, the root `.` included, regardless of audit type — **except paths owned by a submodule
   and all tracked symlinks**, which are dropped before anything else runs. Git
   history for a symlink follows the link blob rather than changes to the target
   an auditor reads, so even an in-repo link would produce misleading staleness.
@@ -62,7 +65,13 @@ Staleness is computed on the fly from Git. Paths sharing an audit commit are
 classified by one `git log --name-only` history walk rather than two Git
 processes per path. Exact results are cached under the current HEAD in the
 derived SQLite database, so repeated `status` and `next --stale` calls do not
-walk history again. A directory audit is stale if any file below it changed.
+walk history again. A directory audit is stale if any file below it changed;
+a root (`.`) audit is stale after any commit that changed a file. In the
+control repository, a change under `docs/work/audits/records/` never stales a
+directory above that folder, the root included: the record commit that
+follows every audit is bookkeeping, and counting it would make an audit of
+the root stale the moment it was recorded. A path at or inside the records
+folder still sees those changes.
 
 ## CLI
 
@@ -140,7 +149,8 @@ python3 .agents/skills/audit-and-fix/tracker.py done src/core.py code-quality --
 ### Explicit path validation
 
 `validate-path <path> <type>` accepts `./` spellings and absolute paths inside
-the repo, then prints the canonical repo-relative POSIX path. It rejects paths
+the repo, then prints the canonical repo-relative POSIX path; the repository
+root canonicalizes to `.`. It rejects paths
 outside the repo, every tracked symlink, untracked paths, submodule-owned
 paths, kind mismatches, unknown audit types, and—when configured—paths outside
 that type's applicability rules. Without a tracker config it performs the Git
@@ -151,7 +161,8 @@ With `--repository <name>`, the path is relative to that repository's root
 (absolute paths inside it are accepted) and the same checks run against its
 own index. Without the flag, a path that lands inside a declared repository
 is refused with an error naming `--repository <name>` and the
-subject-relative spelling. JSON results carry `repository`.
+subject-relative spelling (`.` for the subject's root). JSON results carry
+`repository`.
 
 ### Global options
 

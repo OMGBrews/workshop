@@ -74,6 +74,12 @@ Rules:
   `directory`), a non-empty `include` glob list, optional `exclude`.
 - Globs are gitignore-style: `**` spans whole segments (`app/**` matches
   `app/x` but not `app` itself); `*`/`?` stay within one segment.
+- The repository root is the directory `.`, and only the literal pattern
+  `"."` selects it — no wildcard does. It is how a repository's top-level
+  `README.md` enters the `readme-quality` pool:
+  `include = [".", "docs"]`. A root audit is stale after any commit that
+  changes content, so it resurfaces often by design; a commit that only
+  changes audit records never stales it.
 - The shipped prompt set under [`prompts/`](./prompts/README.md) is the closed
   vocabulary of types — a config naming a `<type>-<kind>` combination with no
   prompt file is rejected. New combinations are Workshop contributions
@@ -102,6 +108,12 @@ include = ["scripts/**/*.py"]
 repository = "library"
 kind = "file"
 include = ["src/**/*.py"]    # relative to library/'s own root
+
+[audit_types.readme-quality]
+[[audit_types.readme-quality.targets]]
+repository = "library"
+kind = "directory"
+include = ["."]              # library/'s own root, so library/README.md
 ```
 
 - **Names** use lowercase letters, digits, and hyphens; `self` is reserved.
@@ -117,7 +129,7 @@ include = ["src/**/*.py"]    # relative to library/'s own root
   `validate-path`/`done` mean `self`. With repositories declared, `--under`
   needs `--repository`. A control-relative path into a subject
   (`library/src/x.py`) is refused with the subject-relative spelling to use
-  instead.
+  instead; the subject's root is `--repository library --path .`.
 - **Staleness** follows the subject's own history: `done --repository
   library` records `library/`'s `HEAD` after checking it is in that
   repository's history, and later `library/` commits make the record stale.

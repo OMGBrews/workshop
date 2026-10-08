@@ -51,6 +51,22 @@ class MatcherTest(unittest.TestCase):
         with self.assertRaises(ConfigError):
             TargetRule(kind="file", include=[])
 
+    # 6. the root "." matches only the literal pattern, never a wildcard -----
+    def test_root_matches_only_the_literal_pattern(self) -> None:
+        for pattern in ("*", "**", "?", "**/*", ".*"):
+            with self.subTest(pattern=pattern):
+                rule = TargetRule(kind="directory", include=[pattern])
+                self.assertFalse(matches_rule(".", rule))
+        rule = TargetRule(kind="directory", include=["."])
+        self.assertTrue(matches_rule(".", rule))
+        self.assertFalse(matches_rule("app", rule))
+        excluded = TargetRule(kind="directory", include=["."], exclude=["*", "**"])
+        self.assertTrue(matches_rule(".", excluded))
+        self.assertFalse(
+            matches_rule(".", TargetRule(kind="directory", include=["."], exclude=["."]))
+        )
+
+
 
 if __name__ == "__main__":
     unittest.main()
