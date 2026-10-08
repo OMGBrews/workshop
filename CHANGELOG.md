@@ -3,6 +3,16 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- `Tools/check-command-signal-hygiene.sh` judges a command verdict-bearing only
+  when the verdict-bearing program is what actually runs. Reading a test script
+  (`grep -n x tests/verify-a.sh | head`, `cat tests/test-x.sh | head`) or naming
+  a runner as an argument (`grep -n pytest notes.txt | head`) is no longer
+  denied by the f1 or f3 screen. Runs reached through a subshell, substitution,
+  assignment, `env`/`time`/`timeout`/`nice`/`sudo`, an interpreter
+  (`bash -x script.sh`), `python -m`, or a package runner (`uv run`, `npx`,
+  `pnpm <bin>`) are still denied. Consumers get the narrower screen on their
+  next Workshop pointer advance.
+
 - A repository's root is now an audit target: the directory `.`, selected only
   by the literal include pattern `"."` (no wildcard reaches it, so existing
   configs gain no new candidates). `include = ["."]` on a `readme-quality`
