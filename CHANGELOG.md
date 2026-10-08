@@ -3,6 +3,25 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- `Tools/check-markdown-links.sh` percent-decodes targets before testing that
+  they exist, so `[guide](my%20docs/guide.md)` finds `my docs/guide.md`; the
+  shared extractor still returns targets byte for byte. A repository may list
+  sources to skip in a root `.markdown-links-skip` file — one plain path per
+  line, a trailing `/` for a directory, `#` comments for the reason — and each
+  skipped source is named. Wildcards, absolute paths, and `..` entries exit 2;
+  an entry that matches no tracked Markdown file fails the check. A source
+  outside the link grammar still exits 2, but no longer stops the run: every
+  other source is checked and reported first. The final `Markdown links valid`
+  line is unchanged.
+- `Tools/rewrite-moved-markdown-links.sh` no longer reads footnote definitions
+  (`[^1]:`) as reference definitions, in either mode; links in footnote text
+  are handled like any other inline link. Rewrite mode no longer corrupts an
+  inline link that does not start its line: it used to copy stray bytes of the
+  old target in front of the rebased one (`See [a](../x.md)` could become
+  `See [a](../x../../x.md)`). Documents moved by an earlier rewrite, including
+  kaizen journals migrated by `Tools/migrate-kaizen-journal.sh`, may carry such
+  links and are worth a link check.
+
 - `Tools/check-command-signal-hygiene.sh` judges a command verdict-bearing only
   when the verdict-bearing program is what actually runs. Reading a test script
   (`grep -n x tests/verify-a.sh | head`, `cat tests/test-x.sh | head`) or naming

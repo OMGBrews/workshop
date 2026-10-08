@@ -54,4 +54,21 @@ for case_name in parenthesized multiline; do
 done
 echo "ok 2 - refuses ambiguous syntax atomically with file and line"
 
+midline="$work/midline.md"
+printf 'See [guide](../../operations/guide.md) and ![logo](<../../assets/logo.png>) here.\n' > "$midline"
+bash "$rewrite" "$work/repo" docs/work/kaizen/journal.md \
+  docs/work/kaizen/journal/2026-01/entry.md "$midline" || fail "mid-line links were refused"
+grep -Fxq 'See [guide](../../../../operations/guide.md) and ![logo](<../../../../assets/logo.png>) here.' "$midline" \
+  || { cat "$midline"; fail "mid-line links were not rebased cleanly"; }
+echo "ok 3 - links that do not start the line are rebased without copying stray bytes"
+
+footnote="$work/footnote.md"
+printf 'Text[^1].\n\n[^1]:\n[^2]: See [guide](../../operations/guide.md).\n' > "$footnote"
+bash "$rewrite" "$work/repo" docs/work/kaizen/journal.md \
+  docs/work/kaizen/journal/2026-01/entry.md "$footnote" || fail "footnote definitions were refused"
+grep -Fxq '[^1]:' "$footnote" || fail "empty footnote definition changed"
+grep -Fxq '[^2]: See [guide](../../../../operations/guide.md).' "$footnote" \
+  || fail "link inside footnote text was not rebased"
+echo "ok 4 - footnote definitions are text, not reference definitions"
+
 echo "all moved-link rewrite tests passed"
