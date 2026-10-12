@@ -32,7 +32,7 @@ grep -rn "<entry-filename-without-.md>" --exclude-dir=.git docs/      # linked c
 grep -rn "<a distinctive phrase from the entry's title>" --exclude-dir=.git docs/   # prose ones
 ```
 
-Any hit from something live — a pattern, another problem, a task, a CLAUDE.md, or another journal entry — and the entry stays. The rule, the reasoning, and the second grep's necessity are in the mounted Workshop tree's `docs/kaizen-guide.md` under *The journal's lifecycle*.
+Any hit from something live — a pattern, another problem, a task, an instruction file, or another journal entry — and the entry stays. The rule, the reasoning, and the second grep's necessity are in the mounted Workshop tree's `docs/kaizen-guide.md` under *The journal's lifecycle*.
 
 The cascade belongs to **the session that verifies the flaw gone**, because that session is the only one holding the document's evidence list — once the file is deleted, nothing records which entries it absorbed. `/kaizen-resolve` is that session's ritual — run it rather than reconstructing this by hand. Skipping it costs one stray entry rather than a broken link, but that entry then matches nothing and is read by every future review.
 

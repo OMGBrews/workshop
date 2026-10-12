@@ -76,7 +76,7 @@ In both branches, tell the user which path was chosen and why (one sentence).
 **When `<repository>` is not `self`**, the subject lives in a separately versioned repository nested in this one. Its root, `<subject-root>`, is the `path` declared under `[repositories.<repository>]` in `docs/work/audits/config.toml`, and `<path>` is relative to that root. For the rest of this skill:
 
 - Name the subject to the user and to reviewers as `<subject-root>/<path>`, so it can be found from the control root — or as `<subject-root>` alone when `<path>` is `.`, the subject's root.
-- Read the instruction files of both repositories (`AGENTS.md`, `CLAUDE.md`, and what they link) before reviewing, and read the subject repository's `docs/work/definition-of-done.md` when it has one. The subject's conventions govern its content and its required evidence; the control repository's govern the audit record.
+- Read the instruction files of both repositories (`AGENTS.md`, the files in `.claude/rules/`, and what they link) before reviewing, and read the subject repository's `docs/work/definition-of-done.md` when it has one. The subject's conventions govern its content and its required evidence; the control repository's govern the audit record.
 - Write nothing into the subject except the reviewed fixes: no config, records, task files, or skill links.
 
 ## Step 2 — Read the subject, then run every lens

@@ -290,7 +290,7 @@ Where the resume point goes:
 2. **No task document** because the session's work was never a task — file one (Phase 5
    already governs that) and write the resume point into it.
 3. **No tasks directory at all** → the project's orienting document, the goal or plan doc
-   its `CLAUDE.md` points at for current work, and name that choice in the report.
+   its root instruction file points at for current work, and name that choice in the report.
 
 `focus.md` is touched by this phase in exactly one case: the session **changed the repo's
 direction** — a new area of concentration, or something newly deprioritized. Then update

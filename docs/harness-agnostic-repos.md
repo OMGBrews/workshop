@@ -9,7 +9,7 @@ matters.
 This is the fleet standard. The reference implementation — a private fleet repo, deliberately
 unnamed in this public document — records how it applies the pattern locally in its
 `docs/architecture/agents-md.md` (fleet-internal, like `devtools-propagation.md`: its layout,
-its bridge mechanics, and the harness-specific things it has deliberately declined).
+its rules-link mechanics, and the harness-specific things it has deliberately declined).
 
 ## Why
 
@@ -34,8 +34,8 @@ Everything below is an application of these.
    detected.
 2. **The canonical location is the one an open standard names.** The bridge is the one a
    single vendor names. When those are the same file, there is no bridge to build.
-3. **A bridge must be inert everywhere else.** A `CLAUDE.md` is invisible to Codex; a
-   symlink resolves or does not. But an `@import` line inside `AGENTS.md` renders as
+3. **A bridge must be inert everywhere else.** A `.claude/rules/` file is invisible to
+   Codex; a symlink resolves or does not. But an `@import` line inside `AGENTS.md` renders as
    literal junk text in every non-Claude harness — that is a leak, not a bridge.
 
 ## The five agent-facing surfaces
@@ -45,7 +45,7 @@ harness needs syntax or a path that no other reads, exactly one bridge.
 
 | Surface | Canonical (harness-neutral) | Bridge | What breaks without the bridge |
 |---------|------------------------------|--------|-------------------------------|
-| **Instructions** | `AGENTS.md` at repo root | `CLAUDE.md` containing `@AGENTS.md` + Claude-only sections | The standing rules stop loading eagerly while `AGENTS.md` still loads, so nothing looks broken |
+| **Instructions** | `AGENTS.md` at repo root | `.claude/rules/` links to the standing rules + real rule files for Claude-only topics | The standing rules stop loading eagerly while `AGENTS.md` still loads, so nothing looks broken |
 | **Skills** | `.agents/skills/<name>/SKILL.md` | per-skill symlink `.claude/skills/<name> -> ../../.agents/skills/<name>` | Claude Code sees no skills |
 | **Bootstrap** | a plain script, e.g. `scripts/agent/session-start.sh` | thin `.claude/hooks/*.sh` wrapper that emits the hook JSON envelope | Non-Claude sessions start on a stale checkout with uninitialized submodules |
 | **Tool config (MCP)** | none — genuinely per-harness | `.mcp.json` (Claude Code, Cursor); `.vscode/mcp.json` uses a different key | Only the harnesses you wrote config for get the servers |
@@ -60,59 +60,68 @@ works right up until someone opens the repo in another one.
 ### The layout
 
 ```text
-AGENTS.md      # canonical, harness-neutral: everything every agent needs
-CLAUDE.md      # thin Claude Code bridge:
-               #   @AGENTS.md
-               #   @workshop/docs/signal-hygiene.md
-               #   @workshop/docs/definition-of-done.md
-               #   @workshop/docs/verification-terminology.md
-               #   <Claude Code-specific sections only>
+AGENTS.md                                   # canonical, harness-neutral: everything every agent needs
+.claude/rules/signal-hygiene.md             -> ../../workshop/docs/signal-hygiene.md
+.claude/rules/definition-of-done.md         -> ../../workshop/docs/definition-of-done.md
+.claude/rules/verification-terminology.md   -> ../../workshop/docs/verification-terminology.md
+.claude/rules/<topic>.md                    # a real file per topic of Claude-only content
+.claude/rules/<name>.md                     -> ../../docs/<name>.md   # a repo-local rule, linked by hand
 ```
 
-### Why the bridge still exists
+There is no `CLAUDE.md`. Workshop itself, which has no mount, links `../../docs/<rule>.md`.
+
+### Why the rules links exist
 
 Claude Code reads `AGENTS.md` natively (v2.1.277; v2.1.281 on Bedrock, Vertex, Foundry,
 gateways, and telemetry-off sessions), but by default **only when no `CLAUDE.md`,
 `.claude/CLAUDE.md`, or `CLAUDE.local.md` exists in the working directory or any
 directory above it** ([memory docs](https://code.claude.com/docs/en/memory#agents-md)).
-Once any of those exists, Claude reads the `CLAUDE.md` files only, and a nested
-`AGENTS.md` beneath them is never loaded on its own. The setting that changes this is
-read from user and managed settings only, so a repository cannot opt in for its readers.
+So a repository carries none of them, and `AGENTS.md` reaches Claude the way it
+reaches every other harness.
 
-The bridge exists because the three standing-rule imports need a home, and invariant 3
-keeps `@` lines out of `AGENTS.md`. While it exists it **must** import `AGENTS.md`:
-without that line Claude sees only the wrapper. The `@AGENTS.md` import loads the file
-once, exactly as native support would, so keeping it costs nothing.
+What `AGENTS.md` cannot carry is an eager import: invariant 3 keeps `@` lines out of it,
+and the spec has no include mechanism. The three standing rules still have to be in
+context from turn one, so they arrive through `.claude/rules/`, which Claude Code loads
+at launch: one symlink per rule into the mounted Workshop. A linked rule is presented
+at its resolved path, so relative links inside the rule resolve from the mount's
+`docs/` without rewriting. Every other harness follows the plain links in `AGENTS.md`
+to the same files.
+
+The failure this layout guards against is silent. A `CLAUDE.md` left at the root,
+added above the repository, or a personal `CLAUDE.local.md` switches `AGENTS.md` off
+with no message, even under `--debug`, while the rules links keep loading — so the
+session looks configured and is missing its instructions. No hook can observe that,
+so check 1 walks from the repository root to `/` for those files.
 
 ### The placement rule is audience, not topic
 
 | Content | File | Why |
 |---------|------|-----|
 | Overview, commands, architecture, env vars, domain concepts, coding rules, known issues | `AGENTS.md` | Every harness needs it |
-| Any `@`-import line | `CLAUDE.md` | Claude-only syntax; literal junk elsewhere |
-| Harness mechanics: cloud-session runbooks, subagent names, slash-command and skill pointers, `.claude/` layout rules | `CLAUDE.md` | Meaningless to other harnesses, and it keeps `AGENTS.md` lean |
-| A universal rule that happens to live in an imported doc | Plain Markdown **link** in `AGENTS.md` **and** `@`-import in `CLAUDE.md` | Other harnesses follow the link; Claude gets it eagerly |
+| Any `@`-import line | nowhere | Claude-only syntax; literal junk elsewhere. A rules link does the same job |
+| Harness mechanics: cloud-session runbooks, subagent names, slash-command and skill pointers, `.claude/` layout rules | a real file per topic in `.claude/rules/` | Meaningless to other harnesses, and it keeps `AGENTS.md` lean |
+| A universal rule that lives in its own doc | Plain Markdown **link** in `AGENTS.md` **and** a symlink in `.claude/rules/` | Other harnesses follow the link; Claude gets it eagerly |
 
 That last row is the one that gets missed, and it fails silently: the rule stays in
 context for every Claude session, so nobody notices that a Codex session never learned
-it. **Every `@`-imported doc needs a matching plain link in `AGENTS.md`.** All three
-standing rules qualify — `signal-hygiene.md`, `definition-of-done.md`, and
-`verification-terminology.md`.
+it. **Every `.claude/rules/` symlink needs a matching plain link in `AGENTS.md`.** All
+three standing rules qualify — `signal-hygiene.md`, `definition-of-done.md`, and
+`verification-terminology.md` — and so does a repo-local rule linked by hand.
 
 ### Rules
 
 - **Never create a per-tool instruction file.** No `.cursorrules`, no
   `.github/copilot-instructions.md`, no `GEMINI.md`, no `.windsurfrules`. The standard
-  exists to replace them. `CLAUDE.md` is the sole exception in this fleet, and it earns
-  its place by holding content, not by redirecting.
+  exists to replace them, and that now includes `CLAUDE.md`: Claude-only content lives
+  in `.claude/rules/`, which only Claude Code reads and which switches nothing off.
 - **Do not commit a config file whose only job is redirecting an unused harness** to
   `AGENTS.md` (`.gemini/settings.json`, `.aider.conf.yml`). Add it the day someone
   actually runs that tool. Record the decline so the next person doesn't re-litigate it.
 - **Size matters, and the ceiling is not ours.** Codex silently truncates the merged
   `AGENTS.md` chain at a 32 KiB default (`project_doc_max_bytes`) — silently, meaning a
   repo that crosses it looks fine and behaves worse. Target **≤ 20 KB** for the root
-  file, and count the whole always-loaded pile (root + wrapper + imports), not just one
-  file.
+  file, and count the whole always-loaded pile (root + every `.claude/rules/` file
+  without `paths:` frontmatter, measured through the links), not just one file.
 - **Prefer a one-line pointer to a canonical doc over restating it.** Instruction files
   prepend to every session's context in every harness: size costs tokens per turn, and
   frequent edits churn prompt caches. Content the agent can derive from the code is pure
@@ -124,10 +133,19 @@ standing rules qualify — `signal-hygiene.md`, `definition-of-done.md`, and
   probing for an instruction file must probe for `AGENTS.md`.
 - **Nested files:** monorepos may nest `AGENTS.md` per sub-project — other harnesses
   resolve nearest-file-wins, and it is the only way to give a sub-project real detail
-  without paying for it in every session at the root. The root bridge switches off
-  Claude Code's native `AGENTS.md` reading for everything beneath it, and Claude loads
-  a nested `CLAUDE.md` on demand, so each nested `AGENTS.md` needs a one-line sibling
-  `CLAUDE.md` containing `@AGENTS.md`.
+  without paying for it in every session at the root. A nested `AGENTS.md` needs no
+  sibling: Claude Code loads it when a session reads a file beneath it (on Read only,
+  not on Write or Edit).
+- **Regenerate the standing-rule links with `Tools/sync-rules-symlinks.sh`**
+  (`bash workshop/Tools/sync-rules-symlinks.sh .` from the repository root). It finds the
+  mount the way the skills generator does, writes the three links, removes dangling
+  links it owns (`../../<mount>/docs/<name>.md`), and never touches a real topic file or
+  any other symlink. A repo-local rule — a `../../docs/<name>.md` link into the
+  repository's own docs — is made by hand once and tracked, like a project-local skill.
+- **Both symlink surfaces need `core.symlinks` on Windows.** Without it (and Developer
+  Mode or an elevated shell), a committed symlink checks out as a one-line text file
+  holding its target path: a skill link stops being a skill, and a rules link silently
+  loads as that path instead of the rule.
 
 ## Surface 2 — skills
 
@@ -287,7 +305,8 @@ The most portable surface, and it needs no bridge: a command is a command.
   are repo description: link them, never restate them. The file is read at the moment
   someone needs a command, and unrelated prose moves that command further away.
 - Checks are invoked as plain commands (`make check`), never through a harness feature.
-- The doc is linked from `AGENTS.md` as well as imported into `CLAUDE.md`.
+- The standing `definition-of-done.md` rule is linked from `AGENTS.md` as well as
+  through `.claude/rules/`.
 
 ## Conformance checklist
 
@@ -298,11 +317,11 @@ check, because it ends the investigation.
 
 | # | Check | Failure means |
 |---|-------|---------------|
-| 1 | `AGENTS.md` exists at root and is the larger of the two instruction files | The split never happened, or content is drifting back into the wrapper |
-| 2 | `CLAUDE.md` contains `@AGENTS.md` | Claude Code sees only the wrapper |
-| 3 | Every `@`-imported doc has a plain Markdown link in `AGENTS.md` | Non-Claude harnesses never learn that rule |
+| 1 | `AGENTS.md` exists at root, and no `CLAUDE.md`, `.claude/CLAUDE.md`, or `CLAUDE.local.md` exists from the root up to `/` (per-user `~/.claude/CLAUDE.md` exempt) | Claude Code silently stops reading `AGENTS.md` |
+| 2 | Each standing rule is a `.claude/rules/<rule>.md` symlink to `../../<mount>/docs/<rule>.md` (or `../../docs/` in Workshop), all on one route, resolving to a file whose first line is the rule's heading; a missing link fails, never skips | Claude sessions run without the rule, or with the wrong document |
+| 3 | Every `.claude/rules/` symlink's target has a plain Markdown link in `AGENTS.md` | Non-Claude harnesses never learn that rule |
 | 4 | `AGENTS.md` contains no `@`-import lines | Junk text in every other harness |
-| 5 | Root + wrapper + imports < 32 KiB, root ≤ 20 KB | Codex silently truncates |
+| 5 | Root + every `.claude/rules/` file without `paths:` frontmatter, measured through the links, < 32 KiB; root ≤ 20 KB | Codex silently truncates |
 | 6 | No `.cursorrules`, `GEMINI.md`, `.github/copilot-instructions.md`, `.windsurfrules` | A second source of truth exists |
 | 7 | Skill count under `.agents/skills/` ≥ skill count under `.claude/skills/` | Skills exist that only one harness can run |
 | 8 | Every `.claude/skills/*` symlink resolves to a readable `SKILL.md` | "Unknown skill" mid-task |
@@ -311,16 +330,16 @@ check, because it ends the investigation.
 | 11 | Root sentinels in scripts probe for `AGENTS.md` | The sentinel tracks the bridge, not the source |
 | 12 | Vendor harness environment variables are read only in one declared translation seam; everything else consumes neutral `AGENT_*` names | Location/policy detection silently answers wrong in every other harness |
 | 13 | SKILL.md bodies carry no harness-only mechanics (`$ARGUMENTS`, slash-invocations, Claude-only frontmatter) unless the skill declares `compatibility` | A skill only one harness can run looks spec-valid |
-| 14 | Repositories importing Workshop's signal-hygiene and definition-of-done rules also link and import `verification-terminology.md` through that same route | Sessions use incompatible meanings for checks, gates, CI, release, and deployment |
+| 14 | Retired: the terminology rule's delivery is part of check 2 | — |
 
-Checks 1–9 and 13–14 are mechanizable and belong in `make check` as a single stage. Note the shape
+Checks 1–9 and 13 are mechanizable and belong in `make check` as a single stage. Note the shape
 of check 7: a count comparison, not "the directory exists" — an empty `.agents/skills/`
 and a fully-populated one both exist. Both 7 and 8 count *skills*, meaning directories
 and the symlinks standing in for them; a plain file on either surface — the generated
 `README.md` above — is not a skill and is skipped. A dangling symlink still counts, since
 that is the breakage check 8 exists to name.
 
-> **Status:** checks 1–9 and 13–14 are implemented as the shared check
+> **Status:** checks 1–9 and 13 are implemented as the shared check
 > [`Tools/check-agent-surfaces.sh`](../Tools/check-agent-surfaces.sh) — a harness-agnostic
 > script that any repo runs against its own root (`bash devtools/Tools/check-agent-surfaces.sh .`
 > in a consumer that mounts the tree at `devtools/`). The repo-root argument is **required**: a
@@ -349,8 +368,11 @@ that is the breakage check 8 exists to name.
    comments, Markdown links. Triage hits into *load-bearing code*, *tooling behavior*,
    *links*, and *frozen artifacts* (recorded prompts, eval baselines — never edit
    those).
-2. **Split, don't rename.** `git mv CLAUDE.md AGENTS.md` to preserve history, then author
-   the thin wrapper per the placement table. Rewrite Claude-addressed phrasing.
+2. **Split, don't rename.** `git mv CLAUDE.md AGENTS.md` to preserve history, then move
+   Claude-only content into real topic files under `.claude/rules/` per the placement
+   table, run `bash <mount>/Tools/sync-rules-symlinks.sh .` for the standing-rule links,
+   and link any repo-local `@` import by hand as a `.claude/rules/` symlink. No
+   `CLAUDE.md` remains. Rewrite Claude-addressed phrasing.
 3. **Slim while splitting.** You are already touching every section; this is the cheapest
    moment to get under 20 KB.
 4. **Move the skills.** `git mv .claude/skills/<name> .agents/skills/<name>`, then
@@ -369,36 +391,51 @@ that is the breakage check 8 exists to name.
 
 ## Rejected alternatives
 
-- **Symlink `CLAUDE.md -> AGENTS.md`.** Leaves no home for Claude-only content, so the
-  standing-rule imports either leak into every other harness as literal text or get
-  dropped; puts the full file size against Codex's truncation cap; and breaks for
-  Windows contributors without `core.symlinks` plus Developer Mode. Its one advantage —
-  existing links keep resolving — is outweighed, and links get repointed once,
-  mechanically.
+- **Symlink `CLAUDE.md -> AGENTS.md`.** Unnecessary now that Claude Code reads
+  `AGENTS.md` natively, and it is a `CLAUDE.md`: check 1 fails on it. Its one
+  advantage — existing links keep resolving — is outweighed, and links get repointed
+  once, mechanically.
 - **Two maintained copies plus a drift check.** Detects drift instead of making it
   impossible. Invariant 1.
 - **Per-tool instruction files.** The standard exists precisely to replace them.
-- **Dropping the bridge now that Claude Code reads `AGENTS.md`.** Native reading
-  only applies when no `CLAUDE.md` exists, and the standing-rule imports have no other
-  home: delete the bridge and the rules stop arriving while everything else still loads,
-  so nothing looks broken. Deleting only the bridge's `@AGENTS.md` line is worse still —
-  the bridge's presence keeps native reading off, so Claude sees only the wrapper.
+- **A thin `CLAUDE.md` bridge importing `AGENTS.md` and the standing rules.** This
+  standard's layout until Claude Code read `AGENTS.md` natively, now retired. Any
+  `CLAUDE.md` in or above a repository switches native reading off, so the bridge kept
+  alive the one failure mode the rules links avoid. The decision record is the reference
+  implementation's `docs/planning/claude-md-retirement.md`; in short, a spike on Claude
+  Code 2.1.296 delivered all three standing rules through `.claude/rules/` links, locally
+  and in cloud sessions, with no wrapper, and showed a `CLAUDE.md` or `CLAUDE.local.md`
+  anywhere above the repository dropping `AGENTS.md` without a word, even under
+  `--debug`.
 
 ## Ecosystem facts
 
 Re-verify before reusing this section — the Claude Code lines are the ones most likely to
 change. Each fact here backs a rule above.
 
-- **Claude Code reads `AGENTS.md` only when no `CLAUDE.md` exists** in or above the
-  working directory (v2.1.277; v2.1.281 on Bedrock, Vertex, Foundry, gateways, and
-  telemetry-off sessions). See [Why the bridge still exists](#why-the-bridge-still-exists).
+- **Claude Code reads `AGENTS.md` only when no `CLAUDE.md`, `.claude/CLAUDE.md`, or
+  `CLAUDE.local.md` exists** in or above the working directory (v2.1.277; v2.1.281 on
+  Bedrock, Vertex, Foundry, gateways, and telemetry-off sessions). The fleet's floor is
+  **v2.1.281**, and the first session after upgrading from v2.1.276 or earlier may still
+  read `CLAUDE.md` only. See [Why the rules links exist](#why-the-rules-links-exist).
+- **The suppression is silent.** No warning appears, even under `--debug`, and
+  `.claude/rules/` keeps loading, so the session looks configured. The per-user
+  `~/.claude/CLAUDE.md` is not a suppressor (verified on v2.1.296); a plain `~/CLAUDE.md`
+  is, for any repository under the home directory. The user-settings option
+  `pluginConfigs.cc-plugin-agents-md@builtin.options.instructionFiles` set to
+  `claude-md-and-agents-md` restores `AGENTS.md` under a suppressor; a repository cannot
+  set it, and the devcontainer kit does.
+- **`.claude/rules/*.md` load eagerly at launch**, unless a file's `paths:` frontmatter
+  scopes it to matching files. A symlinked rule is presented at its resolved target, so
+  relative links inside it resolve from the target's directory.
 - **`@path` imports** load eagerly at session launch, resolve relative to the importing
   file, recurse to a maximum of four hops, and are skipped inside code spans and fenced
   blocks. In-project imports load silently; one resolving outside the working directory
   triggers a one-time approval dialog — which matters for non-interactive and cloud
   sessions.
-- **The `AGENTS.md` spec has no import or include mechanism.** This single fact drives
-  the whole wrapper design.
+- **The `AGENTS.md` spec has no import or include mechanism.** This single fact is why
+  the standing rules reach Claude through `.claude/rules/` and every other harness
+  through plain links.
 - **Codex truncates** the merged chain at 32 KiB (`project_doc_max_bytes`), global
   `~/.codex/AGENTS.md` included.
 - **Several harnesses read only the root file** — Copilot code review, Copilot CLI, early
@@ -423,5 +460,5 @@ change. Each fact here backs a rule above.
 - [AGENTS.md](https://agents.md/) — the standard's site
 - [Agent Skills specification](https://agentskills.io/specification) — the authoritative
   skill format reference
-- [Claude Code memory docs](https://code.claude.com/docs/en/memory) — `CLAUDE.md`
-  mechanics, the `@AGENTS.md` import, and when `AGENTS.md` loads natively
+- [Claude Code memory docs](https://code.claude.com/docs/en/memory) — `.claude/rules/`,
+  imports, and when `AGENTS.md` loads natively

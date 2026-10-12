@@ -62,8 +62,8 @@ Equivalent wording is acceptable when it preserves every distinction below.
 Record the repository commit, Workshop commit, harness and version, exact prompt,
 faithful response, comparison with this mapping, and any limitation. A model
 response is evidence that delivery worked in that observed session. The durable
-control remains the canonical document plus the required instruction links and
-imports.
+control remains the canonical document plus the required `AGENTS.md` links and
+`.claude/rules/` links.
 
 ## See also
 

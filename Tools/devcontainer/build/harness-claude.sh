@@ -34,6 +34,15 @@ SETTINGS="$CLAUDE_DIR/settings.json"
 # terminal, so it fires only when a long unattended run finishes and you have walked
 # away. Note this key is set on EVERY run, so toggling it off via /config is undone
 # the next time this script executes — remove it here to turn it off for good.
+#
+# pluginConfigs.cc-plugin-agents-md@builtin.options.instructionFiles makes Claude
+# Code read AGENTS.md even where a CLAUDE.md, .claude/CLAUDE.md, or CLAUDE.local.md
+# sits in or above the repository — which otherwise switches AGENTS.md off with no
+# message. Repositories carry no CLAUDE.md; this guards the ones a container still
+# has above them during a migration. It loads AGENTS.md once alongside a CLAUDE.md
+# that imports it, and it is read only from user, --settings, or managed settings,
+# so a repository cannot set it for its readers. Cloud sessions do not get it;
+# check 1 of Tools/check-agent-surfaces.sh is the guard there.
 DESIRED_SETTINGS='{
   "permissions": {
     "allow": [
@@ -56,7 +65,14 @@ DESIRED_SETTINGS='{
   "env": {
     "CLAUDE_CODE_SCROLL_SPEED": "1"
   },
-  "agentPushNotifEnabled": true
+  "agentPushNotifEnabled": true,
+  "pluginConfigs": {
+    "cc-plugin-agents-md@builtin": {
+      "options": {
+        "instructionFiles": "claude-md-and-agents-md"
+      }
+    }
+  }
 }'
 
 # Merge into any existing settings rather than overwriting. Two reasons: a

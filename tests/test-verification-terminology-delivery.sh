@@ -21,14 +21,18 @@ check_cloud_recovery() {
 }
 
 echo "== standing terminology delivery"
-grep -qF '@docs/verification-terminology.md' "$ROOT/CLAUDE.md" \
-    || fail "Workshop CLAUDE.md does not eagerly import the terminology"
+link="$ROOT/.claude/rules/verification-terminology.md"
+if [ ! -L "$link" ]; then
+    fail "Workshop .claude/rules/verification-terminology.md is not a symlink"
+elif [ "$(readlink "$link")" != "../../docs/verification-terminology.md" ]; then
+    fail "Workshop's terminology rules link points at $(readlink "$link"), not ../../docs/verification-terminology.md"
+fi
 grep -qF '](docs/verification-terminology.md)' "$ROOT/AGENTS.md" \
     || fail "Workshop AGENTS.md does not plainly link the terminology"
 echo "ok - Workshop exposes both instruction paths"
 
 echo "== late-bootstrap recovery"
-template="$ROOT/docs/templates/cloud-sessions/claude-md-cloud-section.md"
+template="$ROOT/docs/templates/cloud-sessions/cloud-sessions-rule.md"
 if check_cloud_recovery "$template"; then
     echo "ok - cloud template names all three manual recovery reads"
 else

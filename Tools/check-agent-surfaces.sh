@@ -2,7 +2,7 @@
 # check-agent-surfaces.sh — does this repo still satisfy the harness-agnostic
 # conformance checklist?
 #
-# Mechanizes checks 1-9 and 13-14 of workshop/docs/harness-agnostic-repos.md
+# Mechanizes checks 1-9 and 13 of workshop/docs/harness-agnostic-repos.md
 # ("Conformance checklist"). Checks 10 (bootstrap reachable as a plain command)
 # and 11 (root sentinels probe AGENTS.md) are deliberately absent: both are
 # judgments about whether a script's *body* does the right thing, and the
@@ -25,13 +25,13 @@
 # was done and it goes red, not green. devtools/tests/test-check-agent-surfaces.sh
 # pins that by building exactly such a repo and asserting the red.
 #
-# On the skipped band: checks that must READ a file inside an uninitialized
-# submodule cannot be evaluated, and this reports them as SKIP rather than
-# folding them into the pass. That band is not hypothetical — a consumer's CI may
-# check out without the devtools submodule (devtools/ is private), so such a CI
-# run evaluates the structure of the skills surface but not the contents of the
-# shared skill bodies. The structural half still runs there, because it reads
-# symlink targets rather than following them.
+# On the skipped band: the skill checks (8, 9 and 13) that must READ a SKILL.md
+# inside an uninitialized submodule cannot be evaluated, and this reports them as
+# SKIP rather than folding them into the pass. The structural half still runs
+# there, because it reads symlink targets rather than following them. The
+# instruction checks (1, 2, 3 and 5) have no skip band: a standing-rule link that
+# dangles because its mount is empty is a session running without its rules,
+# and every CI that runs this check initializes the mount.
 
 set -euo pipefail
 
@@ -149,84 +149,135 @@ in_uninitialized_submodule() {
 
 echo "== agent surfaces: $root"
 
-# --- 1: AGENTS.md exists and is the larger instruction file -------------------
+# --- 1: AGENTS.md exists, and nothing switches it off --------------------------
+# Claude Code reads AGENTS.md natively only while no CLAUDE.md, .claude/CLAUDE.md,
+# or CLAUDE.local.md exists in the working directory or any directory above it.
+# One such file anywhere up the path switches AGENTS.md off with no message, even
+# under --debug, while the .claude/rules/ links keep loading — so the session
+# looks configured and is missing its instructions. No hook can observe that, so
+# the guard is this walk. The per-user memory file ~/.claude/CLAUDE.md is the one
+# exemption: it was verified not to suppress AGENTS.md, and failing on it would
+# fail every host whose user keeps memory there. A plain ~/CLAUDE.md is not
+# exempt; it suppresses like any other ancestor.
 if [ ! -f AGENTS.md ]; then
     fail 1 "AGENTS.md is missing — the canonical instruction file does not exist"
-elif [ ! -f CLAUDE.md ]; then
-    fail 1 "CLAUDE.md is missing — AGENTS.md still loads natively, but the standing-rule imports have no home, so the rules silently stop arriving"
-else
-    a=$(bytes AGENTS.md); c=$(bytes CLAUDE.md)
-    if [ "$a" -gt "$c" ]; then
-        pass 1 "AGENTS.md ($a B) is larger than CLAUDE.md ($c B)"
-    else
-        fail 1 "AGENTS.md ($a B) is not larger than CLAUDE.md ($c B) — content is drifting into the wrapper"
-    fi
 fi
-
-# --- 2: the bridge line -------------------------------------------------------
-if [ -f CLAUDE.md ] && grep -qE '^[[:space:]]*@AGENTS\.md[[:space:]]*$' CLAUDE.md; then
-    pass 2 "CLAUDE.md imports AGENTS.md"
-else
-    fail 2 "CLAUDE.md has no '@AGENTS.md' import line — Claude Code sees only the wrapper"
+user_memory=""
+if [ -n "${HOME:-}" ] && [ -d "$HOME" ]; then
+    user_memory="$(cd "$HOME" && pwd -P)/.claude/CLAUDE.md"
 fi
-
-# --- 3: every @-imported doc is also plainly linked from AGENTS.md ------------
-# The failure this catches is silent by construction: the rule stays in context
-# for every Claude session through the import, so nobody notices that a Codex
-# session never learned it.
-imports=$(extract_imports CLAUDE.md || true)
-if [ -z "$imports" ]; then
-    fail 3 "CLAUDE.md imports nothing — expected at least '@AGENTS.md'"
-else
-    missing=""
-    while IFS= read -r imp; do
-        [ -n "$imp" ] || continue
-        [ "$imp" = "AGENTS.md" ] && continue    # AGENTS.md cannot link to itself
-        # A Markdown link with that exact target, not a bare mention: the point
-        # is that a harness with no import mechanism can FOLLOW it.
-        grep -qF "]($imp)" AGENTS.md 2>/dev/null || missing="${missing}${imp} "
-    done <<<"$imports"
-    if [ -z "$missing" ]; then
-        n=$(printf '%s\n' "$imports" | grep -cv '^AGENTS\.md$' || true)
-        pass 3 "all $n non-root import(s) are linked from AGENTS.md"
-    else
-        fail 3 "imported but not linked from AGENTS.md: $missing"
-    fi
-fi
-
-# --- 14: Workshop standing rules include the terminology sibling ------------
-# Adoption is detected from the two pre-existing standing-rule imports rather
-# than from a hardcoded mount name. Generic users of this checker that import
-# neither Workshop rule remain outside the Workshop instruction contract.
-sig_imports=$(printf '%s\n' "$imports" | grep -E '(^|/)docs/signal-hygiene\.md$' || true)
-dod_imports=$(printf '%s\n' "$imports" | grep -E '(^|/)docs/definition-of-done\.md$' || true)
-sig_count=$(printf '%s\n' "$sig_imports" | grep -c . || true)
-dod_count=$(printf '%s\n' "$dod_imports" | grep -c . || true)
-
-if [ "$sig_count" -eq 0 ] && [ "$dod_count" -eq 0 ]; then
-    pass 14 "no Workshop standing-rule route detected — terminology delivery not applicable"
-elif [ "$sig_count" -ne 1 ] || [ "$dod_count" -ne 1 ]; then
-    fail 14 "Workshop adopter needs exactly one signal-hygiene and one definition-of-done import (found $sig_count and $dod_count)"
-else
-    sig_import=$sig_imports
-    dod_import=$dod_imports
-    sig_prefix=${sig_import%signal-hygiene.md}
-    dod_prefix=${dod_import%definition-of-done.md}
-    if [ "$sig_prefix" != "$dod_prefix" ]; then
-        fail 14 "Workshop standing rules use different routes: $sig_import and $dod_import"
-    else
-        terminology_import="${sig_prefix}verification-terminology.md"
-        missing14=""
-        printf '%s\n' "$imports" | grep -Fxq "$terminology_import" \
-            || missing14="${missing14}CLAUDE.md import "
-        grep -qF "]($terminology_import)" AGENTS.md 2>/dev/null \
-            || missing14="${missing14}AGENTS.md link "
-        if [ -z "$missing14" ]; then
-            pass 14 "Workshop terminology delivered through $terminology_import"
-        else
-            fail 14 "Workshop adopter missing ${missing14}for $terminology_import"
+suppressors=0; probed=0
+dir=$(pwd -P)
+while :; do
+    probed=$((probed + 1))
+    for f in CLAUDE.md CLAUDE.local.md .claude/CLAUDE.md; do
+        p="${dir%/}/$f"
+        [ "$p" = "$user_memory" ] && continue
+        if [ -e "$p" ] || [ -L "$p" ]; then
+            fail 1 "$p exists — Claude Code stops reading AGENTS.md for everything beneath it, silently"
+            suppressors=$((suppressors + 1))
         fi
+    done
+    [ "$dir" = / ] && break
+    dir=$(dirname "$dir")
+done
+if [ -f AGENTS.md ] && [ "$suppressors" -eq 0 ]; then
+    pass 1 "AGENTS.md exists; no CLAUDE.md, .claude/CLAUDE.md, or CLAUDE.local.md in $probed directories up to /"
+fi
+
+# --- 2: every standing rule reaches Claude Code through a rules link -----------
+# Each of the three Workshop standing rules is a symlink in .claude/rules/, which
+# Claude Code loads eagerly at launch, aimed at the mounted copy:
+# ../../<mount>/docs/<rule>.md in a consumer, ../../docs/<rule>.md in Workshop
+# itself. All three share one route. The link must resolve and land on the right
+# document, so its first line is asserted to be the rule's heading.
+#
+# There is no skip band here. Every CI that runs this check initializes the
+# mount, and a link that dangles because the mount is empty is exactly the
+# session that runs without its rules — the failure, not an excuse for it.
+STANDING_RULES="signal-hygiene definition-of-done verification-terminology"
+rule_heading() {
+    case "$1" in
+        signal-hygiene) printf '# Signal hygiene' ;;
+        definition-of-done) printf '# Definition of done' ;;
+        verification-terminology) printf '# Verification terminology' ;;
+    esac
+}
+failures_before_2=$failures
+routes=""
+for rule in $STANDING_RULES; do
+    link=".claude/rules/$rule.md"
+    if [ ! -L "$link" ]; then
+        if [ -e "$link" ]; then
+            fail 2 "$link is a real file, not a link to the mounted rule — a copy drifts from its source"
+        else
+            fail 2 "$link is missing — Claude Code never loads the $rule rule (bash <mount>/Tools/sync-rules-symlinks.sh . writes it)"
+        fi
+        continue
     fi
+    target=$(readlink "$link")
+    route=""
+    case "$target" in
+        "../../docs/$rule.md")
+            route="../../docs" ;;
+        ../../*/docs/"$rule.md")
+            mount=${target#../../}
+            mount=${mount%/docs/"$rule".md}
+            case "$mount" in
+                '' | . | .. | */*) ;;
+                *) route="../../$mount/docs" ;;
+            esac
+            ;;
+    esac
+    if [ -z "$route" ]; then
+        fail 2 "$link -> $target is not ../../<mount>/docs/$rule.md (one mount component) or ../../docs/$rule.md"
+        continue
+    fi
+    case " $routes " in *" $route "*) ;; *) routes="${routes:+$routes }$route" ;; esac
+    if [ ! -r "$link" ]; then
+        fail 2 "$link -> $target does not resolve — the $rule rule never loads (is the mount populated?)"
+        continue
+    fi
+    first=$(head -n 1 "$link" | tr -d '\r')
+    want=$(rule_heading "$rule")
+    if [ "$first" != "$want" ]; then
+        fail 2 "$link -> $target opens with '$first', not '$want' — the link lands on the wrong document"
+    fi
+done
+if [ "$(printf '%s' "$routes" | wc -w | tr -d ' ')" -gt 1 ]; then
+    fail 2 "standing-rule links use different routes ($routes) — all three come from one mount"
+fi
+if [ "$failures" -eq "$failures_before_2" ]; then
+    pass 2 "3 standing-rule links resolve through $routes/ and open with their headings"
+fi
+
+# --- 3: every rules link is also plainly linked from AGENTS.md -----------------
+# The failure this catches is silent by construction: the rule stays in context
+# for every Claude session through the link, so nobody notices that a Codex
+# session never learned it. Every top-level symlink counts — the three standing
+# rules and any repo-local one made by hand — and a real topic file does not,
+# because Claude-only content is exactly what belongs there and nowhere else.
+rule_links=0; missing=""
+if [ -d .claude/rules ]; then
+    while IFS= read -r link; do
+        [ -n "$link" ] || continue
+        rule_links=$((rule_links + 1))
+        target=$(readlink "$link")
+        case "$target" in
+            /*) missing="${missing}${link}(absolute target ${target}) "; continue ;;
+        esac
+        # A Markdown link with that exact repo-relative target, not a bare
+        # mention: the point is that a harness with no rules folder can FOLLOW it.
+        want=$(norm_path ".claude/rules/$target")
+        grep -qF "]($want)" AGENTS.md 2>/dev/null || missing="${missing}${want} "
+    done < <(find .claude/rules -mindepth 1 -maxdepth 1 -type l | sort)
+fi
+if [ "$rule_links" -eq 0 ]; then
+    fail 3 "no symlinks under .claude/rules/ — no rules link for AGENTS.md to mirror (check 2 names the missing ones)"
+elif [ -z "$missing" ]; then
+    pass 3 "all $rule_links rules link(s) are linked from AGENTS.md"
+else
+    fail 3 "linked into .claude/rules/ but not linked from AGENTS.md: $missing"
 fi
 
 # --- 4: no imports in AGENTS.md -----------------------------------------------
@@ -240,44 +291,41 @@ if [ -f AGENTS.md ]; then
 fi
 
 # --- 5: the always-loaded pile fits, and the root file fits ------------------
-if [ -f AGENTS.md ] && [ -f CLAUDE.md ]; then
-    pile=$(bytes CLAUDE.md)
-    seen="CLAUDE.md"
-    frontier="CLAUDE.md"
-    unresolved=0
-    for _hop in 1 2 3 4; do        # Claude Code stops at four hops
-        next=""
+# The pile is what every Claude session carries from turn one: AGENTS.md plus
+# every rule file under .claude/rules/, measured through the links. A rule with
+# `paths:` frontmatter loads only when a matching file is touched, so it is not
+# part of the pile. The check runs whenever AGENTS.md exists and never skips: the
+# check it replaced was gated on a CLAUDE.md and vanished without a line once
+# that file was gone.
+has_paths_frontmatter() {
+    awk '
+      NR == 1 { if ($0 != "---") exit 1; infm = 1; next }
+      infm && /^---[[:space:]]*$/ { exit 1 }
+      infm && /^paths:/ { found = 1; exit 0 }
+      END { if (!found) exit 1 }
+    ' "$1"
+}
+if [ -f AGENTS.md ]; then
+    pile=$(bytes AGENTS.md)
+    counted=0; scoped=0
+    if [ -d .claude/rules ]; then
         while IFS= read -r f; do
             [ -n "$f" ] || continue
-            dir=$(dirname "$f")
-            while IFS= read -r imp; do
-                [ -n "$imp" ] || continue
-                target=$(norm_path "$dir/$imp")
-                [ -n "$target" ] || target="$imp"
-                case " $seen " in *" $target "*) continue ;; esac
-                seen="$seen $target"
-                if [ -r "$target" ]; then
-                    pile=$((pile + $(bytes "$target")))
-                    next="${next}${target}"$'\n'
-                elif in_uninitialized_submodule "$target"; then
-                    unresolved=$((unresolved + 1))
-                else
-                    fail 5 "CLAUDE.md imports '$target', which does not exist — the import fails silently"
-                fi
-            done < <(extract_imports "$f")
-        done <<<"$frontier"
-        frontier="$next"
-        [ -n "$frontier" ] || break
-    done
-
-    qualifier=""
-    [ "$unresolved" -gt 0 ] && qualifier=" (at least — $unresolved import(s) live in an uninitialized submodule)"
-    if [ "$pile" -lt "$PILE_MAX" ]; then
-        pass 5 "always-loaded pile $pile B$qualifier, ${PILE_MAX} B cap, $((PILE_MAX - pile)) B headroom"
-    else
-        fail 5 "always-loaded pile $pile B$qualifier exceeds the ${PILE_MAX} B cap — Codex truncates it silently"
+            if has_paths_frontmatter "$f"; then
+                scoped=$((scoped + 1))
+                continue
+            fi
+            pile=$((pile + $(bytes "$f")))
+            counted=$((counted + 1))
+        done < <(find -L .claude/rules -type f -name '*.md' | sort)
     fi
-    [ "$unresolved" -gt 0 ] && skip 5 "$unresolved import(s) unreadable (uninitialized submodule) — the pile total is a lower bound"
+    detail="AGENTS.md + $counted rule file(s)"
+    [ "$scoped" -gt 0 ] && detail="$detail; $scoped path-scoped rule(s) not counted"
+    if [ "$pile" -lt "$PILE_MAX" ]; then
+        pass 5 "always-loaded pile $pile B ($detail), ${PILE_MAX} B cap, $((PILE_MAX - pile)) B headroom"
+    else
+        fail 5 "always-loaded pile $pile B ($detail) exceeds the ${PILE_MAX} B cap — Codex truncates it silently"
+    fi
 
     a=$(bytes AGENTS.md)
     if [ "$a" -le "$ROOT_MAX" ]; then

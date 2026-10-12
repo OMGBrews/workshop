@@ -1,6 +1,6 @@
 ---
 name: kaizen-init
-description: Scaffold the kaizen continuous-improvement system into this project — create docs/work/kaizen/ from the shared templates and add an `AGENTS.md` pointer (or `CLAUDE.md` where no `AGENTS.md` exists)
+description: Scaffold the kaizen continuous-improvement system into this project — create docs/work/kaizen/ from the shared templates and add a pointer to the project's root instruction file (`AGENTS.md`)
 ---
 
 # Kaizen Init
@@ -53,7 +53,7 @@ Then substitute the mount name into the copied `<kaizen root>/README.md`: the te
 
 ## Phase 3 — Add the instruction-file pointer
 
-The project's root instruction file — `AGENTS.md`, or `CLAUDE.md` where no `AGENTS.md` exists — should orient future sessions to kaizen. If it has no kaizen section, add one near the top (after the project overview). Keep it short and point to the canonical guide rather than restating it:
+The project's root instruction file — `AGENTS.md`, or where a repository has none, its existing root instruction file, whatever it is called — should orient future sessions to kaizen. Never create an instruction file to hold the pointer. If it has no kaizen section, add one near the top (after the project overview). Keep it short and point to the canonical guide rather than restating it:
 
 ```markdown
 ## Kaizen journal
