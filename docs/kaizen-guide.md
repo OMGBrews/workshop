@@ -17,7 +17,7 @@ Kaizen (改善, "change for the better") emerged from post-WWII Japanese manufac
 These projects share three properties that amplify kaizen's leverage:
 
 - **Heterogeneous practitioners.** Humans, multiple AI agents, sub-agents, and tooling all participate in producing work. Friction lives at the seams between them — handoffs, prompt misreads, worktree races, context loss between sessions. None of those seams are visible in git history alone.
-- **The "machine" is documentation.** Instruction files (`AGENTS.md`, bridged into `CLAUDE.md`), skills, check scripts, memory feedback files, and style guides are the executable specification of how we work. Improving any of them improves *every* future session — a single-line edit can compound across hundreds of subsequent runs.
+- **The "machine" is documentation.** Instruction files (`AGENTS.md`, and `.claude/rules/` for Claude Code), skills, check scripts, memory feedback files, and style guides are the executable specification of how we work. Improving any of them improves *every* future session — a single-line edit can compound across hundreds of subsequent runs.
 - **High session volume with AI assistance.** Even small per-iteration friction (a wrong default, an ambiguous instruction, a misread convention) costs many minutes per day when multiplied across sessions. Catching and standardizing those small wins is where the leverage is.
 
 ### Scope
@@ -59,7 +59,7 @@ grep -rn "2026-07-14-tab-delimited-jq-output-silently-collapsed-an-empty-field" 
 grep -rn "tab-delimited .jq. output silently collapsed" --exclude-dir=.git docs/   # the prose form
 ```
 
-Any hit from something still live — another pattern, a problem document, a task, a CLAUDE.md, a planning doc, **or another journal entry** — keeps the entry. The journal is included deliberately and it is not symmetric with the pattern-deletion rule, which tells you an entry linking a graduated pattern is *expected* to dangle: you may not edit an entry, so you can never repair a link *out of* one, which leaves not-deleting as the only way to keep the tree link-clean. An inbound link from an entry is therefore a veto, exactly as a citation from a pattern is. (In a workspace of gitignored sibling clones, name the directories explicitly — a recursive grep from the root silently searches one repo.)
+Any hit from something still live — another pattern, a problem document, a task, an instruction file, a planning doc, **or another journal entry** — keeps the entry. The journal is included deliberately and it is not symmetric with the pattern-deletion rule, which tells you an entry linking a graduated pattern is *expected* to dangle: you may not edit an entry, so you can never repair a link *out of* one, which leaves not-deleting as the only way to keep the tree link-clean. An inbound link from an entry is therefore a veto, exactly as a citation from a pattern is. (In a workspace of gitignored sibling clones, name the directories explicitly — a recursive grep from the root silently searches one repo.)
 
 **The second grep is not optional, and it is why "link evidence by relative path" is load-bearing rather than stylistic.** The check matches a filename, so an artifact citing an entry the way the pattern format warns against — `2026-07-14 — Perl mojibake`, a bare date and a phrase — is invisible to it, and the entry it depends on is deleted out from under it. Measured, not hypothetical: at the time this section was written hq's own verification pattern cited 10 of its 14 occurrences in exactly that form, and a filename grep found none of them. Where you find a prose citation, repair it to a link; do not delete the entry.
 
@@ -95,7 +95,7 @@ Kaizen runs on **Plan → Do → Check → Act**. The cycle maps to specific art
 
 | PDCA stage | Where it happens |
 |---|---|
-| **Plan** — define a way of working | `AGENTS.md` rules, skills, check scripts, style guides, memory feedback files, procedures — and, Claude Code only, `CLAUDE.md` `@`-imports and hooks (the destination ladder below ranks these by portability) |
+| **Plan** — define a way of working | `AGENTS.md` rules, skills, check scripts, style guides, memory feedback files, procedures — and, Claude Code only, `.claude/rules/` files and hooks (the destination ladder below ranks these by portability) |
 | **Do** — apply that way of working | Day-to-day sessions; humans and AI agents act on the standards |
 | **Check** — capture friction when standards misfire | A new entry file in `journal/` (the `/session-end` skill is the per-session checkpoint for this) |
 | **Act** — change the standards so it doesn't recur | Patterns distilled into `patterns/`, then graduated into the Plan-stage artifacts |
@@ -160,7 +160,7 @@ Graduation writes the lesson into its Plan-stage destination. Destinations are e
   - **A check script** — runs identically in every harness and in CI; when a landing gate requires its evidence, the friction becomes a failing check rather than advice a reader can skip. *Example: a `make check` stage that fails when the friction's signature reappears.*
   - **A skill** under `.agents/skills/` — discovered by every spec-compliant harness; the home for a codified procedure invoked by name. *Example: the `kaizen-resolve` skill, which turns the problem-document close-out into a ritual.*
   - **A rule in `AGENTS.md`**, or a doc it links — read at session start by every harness, so it is the default home for conventions and one-line rules. Style guides and procedures live at this rung. *Example: a bullet in `AGENTS.md` naming the convention, with the detail in a linked style guide.*
-  - **A `CLAUDE.md` `@`-import or a hook** — Claude Code only, acceptable in two shapes: as the *bridge* to neutral content (a universal rule in a linked doc gets a plain link in `AGENTS.md` and an `@`-import in `CLAUDE.md`, per the placement table in [`harness-agnostic-repos.md`](harness-agnostic-repos.md)), or as a consciously Claude-only enforcement where only a hook can do the work — a `PreToolUse` block that fires without anyone having to remember is genuinely that. What it may never be is the only home of a fleet rule. *Example: a SessionStart hook wrapping a plain bootstrap script that any harness can also run.*
+  - **A `.claude/rules/` file or a hook** — Claude Code only, acceptable in two shapes: as the *bridge* to neutral content (a universal rule in a linked doc gets a plain link in `AGENTS.md` and a symlink in `.claude/rules/`, per the placement table in [`harness-agnostic-repos.md`](harness-agnostic-repos.md)), or as a consciously Claude-only enforcement where only a hook can do the work — a `PreToolUse` block that fires without anyone having to remember is genuinely that. What it may never be is the only home of a fleet rule. *Example: a SessionStart hook wrapping a plain bootstrap script that any harness can also run.*
 
 Memory feedback files sit off the ladder: they persist AI-specific corrections across sessions in one harness, which is exactly their job — but a fleet rule that lives only there is invisible everywhere else.
 
@@ -197,7 +197,7 @@ Link evidence as `[2026-07-12 — two log dirs](../journal/2026-07/2026-07-12-tw
 
 - `docs/templates/kaizen/` — the starter scaffold: a per-repo `README.md` plus `journal/` and `patterns/` directories
 - `Tools/migrate-kaizen-journal.sh` — converts a repo from the older single-file `journal.md` / `patterns.md` layout
-- The `/kaizen-init` skill — scaffolds `docs/work/kaizen/` into a project and adds the CLAUDE.md pointer
+- The `/kaizen-init` skill — scaffolds `docs/work/kaizen/` into a project and adds the instruction-file pointer
 - The `/session-end` skill — the per-session Check-stage checkpoint that captures friction before it evaporates
 - The `/kaizen-review` skill — the periodic Act-stage pass: the *Analysis* section above, run. It clusters the entries written since the last review into `patterns/`, walks each graduation with you before applying it, and is the sole writer of the singleton watchlist and the sole executor of the pattern side of *The journal's lifecycle*
 - The `/kaizen-resolve` skill — the same lifecycle's problem side, run: verifying a `docs/work/problems/` document's flaw gone from the world's side — deleting it, and cascading into the entries it consumed, all behind the citation gate above

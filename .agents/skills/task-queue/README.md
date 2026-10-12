@@ -175,8 +175,8 @@ All bundled in this skill directory:
   parallel](#running-multiple-runners-in-parallel).
 
 - **Fresh context per task.** Each iteration is a brand-new `claude`
-  invocation — no `--continue`, no `--resume`. Context, memory, and CLAUDE.md
-  load fresh.
+  invocation — no `--continue`, no `--resume`. Context, memory, and instruction
+  files load fresh.
 
 - **Runner picks the task, not the worker.** Selection reads main's HEAD
   via `git ls-tree`, not the working tree — so the runner only sees tasks

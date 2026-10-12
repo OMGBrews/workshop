@@ -64,7 +64,7 @@ Three outcomes:
 
 Only reached with the evidence gate passed. For **each entry** on the consumed list from Phase 2, run the lifecycle source's two greps — the filename form and the prose form — naming the search directories explicitly (in a workspace of gitignored sibling clones, a recursive grep from the root silently searches one repo):
 
-- **Any hit from something still live** — a pattern, another problem document, a task, a CLAUDE.md, a planning doc, **or another journal entry** — and the entry stays. The document consumed it, but something else still depends on it; say in the report which entry survived and what held it.
+- **Any hit from something still live** — a pattern, another problem document, a task, an instruction file, a planning doc, **or another journal entry** — and the entry stays. The document consumed it, but something else still depends on it; say in the report which entry survived and what held it.
 - **A prose citation from a live, editable artifact** — repair it to a relative link in the same change and keep the entry. A citation the filename grep cannot see is a dependency the next deletion pass will break; repairing it is what keeps the gate honest. (A journal entry is never edited — a prose mention inside one is a keep, full stop.)
 - **No live hit** → the entry goes.
 
@@ -118,4 +118,4 @@ The first three are named rather than linked: each sits at a path that differs p
 - `kaizen-review` — the pattern side of the same lifecycle, and the skill that files problem documents in the first place. Not vendored into every repo.
 - `.agents/skills/problem-create/_TEMPLATE.md` — the canonical shape of newly filed problem documents.
 - `docs/templates/problems/README.md` — the problems-directory lifecycle this skill closes out, as seeded into each repo.
-- `signal-hygiene.md` — the standing rule the evidence gate is an instance of: a check whose pass state a no-op also satisfies reports success and ends the investigation. This repo's copy is linked from `AGENTS.md` and `@`-imported by the root `CLAUDE.md`; the path differs per repo.
+- `signal-hygiene.md` — the standing rule the evidence gate is an instance of: a check whose pass state a no-op also satisfies reports success and ends the investigation. This repo's copy is linked from `AGENTS.md` and, for Claude Code, from `.claude/rules/`; the path differs per repo.

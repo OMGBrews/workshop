@@ -71,8 +71,8 @@ For each thought, create `docs/work/thoughts/<slug>.md`:
    `_TEMPLATE`. If the name is taken, make the slug more specific rather than
    numbering it.
 2. **`project-guess:`**, only in a workspace. Where the repository's root
-   instruction file (`AGENTS.md`, or `CLAUDE.md` where there is no
-   `AGENTS.md`) carries a workspace catalog — a table mapping the projects it
+   instruction file (`AGENTS.md`, or where a repository has none, its
+   existing root instruction file) carries a workspace catalog — a table mapping the projects it
    holds to what each is for — match the thought against it and record the
    best-guess project path in a `project-guess:` frontmatter field. No match,
    or a thought that spans projects with no clear primary → `unknown`. Do not

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for Tools/check-agent-surfaces.sh — the check that mechanizes checks 1-9
-# and 13-14 of workshop/docs/harness-agnostic-repos.md.
+# and 13 of workshop/docs/harness-agnostic-repos.md.
 #
 # The headline case is `nothing was done`: a repo with a lone CLAUDE.md and its
 # skills authored under .claude/skills/ — exactly the shape the standard exists to
@@ -11,8 +11,11 @@
 # only "non-zero" would stay green if every mutation started failing for the same
 # unrelated reason.
 #
-# The fixtures are plain directories, not git repos: the script reads .gitmodules
-# with `git config -f`, which needs no repository.
+# Each fixture is built at $tmp/repo, never at $tmp itself: check 1 walks every
+# ancestor up to /, so the suppressor mutations write into the fixture's parent,
+# and that parent has to be a directory this test owns. The fixtures are plain
+# directories, not git repos: the script reads .gitmodules with `git config -f`,
+# which needs no repository.
 #
 # shellcheck disable=SC2016  # the single-quoted backticks below are Markdown, not
 #                              command substitution — expansion is exactly what must
@@ -28,14 +31,16 @@ fail() {
     failures=$((failures + 1))
 }
 
-# A repo that satisfies all ten checks. Deliberately includes the two @-shaped
-# strings real instruction files carry — an address inside a fenced block and a
-# scoped npm package inside a code span — because a naive '@' grep calls both
-# imports and fails check 4 on a conformant repo.
+# A repo that satisfies every check: AGENTS.md linking the three standing rules,
+# the rules mounted under workshop/docs/ with their headings on line one, and
+# the three .claude/rules/ links into them. Deliberately includes the two
+# @-shaped strings real instruction files carry — an address inside a fenced
+# block and a scoped npm package inside a code span — because a naive '@' grep
+# calls both imports and fails check 4 on a conformant repo.
 make_conformant() {
     local d=$1
-    mkdir -p "$d/workshop/docs" "$d/.agents/skills/demo" "$d/.claude/skills"
-    cat > "$d/AGENTS.md" <<'EOF'
+    mkdir -p "$d/workshop/docs" "$d/.agents/skills/demo" "$d/.claude/skills" "$d/.claude/rules"
+    cat > "$d/AGENTS.md" <<'EOF2'
 # Instructions
 
 Everything every agent needs. Standing rules:
@@ -49,66 +54,69 @@ psql postgresql://user:pass@localhost:5432/db
 ```
 
 The frontend uses `@scope/package` for auth.
-EOF
-    cat > "$d/CLAUDE.md" <<'EOF'
-# Bridge
-
-@AGENTS.md
-@workshop/docs/signal-hygiene.md
-@workshop/docs/definition-of-done.md
-@workshop/docs/verification-terminology.md
-EOF
-    echo 'Signal hygiene.' > "$d/workshop/docs/signal-hygiene.md"
-    echo 'Definition of done.' > "$d/workshop/docs/definition-of-done.md"
-    echo 'Verification terminology.' > "$d/workshop/docs/verification-terminology.md"
-    cat > "$d/.agents/skills/demo/SKILL.md" <<'EOF'
+EOF2
+    printf '# Signal hygiene\n\nBody.\n' > "$d/workshop/docs/signal-hygiene.md"
+    printf '# Definition of done\n\nBody.\n' > "$d/workshop/docs/definition-of-done.md"
+    printf '# Verification terminology\n\nBody.\n' > "$d/workshop/docs/verification-terminology.md"
+    local rule
+    for rule in signal-hygiene definition-of-done verification-terminology; do
+        ln -s "../../workshop/docs/$rule.md" "$d/.claude/rules/$rule.md"
+    done
+    cat > "$d/.agents/skills/demo/SKILL.md" <<'EOF2'
 ---
 name: demo
 description: A demo skill, used when the tests need one.
 ---
 
 Body.
-EOF
+EOF2
     ln -s ../../.agents/skills/demo "$d/.claude/skills/demo"
 }
 
-# A repo where none of the work was done: no AGENTS.md, no bridge, no canonical
-# skills path — the skill is a real directory only Claude Code can run.
+# A repo where none of the work was done: no AGENTS.md, no rules links, no
+# canonical skills path — the skill is a real directory only Claude Code can run.
 make_unmigrated() {
     local d=$1
     mkdir -p "$d/.claude/skills/demo"
-    cat > "$d/CLAUDE.md" <<'EOF'
+    cat > "$d/CLAUDE.md" <<'EOF2'
 # Project
 
 Everything every agent needs, in the one vendor's file.
-EOF
-    cat > "$d/.claude/skills/demo/SKILL.md" <<'EOF'
+EOF2
+    cat > "$d/.claude/skills/demo/SKILL.md" <<'EOF2'
 ---
 name: demo
 description: A demo skill.
 ---
-EOF
+EOF2
 }
 
 # expect <label> <expected-exit> <mutate-fn> [required-substring] [forbidden-substring]
 #
-# `mutate-fn` runs inside a fresh conformant fixture. Pass the literal NONE to
-# assert the unmutated fixture, or a builder name prefixed with build: to replace
-# the fixture entirely. The forbidden substring exists for cases where the right
-# outcome is the ABSENCE of a line class — e.g. check 13's notes, which do not
-# move the exit code and so cannot be ruled out by it.
+# `mutate-fn` runs inside a fresh conformant fixture at $tmp/repo. Pass the
+# literal NONE to assert the unmutated fixture, or a builder name prefixed with
+# build: to replace the fixture entirely. A mutation prefixed with home: also
+# runs the check with HOME set to the fixture's parent, for the user-memory
+# cases. The forbidden substring exists for cases where the right outcome is
+# the ABSENCE of a line class — e.g. check 13's notes, which do not move the
+# exit code and so cannot be ruled out by it.
 expect() {
     local label=$1 want=$2 mutate=$3 needle=${4-} antineedle=${5-}
-    local tmp out actual=0
+    local tmp repo out actual=0 home=$HOME
     tmp="$(mktemp -d)"
+    repo="$tmp/repo"
+    mkdir -p "$repo"
     case "$mutate" in
-        build:*) "${mutate#build:}" "$tmp" ;;
+        home:*) home=$tmp; mutate=${mutate#home:} ;;
+    esac
+    case "$mutate" in
+        build:*) "${mutate#build:}" "$repo" ;;
         *)
-            make_conformant "$tmp"
-            [ "$mutate" = NONE ] || (cd "$tmp" && "$mutate")
+            make_conformant "$repo"
+            [ "$mutate" = NONE ] || (cd "$repo" && "$mutate")
             ;;
     esac
-    out="$(bash "$SCRIPT" "$tmp" 2>&1)" || actual=$?
+    out="$(HOME=$home bash "$SCRIPT" "$repo" 2>&1)" || actual=$?
     if [ "$actual" -ne "$want" ]; then
         fail "$label: expected exit $want, got $actual"
         printf '%s\n' "$out" | sed 's/^/    | /' >&2
@@ -125,67 +133,116 @@ expect() {
 # --- the case that matters most ----------------------------------------------
 expect "a repo where none of the work was done is RED" 1 build:make_unmigrated
 # ...and red for the right reasons, not incidentally.
-expect "unmigrated: no AGENTS.md"        1 build:make_unmigrated "FAIL 1"
-expect "unmigrated: no bridge import"    1 build:make_unmigrated "FAIL 2"
+expect "unmigrated: its CLAUDE.md named as a suppressor" 1 build:make_unmigrated "/repo/CLAUDE.md exists"
+expect "unmigrated: no AGENTS.md"        1 build:make_unmigrated "AGENTS.md is missing"
+expect "unmigrated: no standing-rule links" 1 build:make_unmigrated "FAIL 2"
 expect "unmigrated: skills only Claude can run" 1 build:make_unmigrated "FAIL 7"
 
 # --- the conformant fixture is green, or every case below is meaningless -----
 expect "a conformant repo is green" 0 NONE
 
-# --- one mutation per check ---------------------------------------------------
-wrapper_outgrows_root() { printf '%.0spadding padding padding\n' {1..80} >> CLAUDE.md; }
-drop_bridge_file()      { rm CLAUDE.md; }
-drop_bridge_import()    { grep -v '^@AGENTS\.md$' CLAUDE.md > t && mv t CLAUDE.md; }
-unlink_standing_rule()  { sed 's|\[`workshop/docs/signal-hygiene.md`\](workshop/docs/signal-hygiene.md)|the signal-hygiene rule|' AGENTS.md > t && mv t AGENTS.md; }
-import_from_root()      { echo '@workshop/docs/signal-hygiene.md' >> AGENTS.md; }
-oversize_root()         { printf '%.0sx%.0s\n' {1..21000} >> AGENTS.md; }
+# --- check 1: AGENTS.md, and no suppressor from the root up to / -------------
+# Any one of these switches Claude Code's native AGENTS.md reading off for
+# everything beneath it, while the rules links keep loading: nothing looks
+# broken. The walk must find it at the root, in .claude/, and above the root.
+drop_agents()          { rm AGENTS.md; }
+local_suppressor()     { echo 'personal notes' > CLAUDE.local.md; }
+root_bridge()          { printf '@AGENTS.md\n' > CLAUDE.md; }
+dotclaude_suppressor() { echo 'notes' > .claude/CLAUDE.md; }
+parent_suppressor()    { echo 'workspace bridge' > ../CLAUDE.md; }
+user_memory()          { mkdir -p ../.claude && echo 'my preferences' > ../.claude/CLAUDE.md; }
+
+expect "no AGENTS.md"                         1 drop_agents          "FAIL 1"
+expect "CLAUDE.local.md at the root"          1 local_suppressor     "/repo/CLAUDE.local.md exists"
+expect "a CLAUDE.md bridge left at the root"  1 root_bridge          "/repo/CLAUDE.md exists"
+expect ".claude/CLAUDE.md"                    1 dotclaude_suppressor "/repo/.claude/CLAUDE.md exists"
+expect "CLAUDE.md in a parent directory"      1 parent_suppressor    "FAIL 1"
+# ~/.claude/CLAUDE.md is per-user memory, verified not to switch AGENTS.md off;
+# a plain ~/CLAUDE.md is an ordinary ancestor and does.
+expect "user memory under HOME is exempt"     0 home:user_memory     "ok   1"
+expect "a plain CLAUDE.md in HOME is not"     1 home:parent_suppressor "FAIL 1"
+
+# --- check 2: each standing rule resolves through one route -------------------
+drop_rule_link()   { rm .claude/rules/definition-of-done.md; }
+dangling_rule()    { rm workshop/docs/signal-hygiene.md; }
+wrong_document()   {
+    printf 'Notes\n' > workshop/docs/notes.md
+    ln -sfn ../../workshop/docs/notes.md .claude/rules/signal-hygiene.md
+}
+wrong_heading()    { printf 'Signal hygiene, retitled\n' > workshop/docs/signal-hygiene.md; }
+copied_rule()      { rm .claude/rules/signal-hygiene.md && cp workshop/docs/signal-hygiene.md .claude/rules/; }
+split_routes()     {
+    mkdir -p alternate/docs
+    cp workshop/docs/definition-of-done.md alternate/docs/
+    ln -sfn ../../alternate/docs/definition-of-done.md .claude/rules/definition-of-done.md
+    sed 's|workshop/docs/definition-of-done.md|alternate/docs/definition-of-done.md|g' AGENTS.md > t && mv t AGENTS.md
+}
+two_component_route() {
+    mkdir -p wrapper/nested/docs
+    cp workshop/docs/*.md wrapper/nested/docs/
+    local rule
+    for rule in signal-hygiene definition-of-done verification-terminology; do
+        ln -sfn "../../wrapper/nested/docs/$rule.md" ".claude/rules/$rule.md"
+    done
+    sed 's|workshop/docs/|wrapper/nested/docs/|g' AGENTS.md > t && mv t AGENTS.md
+}
+no_rules_dir()     { rm -rf .claude/rules; }
+
+expect "a standing-rule link deleted"         1 drop_rule_link    "FAIL 2"
+expect "a standing-rule link dangling"        1 dangling_rule     "does not resolve"
+expect "a link landing on the wrong document" 1 wrong_document    "FAIL 2"
+expect "a rule whose first line is wrong"     1 wrong_heading     "not '# Signal hygiene'"
+expect "a copied rule instead of a link"      1 copied_rule       "is a real file"
+expect "standing rules split across routes"   1 split_routes      "different routes"
+expect "a route with two mount components"    1 two_component_route "FAIL 2"
+# The never-skip property: a repo with no rules folder at all is a failure per
+# rule, never "not applicable" and never a skip.
+expect "no .claude/rules/ at all is RED"      1 no_rules_dir      "FAIL 2" "SKIP"
+expect "no .claude/rules/ names every rule"   1 no_rules_dir      "verification-terminology.md is missing"
+
+# --- check 3: every rules link is linked from AGENTS.md ----------------------
+unlink_standing_rule() { sed 's|\[`workshop/docs/signal-hygiene.md`\](workshop/docs/signal-hygiene.md)|the signal-hygiene rule|' AGENTS.md > t && mv t AGENTS.md; }
+unlinked_local_rule()  {
+    mkdir -p docs && printf '# Database hygiene\n' > docs/database-hygiene.md
+    ln -s ../../docs/database-hygiene.md .claude/rules/database-hygiene.md
+}
+linked_local_rule()    { unlinked_local_rule; echo 'Also: [database hygiene](docs/database-hygiene.md).' >> AGENTS.md; }
+topic_file()           { printf '# Cloud sessions\n\nClaude-only notes.\n' > .claude/rules/cloud-sessions.md; }
+
+expect "a standing rule not linked from AGENTS" 1 unlink_standing_rule "FAIL 3"
+expect "a hand-made rules link not in AGENTS"   1 unlinked_local_rule  "docs/database-hygiene.md"
+expect "a hand-made rules link in AGENTS"       0 linked_local_rule    "all 4 rules link(s)"
+expect "a real topic file needs no AGENTS link" 0 topic_file           "ok   3"
+
+# --- check 4 -----------------------------------------------------------------
+import_from_root() { echo '@workshop/docs/signal-hygiene.md' >> AGENTS.md; }
+expect "@-import inside AGENTS.md"            1 import_from_root  "FAIL 4"
+
+# --- check 5: the pile, measured through the links ---------------------------
+oversize_root()    { printf '%.0sx%.0s\n' {1..21000} >> AGENTS.md; }
+oversize_rule()    { printf '%.0spadding padding padding padding\n' {1..1100} >> workshop/docs/verification-terminology.md; }
+path_scoped_rule() {
+    { printf -- '---\npaths:\n  - "src/**"\n---\n\n# Source notes\n'; printf '%.0spadding padding padding padding\n' {1..1100}; } > .claude/rules/source-notes.md
+}
+expect "root file over the size target"       1 oversize_root     "FAIL 5"
+expect "a rule padded past the pile cap"      1 oversize_rule     "exceeds the 32768 B cap"
+expect "a paths: rule is not in the pile"     0 path_scoped_rule  "1 path-scoped rule(s) not counted"
+expect "the pile is reported, never skipped"  0 NONE              "AGENTS.md + 3 rule file(s)" "SKIP"
+
+# --- checks 6 to 9 -----------------------------------------------------------
 add_per_tool_file()     { echo 'be helpful' > .cursorrules; }
 skill_only_for_claude() { mkdir -p .claude/skills/local && echo body > .claude/skills/local/SKILL.md; }
 misaimed_bridge_link()  { rm .claude/skills/demo && ln -s ../../docs .claude/skills/demo; }
 dangling_bridge_link()  { rm -rf .agents/skills/demo; }
 nonspec_frontmatter()   { sed 's/^description:/disable-model-invocation: true\ndescription:/' .agents/skills/demo/SKILL.md > t && mv t .agents/skills/demo/SKILL.md; }
 name_mismatch()         { sed 's/^name: demo/name: something-else/' .agents/skills/demo/SKILL.md > t && mv t .agents/skills/demo/SKILL.md; }
-vanished_import()       { rm workshop/docs/signal-hygiene.md; }
-drop_terminology_import() { grep -v '^@workshop/docs/verification-terminology\.md$' CLAUDE.md > t && mv t CLAUDE.md; }
-unlink_terminology() { grep -v 'verification-terminology\.md' AGENTS.md > t && mv t AGENTS.md; }
-drop_terminology_pair() { drop_terminology_import; unlink_terminology; }
-split_standing_routes() {
-    mkdir -p alternate/docs
-    cp workshop/docs/definition-of-done.md alternate/docs/definition-of-done.md
-    sed 's|@workshop/docs/definition-of-done.md|@alternate/docs/definition-of-done.md|' CLAUDE.md > t && mv t CLAUDE.md
-    sed 's|workshop/docs/definition-of-done.md|alternate/docs/definition-of-done.md|g' AGENTS.md > t && mv t AGENTS.md
-}
 
-expect "wrapper larger than root"            1 wrapper_outgrows_root "FAIL 1"
-# Claude Code now reads AGENTS.md when no CLAUDE.md exists, so a missing bridge no
-# longer silences the instructions; it silences the standing-rule imports, which
-# is worse because nothing looks broken. The message must name that consequence.
-expect "no bridge at all"                    1 drop_bridge_file      "FAIL 1"
-expect "no bridge names the lost imports"    1 drop_bridge_file      "standing-rule imports have no home"
-expect "no @AGENTS.md in the wrapper"        1 drop_bridge_import    "FAIL 2"
-expect "imported doc not linked from AGENTS" 1 unlink_standing_rule  "FAIL 3"
-expect "@-import inside AGENTS.md"           1 import_from_root      "FAIL 4"
-expect "root file over the size target"      1 oversize_root         "FAIL 5"
 expect "per-tool instruction file present"   1 add_per_tool_file     "FAIL 6"
 expect "skill authored under .claude/skills" 1 skill_only_for_claude "FAIL 7"
 expect "bridge link aimed elsewhere"         1 misaimed_bridge_link  "FAIL 8"
 expect "bridge link left dangling"           1 dangling_bridge_link  "FAIL 8"
 expect "frontmatter field outside the spec"  1 nonspec_frontmatter   "FAIL 9"
 expect "skill name not matching its dir"     1 name_mismatch         "FAIL 9"
-
-# An import whose target simply is not there fails silently in Claude Code — the
-# session runs without the rule and says nothing. It is check 5's business
-# because that is where the pile is walked, and it must not be mistaken for the
-# uninitialized-submodule case below.
-expect "imported doc missing entirely" 1 vanished_import "FAIL 5"
-
-# --- check 14: the third standing rule cannot disappear as a pair -----------
-# Check 3 catches an import with no plain link, but both surfaces removed
-# together used to look conformant. That is the negative control that matters.
-expect "terminology import removed" 1 drop_terminology_import "FAIL 14"
-expect "terminology AGENTS link removed" 1 unlink_terminology "FAIL 14"
-expect "terminology delivery pair removed" 1 drop_terminology_pair "FAIL 14"
-expect "standing rules split across mount routes" 1 split_standing_routes "FAIL 14"
 
 # --- check 13: harness-only mechanics in SKILL.md bodies ---------------------
 # The three shapes the standard forbids unless `compatibility` is declared:
@@ -230,11 +287,10 @@ expect 'a README on the canonical surface is not validated as a skill' \
     0 surface_readmes "ok   9" "README.md"
 
 # --- the skipped band ---------------------------------------------------------
-# A consumer's CI may check a repo out WITHOUT submodules on purpose (devtools/ is
-# private), so the shared skills and the standing-rules import are both unreadable
-# there. That must report SKIP and stay exit 0 — but it must never report those
-# assertions as passes, because a silent skip and a satisfied check would then look
-# identical.
+# Skill bodies that live in an uninitialized submodule cannot be read, so checks
+# 8, 9 and 13 report SKIP and stay exit 0 — but they must never report those
+# assertions as passes, because a silent skip and a satisfied check would then
+# look identical. The standing rules get no such band: see the last case below.
 make_unpopulated_submodule() {
     local d=$1
     make_conformant "$d"
@@ -244,10 +300,6 @@ make_unpopulated_submodule() {
 	path = sub
 	url = https://example.invalid/sub.git
 EOF
-    echo '@sub/rule.md' >> "$d/CLAUDE.md"
-    # Check 3 applies to the submodule-backed rule too: the link must be there
-    # even though the target cannot be read right now.
-    echo 'Second standing rule: [`sub/rule.md`](sub/rule.md).' >> "$d/AGENTS.md"
     # A shared skill bridged through the canonical path into the empty submodule.
     ln -s ../../sub/skills/shared "$d/.agents/skills/shared"
     ln -s ../../.agents/skills/shared "$d/.claude/skills/shared"
@@ -261,6 +313,18 @@ make_missing_no_submodule() {
     rm "$1/.gitmodules"
 }
 expect "the same gap without a submodule declaration is RED" 1 build:make_missing_no_submodule
+# The standing rules have no skip band: a rules link into an empty mount is a
+# session running without its rules, so it fails even when the mount is a
+# declared, uninitialized submodule.
+make_rules_in_empty_submodule() {
+    local d=$1 rule
+    make_unpopulated_submodule "$d"
+    for rule in signal-hygiene definition-of-done verification-terminology; do
+        ln -sfn "../../sub/docs/$rule.md" "$d/.claude/rules/$rule.md"
+    done
+    sed 's|workshop/docs/|sub/docs/|g' "$d/AGENTS.md" > "$d/t" && mv "$d/t" "$d/AGENTS.md"
+}
+expect "rules links into an empty submodule are RED" 1 build:make_rules_in_empty_submodule "does not resolve" "SKIP 2"
 
 if [ "$failures" -ne 0 ]; then
     echo "$failures assertion(s) failed" >&2

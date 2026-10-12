@@ -408,7 +408,7 @@ fi
 # These rows sit outside the contract's jurisdiction and are owned by other
 # checks; each stays visible so no registry row silently vanishes.
 
-note 12 "AGENTS.md / CLAUDE.md are outside this contract — audited by Tools/check-agent-surfaces.sh"
+note 12 "AGENTS.md and .claude/rules/ are outside this contract — audited by Tools/check-agent-surfaces.sh"
 note 13 "README.md files and the docs/README.md index are curation with an accuracy-only obligation — audit-and-fix's readme-quality lens plus Tools/check-markdown-links.sh own them"
 note 14 "docs/style-guides/ and procedures are repo-local taste — owned by the style guide and instruction-file discovery"
 note 15 "scripts/repair_doc_links.py is opt-in and owned by the repo that keeps it — not a shared-conformance concern"

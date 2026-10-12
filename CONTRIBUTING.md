@@ -5,8 +5,8 @@ through the normal pull-request workflow.
 
 Create a branch, make a focused change, and run `make check` in a standalone
 clone before opening a pull request. Keep documentation links relative, retain
-the standing rules imported by [CLAUDE.md](CLAUDE.md), and describe any user-
-visible change in [CHANGELOG.md](CHANGELOG.md).
+the standing rules linked from [AGENTS.md](AGENTS.md) and `.claude/rules/`, and
+describe any user-visible change in [CHANGELOG.md](CHANGELOG.md).
 
 Use [the shared verification terminology](docs/verification-terminology.md)
 when changing checks, CI, definitions of done, release, or deployment guidance.

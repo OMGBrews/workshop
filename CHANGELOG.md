@@ -3,6 +3,29 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **`CLAUDE.md` is retired.** A repository now carries `AGENTS.md` plus
+  `.claude/rules/` links to the three standing rules
+  (`.claude/rules/<rule>.md -> ../../<mount>/docs/<rule>.md`), with Claude-only
+  content in real topic files beside them and no `CLAUDE.md` at all.
+  `Tools/check-agent-surfaces.sh` checks that layout: check 1 fails on a
+  `CLAUDE.md`, `.claude/CLAUDE.md`, or `CLAUDE.local.md` anywhere from the
+  repository root up to `/` (per-user `~/.claude/CLAUDE.md` exempt), check 2 on
+  a standing-rule link that is missing, dangling, or opens with the wrong
+  heading, check 3 on a rules link with no plain link in `AGENTS.md`, and check
+  5 measures `AGENTS.md` plus every rule file without `paths:` frontmatter and
+  never skips. Check 14 is retired into check 2. **An adopter's next Workshop
+  pointer advance fails its agent-surfaces check until it converts:** delete
+  `CLAUDE.md`, run the new generator `bash <mount>/Tools/sync-rules-symlinks.sh .`,
+  move Claude-only sections into `.claude/rules/<topic>.md`, and link any
+  repo-local `@` import by hand. The cloud-sessions kit's
+  `claude-md-cloud-section.md` is now `cloud-sessions-rule.md`, deployed as
+  `.claude/rules/cloud-sessions.md`. In `docs/harness-agnostic-repos.md`,
+  "Why the bridge still exists" is now "Why the rules links exist"
+  (`#why-the-rules-links-exist`); repoint links to the old anchor. The
+  devcontainer kit's Claude settings now set
+  `pluginConfigs.cc-plugin-agents-md@builtin.options.instructionFiles` to
+  `claude-md-and-agents-md`, which a container picks up on its next rebuild.
+
 - `Tools/check-markdown-links.sh` percent-decodes targets before testing that
   they exist, so `[guide](my%20docs/guide.md)` finds `my docs/guide.md`; the
   shared extractor still returns targets byte for byte. A repository may list
