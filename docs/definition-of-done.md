@@ -8,9 +8,10 @@ finished. Read this before authoring or applying a repository's
 `docs/work/definition-of-done.md`.** It answers six questions in order:
 repository profile, pre-commit feedback, landing requirements, release
 requirements, deployment requirements, known gaps. Their shape is defined in
-[`definition-of-done-schema.md`](definition-of-done-schema.md). A stage with
-nothing says so in one line; that is an answer. A *missing* file is the only
-real gap, and it is reported rather than worked around.
+[`definition-of-done-schema.md`](definition-of-done-schema.md), and
+`Tools/check-definition-of-done.sh <repo-root>` checks a page against it. A
+stage with nothing says so in one line; that is an answer. A *missing* file is
+the only real gap, and it is reported rather than worked around.
 
 The definition of done records current, executable truth. A desired check or
 platform rule belongs in a known gap or focused task until it exists and has

@@ -9,13 +9,14 @@
 # "### Docs-only surface", is what Tools/docs-only-diff.sh must read — exit 0
 # with the declared surface echoed back — and the same page with the block
 # removed is what it must refuse to decide on (exit 2). The docs/work
-# conformance checker's clauses 6 and 7 are asserted on the same page, so the
-# new shape is proven against the readers that exist today, not only against
-# the predicate.
+# conformance checker, whose clause 6 delegates to Tools/check-definition-of-done.sh,
+# must reject that page while its values are still empty, and must accept the
+# complete example page the template carries in its guidance comment: the
+# template's own example is the one page every author is told is finished.
 #
-# The page is derived from the template by deleting its guidance comments, the
-# way an author does, rather than written out here: a hand-written fixture would
-# keep passing after the template drifted.
+# Both pages are derived from the template, the first by deleting its guidance
+# comments the way an author does, rather than written out here: a hand-written
+# fixture would keep passing after the template drifted.
 set -euo pipefail
 
 WORKSHOP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -149,19 +150,44 @@ else
   printf '%s\n' "$out" | sed 's/^/    /'
 fi
 
-# --- 5. today's readers still pass on the new shape ----------------------------
-# Clause 6 wants a level-one heading and content; clause 7 reports the block.
+# --- 5. the conformance check reads the page, not just its heading ------------
+# The unfilled page keeps the sentinels, so clause 7 still reports the block,
+# but its empty values must fail clause 6.
 cp "$PAGE" "$REPO/docs/work/definition-of-done.md"
 mkdir -p "$REPO/docs/work/tasks/now" "$REPO/docs/work/tasks/soon" \
          "$REPO/docs/work/tasks/later" "$REPO/docs/work/tasks/finalized" \
          "$REPO/docs/work/tasks/never"
 rc=0
 out=$(bash "$CONFORMANCE" "$REPO" 2>&1) || rc=$?
-if [ "$rc" -eq 0 ] && printf '%s\n' "$out" | grep -Eq '(^| )6 .*docs/work/definition-of-done.md \(1 heading' \
+if [ "$rc" -eq 1 ] && printf '%s\n' "$out" | grep -Eq '^FAIL +6 .*is empty' \
    && printf '%s\n' "$out" | grep -Fq 'DOCS-ONLY block present'; then
-  ok "check-docs-work-conformance.sh clauses 6 and 7 pass on the template-shaped page"
+  ok "check-docs-work-conformance.sh fails clause 6 on the unfilled template and clause 7 still reports its block"
 else
-  fail "check-docs-work-conformance.sh on the template-shaped page: exit $rc, wanted 0 with clause 6 ok and clause 7 reporting the block"
+  fail "check-docs-work-conformance.sh on the unfilled template: exit $rc, wanted 1 with clause 6 failing on empty values and clause 7 reporting the block"
+  printf '%s\n' "$out" | sed 's/^/    /'
+fi
+
+# The complete example page in the guidance comment, de-indented.
+EXAMPLE="$TMP/example.md"
+awk '
+  /^ +# Definition of done$/ && !p { p = 1; match($0, /^ +/); n = RLENGTH }
+  p && /^-->/ { exit }
+  p { print substr($0, n + 1) }
+' "$TEMPLATE" >"$EXAMPLE"
+if grep -q '^## Known gaps$' "$EXAMPLE" && grep -q '^# Definition of done$' "$EXAMPLE"; then
+  ok "the template's guidance comment carries a complete example page"
+else
+  fail "could not extract the example page from the template's guidance comment"
+  sed 's/^/    /' "$EXAMPLE"
+fi
+cp "$EXAMPLE" "$REPO/docs/work/definition-of-done.md"
+rc=0
+out=$(bash "$CONFORMANCE" "$REPO" 2>&1) || rc=$?
+if [ "$rc" -eq 0 ] && printf '%s\n' "$out" | grep -Eq '^ok +6 .*conforms to docs/definition-of-done-schema.md' \
+   && printf '%s\n' "$out" | grep -Eq '^absent +7 '; then
+  ok "check-docs-work-conformance.sh passes clause 6 on the template's example page, which declares no docs-only block"
+else
+  fail "check-docs-work-conformance.sh on the template's example page: exit $rc, wanted 0 with clause 6 ok and clause 7 absent"
   printf '%s\n' "$out" | sed 's/^/    /'
 fi
 

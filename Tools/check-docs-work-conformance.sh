@@ -44,6 +44,9 @@ if [ "$#" -ne 1 ]; then
     exit 2
 fi
 root="$1"
+# Resolve the bundled siblings before entering the root: BASH_SOURCE may be
+# relative to the caller's directory.
+devtools_root="$(cd -P "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root" || { echo "cannot enter '$root'" >&2; exit 2; }
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     echo "not a Git worktree: '$root' — the handoff clause depends on tracked-file identity" >&2
@@ -54,10 +57,14 @@ if [ "$(git rev-parse --show-toplevel)" != "$(pwd -P)" ]; then
     exit 2
 fi
 
-devtools_root="$(cd -P "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readiness_checker="$devtools_root/.agents/skills/task-finalize/check-task-readiness.sh"
 if [ ! -f "$readiness_checker" ]; then
     echo "missing bundled task readiness checker: '$readiness_checker'" >&2
+    exit 2
+fi
+dod_checker="$devtools_root/Tools/check-definition-of-done.sh"
+if [ ! -f "$dod_checker" ]; then
+    echo "missing bundled definition-of-done checker: '$dod_checker'" >&2
     exit 2
 fi
 
@@ -234,22 +241,32 @@ else
     fi
 fi
 
-# --- 6: definition-of-done.md (universal) -------------------------------------
-# The same positive bar hq's verify-definition-of-done.sh applies: a level-one
-# heading plus substantive content. "The file exists" would pass on the shape
-# a half-done rollout leaves behind.
-if [ ! -f docs/work/definition-of-done.md ]; then
-    fail 6 "docs/work/definition-of-done.md is missing — every repo states its required evidence here, and a repo with no automated checks owes the one line that says so"
+# --- 6: definition-of-done.md (universal; delegated) --------------------------
+# Tools/check-definition-of-done.sh owns the page: the schema clauses for a page
+# in the schema's shape, the old heading-and-content bar for a transitional one.
+# Its verdict line is mapped here; its FAIL and unavailable lines are carried
+# into this clause's text so nothing it found is dropped.
+dod_out=""
+dod_rc=0
+dod_out=$(bash "$dod_checker" "$PWD" 2>&1) || dod_rc=$?
+dod_verdict=$(printf '%s\n' "$dod_out" | sed -n 's/^definition of done: //p')
+# dod_detail <verdict word>: that word's lines, joined, each led by the
+# delegate's clause number as "clause N:" (the transitional line's "t" dropped).
+dod_detail() {
+    printf '%s\n' "$dod_out" | sed -n "s/^$1 *//p" \
+        | sed -e 's/^t  *//' -e 's/^\([0-9][0-9]*\)  */clause \1: /' \
+        | awk 'NR > 1 { printf "; " } { printf "%s", $0 }'
+}
+if [ "$dod_rc" -eq 0 ] && [ "$dod_verdict" = conformant ]; then
+    pass 6 "docs/work/definition-of-done.md conforms to docs/definition-of-done-schema.md (Tools/check-definition-of-done.sh)"
+elif [ "$dod_rc" -eq 0 ] && [ "$dod_verdict" = "transitional (older shape)" ]; then
+    pass 6 "$(dod_detail ok) — transitional (older shape)"
+elif [ "$dod_rc" -eq 0 ] && [[ "$dod_verdict" == incomplete* ]]; then
+    note 6 "docs/work/definition-of-done.md is $dod_verdict — $(dod_detail unavailable); an unavailable is not a pass"
+elif [ "$dod_rc" -eq 1 ]; then
+    fail 6 "$(dod_detail FAIL) (Tools/check-definition-of-done.sh: $dod_verdict)"
 else
-    heading=$(grep -c '^# ' docs/work/definition-of-done.md || true)
-    body=$(grep -cv '^[[:space:]]*$\|^#' docs/work/definition-of-done.md || true)
-    if [ "$heading" -lt 1 ]; then
-        fail 6 "docs/work/definition-of-done.md has no level-1 heading — this is not a written document"
-    elif [ "$body" -lt 2 ]; then
-        fail 6 "docs/work/definition-of-done.md is a heading and $body line(s) of content — it names no required evidence and does not say there is none"
-    else
-        pass 6 "docs/work/definition-of-done.md ($heading heading, $body content line(s))"
-    fi
+    fail 6 "Tools/check-definition-of-done.sh could not check docs/work/definition-of-done.md (exit $dod_rc): $dod_out"
 fi
 
 # --- 7: DOCS-ONLY declaration (optional; owned by docs-only-diff.sh) ----------

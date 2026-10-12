@@ -34,8 +34,9 @@ enough to run before a commit.
 - **Public verification suite**
   - Command: `make check`
   - Pass condition: exit 0 from a standalone clone, after the public regression
-    tests, agent-surface conformance, Markdown links, JSON validation, and the
-    shellcheck allow-list.
+    tests, agent-surface conformance, this page's conformance to the
+    definition-of-done schema (strict: a transitional or incomplete verdict
+    fails), Markdown links, JSON validation, and the shellcheck allow-list.
   - Applies to: every change.
   - Evidence type: automated
   - Enforcement: platform-enforced
@@ -81,10 +82,6 @@ carry their own deployment declarations.
 
 ## Known gaps
 
-- No checker validates this page against the schema; clause 6 of
-  `Tools/check-docs-work-conformance.sh` asserts only a heading and content.
-  Remediation is owned by the `add-a-definition-of-done-conformance-check`
-  brief in the maintainer wrapper's task queue.
 - The transitional reading of the older single-table shape ends when every
   fleet repository has migrated; no task owns that removal yet.
 - Tag immutability is procedural: the ruleset listing observed on 2026-09-07

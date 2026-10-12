@@ -3,6 +3,28 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **`Tools/check-definition-of-done.sh` checks a definition of done against
+  the schema.** A page carrying `## Repository profile` must have the six
+  sections in order, the seven profile keys, requirement bullets in the schema
+  grammar with values from its vocabulary, a landing enforcement equal to the
+  strongest landing requirement, a dated observation citation for any
+  `platform-enforced` declaration, one docs-only form under
+  `### Docs-only surface`, and a known-gaps list. Every `Command:` must name an
+  artifact the repository tracks: a `Makefile` target, a tracked path, or the
+  `run:` value of a tracked workflow step; a bare tool invocation such as
+  `uv run pytest` fails. A path inside an uninitialized submodule is reported
+  `unavailable` (exit 0, an incomplete verdict). An older single-table page is
+  reported as transitional. `--conformant` makes transitional and incomplete
+  exit 1; Workshop's own `make check` uses it. Clause 6 of
+  `Tools/check-docs-work-conformance.sh` now delegates to this checker, so
+  **an adopter whose page is already in the schema shape is checked strictly
+  on its next Workshop pointer advance**: wording outside the vocabulary,
+  a `Commands:` label, or a command naming no tracked artifact turns clause 6
+  red. Older pages keep passing clause 6 as transitional. The same change
+  resolves the conformance script's bundled siblings before it enters the
+  repository root, so it also works when invoked by a relative path with a
+  root other than `.`.
+
 - **`CLAUDE.md` is retired.** A repository now carries `AGENTS.md` plus
   `.claude/rules/` links to the three standing rules
   (`.claude/rules/<rule>.md -> ../../<mount>/docs/<rule>.md`), with Claude-only
