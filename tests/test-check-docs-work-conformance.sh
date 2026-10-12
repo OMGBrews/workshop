@@ -186,6 +186,10 @@ out=$(bash "$SCRIPT" "$d" 2>&1) && rc=0 || rc=$?
 for n in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do
     printf '%s\n' "$out" | grep -Eq "(^| )$n " || fail "conformant: no verdict for clause $n"
 done
+# Its definition of done is in the older single-table shape, so clause 6
+# passes it as transitional, never as conformant.
+printf '%s\n' "$out" | grep -Eq '^ok +6 .*transitional \(older shape\)' \
+    || fail "conformant fixture: clause 6 does not report the older-shape page as transitional"
 
 # --- one mutation per clause ---------------------------------------------------
 legacy_tasks_twin() { mkdir -p "$1/docs/tasks/now"; echo x >"$1/docs/tasks/now/stray.md"; }
@@ -209,6 +213,61 @@ expect "definition-of-done is heading-only" 1 dod_heading_only \
 dod_no_heading() { printf 'just prose\nmore prose\n' >"$1/docs/work/definition-of-done.md"; }
 expect "definition-of-done without a level-1 heading" 1 dod_no_heading \
     "FAIL 6" "no level-1 heading"
+
+# A page in the schema's shape is delegated to Tools/check-definition-of-done.sh:
+# a complete one passes clause 6 as conformant, and one with an
+# out-of-vocabulary value fails it, naming the delegate's clause.
+dod_schema_shape() {
+    cat >"$1/docs/work/definition-of-done.md" <<'EOF'
+# Definition of done
+
+The evidence required before a change to this fixture counts as done.
+
+## Repository profile
+
+- Declared unit: `example/fixture`, a standalone clone.
+- Profile: content or scaffold.
+- Production evidence: Not applicable — content or scaffold.
+- Default landing route: authorized direct push.
+- Landing enforcement: procedural.
+- Enforcement evidence: nothing blocks a push to `main`; the procedure is this page.
+- Strengthened for: none.
+
+## Pre-commit feedback
+
+None — no hooks are configured.
+
+## Landing requirements
+
+None — the author reads the diff before pushing.
+
+### Docs-only surface
+
+No docs-only surface is declared; every check is presumed to read every path.
+
+## Release requirements
+
+Not applicable — nothing is released.
+
+## Deployment requirements
+
+Not applicable — nothing is deployed.
+
+## Known gaps
+
+None — nothing else was checked.
+EOF
+}
+expect "definition-of-done in the schema's shape is checked by the delegate" 0 dod_schema_shape \
+    "ok   6" "conforms to docs/definition-of-done-schema.md"
+
+dod_schema_bad_profile() {
+    dod_schema_shape "$1"
+    sed -i.bak 's/^- Profile: content or scaffold\./- Profile: hobby project./' "$1/docs/work/definition-of-done.md"
+    rm "$1/docs/work/definition-of-done.md.bak"
+}
+expect "definition-of-done in the schema's shape with an unknown profile" 1 dod_schema_bad_profile \
+    "FAIL 6" "clause 3:" "Profile \`hobby project.\`"
 
 add_docs_only() {
     cat >>"$1/docs/work/definition-of-done.md" <<'EOF'

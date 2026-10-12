@@ -214,8 +214,11 @@ without it is in the older single-table shape. Until every repository in a
 fleet has migrated, a reader or checker treats the older shape as transitional
 and reads it for what it does state — commands, pass conditions — without
 inferring a profile, a landing route, or an enforcement level it does not
-declare. The transitional reading is removed when adoption is complete, not
-kept as a permanent allowlist; the plan that drives adoption owns the removal.
+declare. `Tools/check-definition-of-done.sh` implements that reading: it
+reports an older page as transitional, never as conformant, and its
+`--conformant` flag rejects one. The transitional reading is removed when
+adoption is complete, not kept as a permanent allowlist; the plan that drives
+adoption owns the removal.
 
 ## See also
 
