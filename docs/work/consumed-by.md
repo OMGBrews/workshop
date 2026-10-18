@@ -32,6 +32,9 @@ failure this file exists to prevent.
 The wrapper's edge is guarded by required CI on its own `main`: the recorded gitlink must be
 reachable from this repository's `main` and must never move backwards. The practical
 consequence for a change landing here is the ordering — **merge here first, then bump the
-pointer to the post-merge SHA.** A pre-merge PR-branch SHA passes locally, because the object
+pointer to the post-merge SHA, and open the wrapper's pull request only after that, with its
+checks rerun against the new pointer.** A pre-merge PR-branch SHA passes locally, because the object
 is in the local clone, and is orphaned by the squash merge that lands it; the wrapper's
-pointer check refuses it rather than letting a fresh clone fail on a submodule fetch.
+pointer check refuses it rather than letting a fresh clone fail on a submodule fetch. A wrapper pull request
+opened earlier would be tested against the old pointer and start red on any wrapper edit that
+needs this change — the dependent-parent case `/ship` defers.

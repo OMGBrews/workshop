@@ -3,6 +3,18 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **`/ship` defers a parent pull request that depends on an unmerged child.**
+  A parent's checks now run against the gitlinks its candidate commit records
+  (`git submodule update --checkout`), as CI sees them. A parent that passes
+  only with the child's unmerged commit checked out is a dependent parent: its
+  branch is pushed but its PR opens only after the child merges and the
+  pointer records the post-merge SHA, and it then waits for its own go-ahead.
+  An owning repository's documented pointer or propagation ordering overrides
+  the skill's generic timing. `tests/test-ship-skill-rules.sh` guards all
+  three rules. The cloud-sessions kit template's `/ship` line says the same;
+  copies already placed in consuming repositories are not updated by this
+  change.
+
 - **`Tools/check-definition-of-done.sh` checks a definition of done against
   the schema.** A page carrying `## Repository profile` must have the six
   sections in order, the seven profile keys, requirement bullets in the schema

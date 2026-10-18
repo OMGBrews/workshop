@@ -1,6 +1,6 @@
 ---
 name: ship
-description: Ship finished work from a PR-flow (cloud) session — open coordinated PRs for changed submodules and the superproject, then merge them child-first on the maintainer's go-ahead
+description: Ship finished work from a PR-flow (cloud) session — open coordinated PRs for changed submodules and every superproject whose checks pass against its recorded pointers, defer a parent that depends on an unmerged child until that child merges, then merge child-first on the maintainer's go-ahead
 compatibility: Written for Claude Code on the web, whose sandbox blocks direct pushes and makes a pull request the only way to land work. The coordinated submodule-then-superproject ordering generalises, but a session that can push directly should do that instead of following this skill.
 ---
 
@@ -8,7 +8,7 @@ compatibility: Written for Claude Code on the web, whose sandbox blocks direct p
 
 Turn finished work in a superproject workspace into merged default-branch state via pull requests. This is the PR-flow counterpart of the standard local flow ("commit inside the submodule, push, bump the pointer") for environments where direct pushes to the default branch are blocked — Claude Code on the web sessions behind a git proxy, or any repo with branch protection.
 
-A bare `ship` invocation inventories the work, proves this session can push *and* open PRs, runs the required checks, pushes branches, opens PRs, and **stops for review**. The merge sequence (Phase 7) runs only on the maintainer's explicit go-ahead in the conversation — `ship merge`, or a plain "merge it" after they have reviewed the PRs.
+A bare `ship` invocation inventories the work, proves this session can push *and* open PRs, runs the required checks, pushes branches, opens PRs for every repo whose checks pass against the pointers it records — deferring a dependent parent's PR until its child has merged — and **stops for review**. The merge sequence (Phase 7) runs only on the maintainer's explicit go-ahead in the conversation — `ship merge`, or a plain "merge it" after they have reviewed the PRs.
 
 **Arguments**: optional `[merge]`. Bare runs Phases 1–6 and stops for review; `merge` runs the Phase 7 merge sequence, and is accepted only after the maintainer has reviewed the PRs.
 
@@ -25,6 +25,8 @@ their own requirements, authorization, runbooks, and sign-off.
 **Pointer discipline — the one hard rule.** A submodule gitlink recorded in the superproject must only ever reference a commit **reachable from that submodule's default branch on its remote**. Never record a PR-branch SHA: a squash (or rebase) merge mints a *new* commit for the default branch, the PR branch gets deleted, and the branch SHA becomes unreachable — a fresh clone of the superproject then cannot fetch the submodule commit at all. Existing checkouts keep working from local objects, which is exactly why the breakage hides. This is why the pointer bump is the **last** step, after the submodule PR has merged, using the SHA the merge API returned.
 
 **Merge order: children before parents, applied recursively.** A superproject PR merges only after every submodule PR it depends on has merged and the pointer has been re-recorded to the post-merge SHA. In a nested tree (workspace → project → shared library), that means deepest-first: the deepest changed repo merges, its immediate parent records the pointer and merges next, and so on upward — every repo whose gitlinks moved gets its own PR.
+
+**An owning repository's documented ordering overrides this skill's parent-PR timing.** Where a superproject or its child documents its own pointer or propagation ordering — a maintainer wrapper's `AGENTS.md` "Pointer workflow", a child's `docs/work/consumed-by.md` saying "merge here first, then bump the pointer" — that runbook decides when the parent's PR opens and merges, and the phases below are the default only for repos that document nothing. Read it in Phase 1 alongside the declarations. It moves timing, never strictness: no runbook relaxes Phase 3's checks.
 
 **`$DEFAULT_BRANCH` — resolve it, never assume `main`.** A repo whose default branch is `master` or `develop` has no `origin/main` ref at all, so any command referencing it fails — and a failed command that prints nothing looks exactly like a clean result. Resolve it per repo:
 
@@ -140,6 +142,8 @@ git -C <repo> push --dry-run origin HEAD:refs/heads/<branch>
 
 ## Phase 3 — Required checks
 
+**Run a parent's checks against the gitlinks its candidate commit records.** A repository that records gitlinks is verified only with every nested checkout on the gitlink its candidate commit records — `git submodule update --checkout` (with `--recursive` in a nested tree) before its suite — because that is all CI materialises: `actions/checkout` with `submodules: true` fetches the recorded gitlinks, and a pointer check reads `git rev-parse HEAD:<path>`. A run with a child's checkout still on its unmerged feature commit tests a tree nobody will merge, and its green says nothing about the parent (workshop-dev PR #36 passed locally against Workshop PR #18's commit, then failed in CI on a link only that commit carried). Order matters inside this phase: run each child's own checks and put its work on a branch (Phase 4 step 1) **before** restoring the parent's view, or commits made on the child's detached HEAD are left reachable only from the reflog. This restore is for the parent's run; Phase 4 step 4 still restores the checkout after the push. Phase 5 step 1 classifies the parent from this run.
+
 Run each changed repository's documented checks and satisfy its definition of
 done. Do not ship red, and do not substitute a weaker check for a documented
 one. If the workspace documents environment-limited checks, state in the PR
@@ -180,12 +184,15 @@ For each submodule with work to ship:
 3. Open the PR via the GitHub MCP `create_pull_request` (base = the default branch). Title: the commit subject (single commit) or the task name (several). Body: what changed, which checks ran, and a placeholder line for the superproject PR link. Record the returned URL — no URL, no PR.
 4. **Restore the submodule checkout to the recorded pointer**: from the superproject, `git submodule update --checkout <sm>`. The pushed branch and its PR are untouched (only the working checkout detaches), and the superproject tree goes clean instead of showing `M <sm>` gitlink drift for the whole review pause — drift that `git status` readers and stop hooks rightly flag, and that must **not** be silenced by committing the pointer (that would record a PR-branch SHA). Phase 7 checks out the merge SHA anyway (llmkit-dev, 2026-07-19).
 
-In a nested tree, treat an intermediate repo (one that is both child and parent) the same way: its PR ships its own changes but **no** pointer bumps for children whose PRs have not merged — those land during the merge sequence, level by level.
+In a nested tree, treat an intermediate repo (one that is both child and parent) the same way: its PR ships its own changes but **no** pointer bumps for children whose PRs have not merged — those land during the merge sequence, level by level. Its own PR takes Phase 5 step 1's classification too: when its checks pass only against an unmerged child it is a dependent parent — branch pushed, PR deferred — and Phase 7 step 4 opens it once that child has merged.
 
 ## Phase 5 — Superproject branch and PR
 
-1. Commit the superproject work — docs, config — **without bumping pointers whose submodule PR has not merged yet** (pointer discipline). It is normal for this PR to be temporarily incomplete (e.g. a skill symlink that only resolves after the pointer bump); say so in its body.
-2. Push the session's branch (in cloud sessions, the designated `claude/...` branch) and open the PR the same way.
+1. Commit the superproject work — docs, config — **without bumping pointers whose submodule PR has not merged yet** (pointer discipline). Then classify it from Phase 3's run against its recorded gitlinks:
+
+   - **Green** → push and open its PR now (steps 2–5), the cross-linked unit unchanged.
+   - **Red** → diagnose before anything opens. A second run with the child checked out on its PR commit is allowed *as diagnosis only*, never as evidence the parent passes; restore the recorded checkout afterwards. Red in both runs is the parent's own defect: fix it (Phase 3 — do not ship red). Red only against the recorded gitlink means the parent's work depends on unmerged child content (a link, a skill symlink, a tool it calls). **A parent whose checks pass only against an unmerged child is a dependent parent: push its branch, but do not open its PR.** Steps 3–5 skip it, Phase 6 reports it as deferred, and Phase 7 step 4 opens it once the child has merged. A PR opened red against a pointer that cannot yet move has no meaningful green baseline for its whole review.
+2. Push the session's branch (in cloud sessions, the designated `claude/...` branch) and open the PR the same way — for a dependent parent, push only.
 3. Cross-link: edit each PR body (`update_pull_request`) so every PR in the change set links the others — one change, N repos, one navigable unit.
 4. **Subscribe to every PR opened** (`mcp__github__subscribe_pr_activity`) — this is the session's primary way back, not a nicety. A **merge** is delivered: measured at ~8 seconds, with an automatic unsubscribe once it lands (measured 2026-07-29 — [`session-return-durability.md`](../../../docs/session-return-durability.md)). Review comments arrive the same way.
 
@@ -203,7 +210,7 @@ In a nested tree, treat an intermediate repo (one that is both child and parent)
 
 ## Phase 6 — Stop for review
 
-Report, per repo: the PR URLs opened; the pointer bumps still pending a child's merge, **including every parent bump planned in Phase 1**; and every parent the maintainer has already declined, named. A decline belongs in the report, not only in the conversation — the report is what the next session and the PR bodies inherit, and an unrecorded decline is indistinguishable from an oversight.
+Report, per repo: the PR URLs opened; every **deferred** parent — branch pushed, PR not opened — with the child PR it waits on; the pointer bumps still pending a child's merge, **including every parent bump planned in Phase 1**; and every parent the maintainer has already declined, named. A decline belongs in the report, not only in the conversation — the report is what the next session and the PR bodies inherit, and an unrecorded decline is indistinguishable from an oversight.
 
 **Close the report by naming who the merge is waiting on, and what will bring this session back — always, in one line.** The PRs are open, merging is the maintainer's call, and a PR-activity subscription (Phase 5 step 4) should carry the merge back here within seconds. Name what is actually armed — subscription, scheduled check-in, both, neither — rather than implying a return you have not set up. If nothing is armed, say that plainly: the maintainer should never have to work out from silence whether the ball is in their court.
 
@@ -216,7 +223,7 @@ Review approval may satisfy a landing requirement, while the maintainer's
 explicit go-ahead in the current conversation supplies this skill's merge
 authorization. Keep all three claims separate in the report.
 
-**The one standing delegation: docs-only PRs (maintainer decision, 2026-07-29).** In a repo that documents the docs-only fast lane (Phase 3's conditions, all pieces), a PR whose diff is docs-only per that repo's predicate script does not stop here: merge it (squash) as soon as its classification check is green, and fold it into the same report — what merged, and the lag notice its parents inherit (Phase 1's docs-only default). The delegation covers exactly that class: a diff with any non-docs path, or a repo without the documented lane, stops for review as above.
+**The one standing delegation: docs-only PRs (maintainer decision, 2026-07-29).** In a repo that documents the docs-only fast lane (Phase 3's conditions, all pieces), a PR whose diff is docs-only per that repo's predicate script does not stop here: merge it (squash) as soon as its classification check is green, and fold it into the same report — what merged, and the lag notice its parents inherit (Phase 1's docs-only default). The delegation covers exactly that class: a diff with any non-docs path, or a repo without the documented lane, stops for review as above. A child merged through this delegation has no Phase 7 run, so a deferred parent waiting on it is opened right here, by Phase 7 steps 2–4 (verify, record the pointer, rerun the parent's checks, open its PR); it then stops for its own go-ahead like any other parent PR.
 
 ## Phase 7 — Merge sequence (go-ahead only)
 
@@ -226,7 +233,9 @@ Run the cycle below bottom-up. In a nested tree an intermediate repo takes both 
 2. **Verify before recording**: `git -C <sm> fetch origin`, then `git -C <sm> merge-base --is-ancestor <merge-sha> origin/<default>` — exit 0 or stop.
 3. **Record the pointer**: `git -C <sm> checkout <merge-sha>`, then in the superproject `git add <sm>` and commit, message per the workspace convention (`Bump <name> pointer: <what the child PR did>`). If the workspace has a post-bump step for this submodule (e.g. `workshop/Tools/sync-skill-symlinks.sh` after a Workshop pointer bump), run it and include the result in the same commit.
 4. Push, and wait for the superproject PR's checks (if any) to go green.
-5. **Parent last.** Merge the superproject PR (squash).
+
+   **A deferred parent opens here.** Its branch was pushed with no PR, and a branch with no PR may get no CI at all — workflows that trigger only on `pull_request` and pushes to the default branch never see it — so "push and wait green" cannot come first. After step 3 records the post-merge pointer, rerun the parent's checks locally against the new gitlink (Phase 3's exact-artifact run again), then push, open its PR, cross-link it (Phase 5 step 3), subscribe to it (Phase 5 step 4), and wait for its checks. The run ends with that PR open: it is reported the way [the unattached parent](#the-unattached-parent)'s step 6 reports one — parent name, old SHA, new SHA, PR URL — and awaits its own go-ahead. In a nested tree the upward cycle stops at that level: while its PR is open, its own declared parents are named, deferred entries in the report, not PRs, resumed by a later ship run after that PR's go-ahead.
+5. **Parent last.** Merge the superproject PR (squash) — unless step 4 just opened it as a deferred parent. The go-ahead covered the PRs the maintainer reviewed, and that one did not exist yet, so it never carries to it.
 6. **Prove the end state** — two assertions, and the second is what carries the proof when the first has nothing to read:
 
    - **Per shipped submodule**: on the superproject's `origin/<default>`, the recorded gitlink is reachable from that submodule's `origin/<default>`. Print both SHAs, and print **how many gitlinks you inspected**.
@@ -256,6 +265,8 @@ Run the cycle below bottom-up. In a nested tree an intermediate repo takes both 
      Equal → `git fetch origin`, then `git checkout -B <session-branch> origin/<default>`, and from the superproject `git submodule update`. Differ → leave the branch alone and report `git log --oneline <merged-head-sha>...<session-branch>` (three dots: after a local amend or rollback the branch may be *behind* the merged head, not only ahead, and a two-dot range prints nothing). If the branch ref no longer exists, there is nothing to reset and nothing to prove — say so rather than recreating it.
 
      Do **not** substitute a commit-identity or ancestry test. The squash minted a new commit, so `git log <default>..<branch>` and `merge-base --is-ancestor` both report the merged branch as unmerged. `git cherry` is worse than either: it is *conditionally* right — it detects a squash-merged **single-commit** branch (patch-identical) but not a multi-commit one, so it silently depends on how many commits the PR happened to have. (This is the same "restart the designated branch from the merged default" rule the cloud-session instructions give for follow-up work; running it here just does it at the moment the merge completes.)
+
+Steps 6 and 7 apply to the PRs that merged. When step 4 opened a deferred parent, step 6's end-state proof runs for the child, the parent is reported as open with its subscription armed (step 6's "report what is armed" line, not a new timer), and step 7's branch reset for the parent waits for its eventual merge.
 
 If the session ends between Phases 6 and 7, nothing is lost: the PRs persist, and a later session runs Phase 7 from this file. That claim covers the **PRs**, which are durable server-side state. It does not cover the **session's own return**, and the two must not be conflated.
 
@@ -327,6 +338,7 @@ For each parent pointer-bump entry in the Phase 1 plan — every declared parent
 - **Do NOT merge anything without the maintainer's go-ahead in the current conversation.** Opening PRs is autonomous; merging is not. The single recorded exception is the docs-only delegation (Phase 6): a docs-only PR in a repo that documents the fast lane merges without a per-PR go-ahead — nothing else does.
 - **Do NOT record a pointer to a PR-branch SHA** — not even temporarily, not even on a branch.
 - **Do NOT arm an insurance timer behind a live PR subscription**, and do NOT re-issue a scheduling call that was rejected or errored. Every one of those calls is a permission prompt on the maintainer's phone, and neither buys a return path the session does not already have.
-- **Do NOT report a ship as complete while a declared parent still records the pre-merge pointer** without naming that parent, its current SHA, and why it was left — a strike-out, a blocked `add_repo`, **or** a parent PR still open awaiting the maintainer's merge, which is the *normal* end of a `ship merge` and the easiest of the three to skip past. Unqualified "shipped" reads as "every consumer is current", which is a claim about repositories this session never opened.
+- **Do NOT report a ship as complete while a declared parent still records the pre-merge pointer** without naming that parent, its current SHA, and why it was left — a strike-out, a blocked `add_repo`, **or** a parent PR still open awaiting the maintainer's merge — including a deferred parent Phase 7 step 4 opened after its child merged — which is the *normal* end of a `ship merge` and the easiest of the three to skip past. Unqualified "shipped" reads as "every consumer is current", which is a claim about repositories this session never opened.
+- **Do NOT open a parent PR whose checks cannot pass against its recorded gitlinks.** Defer it (Phase 5 step 1) until the child merges and the pointer records the post-merge SHA. Never open it red to be fixed by the bump, and never turn it green by weakening or skipping a check or pointing one at the child's PR branch.
 - **Do NOT push submodule work directly to its default branch** from a PR-flow session, even where the proxy would allow it.
 - **Do NOT tag, release, or publish** — out of scope; see the workspace's release runbook.
