@@ -23,7 +23,9 @@ Do not create a problem document for:
 
 ## Lifecycle
 
-A problem document persists while the flaw exists. Delete it once the flaw is verified gone — usually after a task fixes it, but **task completion alone is not the trigger**: verify the flaw is gone first, from the world's side, then delete. Git preserves the history.
+A problem document persists while the flaw exists. Delete it once the flaw is verified gone — usually after a task fixes it, but **task completion alone is not the trigger**: verify the flaw is gone first, from the world's side, then delete. Git preserves the history. Surviving journal citations do not veto retirement: delete the verified-fixed problem, leave immutable entries unchanged, and report their historical links. Repair editable inbound references in the same change; do not keep fixed problems as evidence archives. The canonical distinction between problem retirement and journal retention is in the Workshop distribution's `docs/kaizen-guide.md`, under *Retiring a fixed problem is distinct from retaining journal evidence*.
+
+Run the consumer's required link check and report its actual result. If it rejects intentional historical journal links, report an adoption blocker; do not claim a link-clean tree, weaken the check, or add broad exclusions. These rules remain available in this seeded README when a vendored skill has no mounted guide. Initial seeding requires an available Workshop distribution; a lone skill copy cannot supply an absent template.
 
 **Deleting the document deletes the journal entries it consumed.** A problem filed from a kaizen cluster cites `docs/work/kaizen/journal/` entries as evidence; those entries are *consumed* by it, and the same commit that deletes the document deletes them — provided nothing else live still cites them. Check each one before removing it:
 

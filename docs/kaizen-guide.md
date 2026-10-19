@@ -50,6 +50,22 @@ Same commit, not later and not earlier, and both halves of that matter:
 - **Earlier breaks a live evidence link.** While the pattern or problem is alive, its Evidence list is the thing a reader checks it against; deleting the entries out from under it leaves a document making claims whose sources are gone, and in repos with a required doc-link check (llmkit-dev) it turns CI red.
 - **Later never happens.** The pass that deletes the artifact is the only one holding its evidence list. Once the file is gone, nothing anywhere records which entries it had absorbed — recovering that means reading it out of git history, which nobody will think to do.
 
+### Retiring a fixed problem is distinct from retaining journal evidence
+
+`docs/work/problems/` holds outstanding flaws only. Once every claimed observable
+is verified gone with appropriate evidence, delete the problem record even when
+surviving journal entries cite it. Those citations do not veto problem retirement.
+Leave immutable journal entries unchanged and report each historical link; git
+history recovers the retired record. Repair editable inbound references in the
+same change. Do not retain a fixed problem as an evidence archive.
+
+This rule does not relax the citation gate below: a consumed **journal entry**
+with a live citer must survive. The two targets have different lifecycles.
+Historical journal links to retired problem records are intentional, so report
+them rather than claiming a link-clean tree. Run the consumer's required link
+check; if it rejects those links, report an adoption blocker. Do not weaken the
+check or introduce broad exclusions to manufacture a pass.
+
 ### The citation gate uses a check, not a memory
 
 Before removing an entry, ask whether anything else still points at it:
@@ -59,7 +75,7 @@ grep -rn "2026-07-14-tab-delimited-jq-output-silently-collapsed-an-empty-field" 
 grep -rn "tab-delimited .jq. output silently collapsed" --exclude-dir=.git docs/   # the prose form
 ```
 
-Any hit from something still live — another pattern, a problem document, a task, an instruction file, a planning doc, **or another journal entry** — keeps the entry. The journal is included deliberately and it is not symmetric with the pattern-deletion rule, which tells you an entry linking a graduated pattern is *expected* to dangle: you may not edit an entry, so you can never repair a link *out of* one, which leaves not-deleting as the only way to keep the tree link-clean. An inbound link from an entry is therefore a veto, exactly as a citation from a pattern is. (In a workspace of gitignored sibling clones, name the directories explicitly — a recursive grep from the root silently searches one repo.)
+Any hit from something still live — another pattern, a problem document, a task, an instruction file, a planning doc, **or another journal entry** — keeps the entry. The journal is included deliberately and it is not symmetric with the pattern-deletion rule, which tells you an entry linking a graduated pattern is *expected* to dangle: you may not edit an entry, so you can never repair a link *out of* one, which leaves not-deleting as the only way to keep the tree link-clean. An inbound link to a consumed journal entry is therefore a veto, exactly as a citation from a pattern is; it is not a veto on retiring a verified-fixed problem record. (In a workspace of gitignored sibling clones, name the directories explicitly — a recursive grep from the root silently searches one repo.)
 
 **The second grep is not optional, and it is why "link evidence by relative path" is load-bearing rather than stylistic.** The check matches a filename, so an artifact citing an entry the way the pattern format warns against — `2026-07-14 — Perl mojibake`, a bare date and a phrase — is invisible to it, and the entry it depends on is deleted out from under it. Measured, not hypothetical: at the time this section was written hq's own verification pattern cited 10 of its 14 occurrences in exactly that form, and a filename grep found none of them. Where you find a prose citation, repair it to a link; do not delete the entry.
 
@@ -194,6 +210,8 @@ There is deliberately no "graduated" and no "graduating" status. A graduated pat
 Link evidence as `[2026-07-12 — two log dirs](../journal/2026-07/2026-07-12-two-log-dirs-one-relative-path.md)` rather than by date alone: a busy day carries several entries, and a bare date no longer identifies one. Since the lifecycle above made a filename grep the thing that decides whether an entry survives, this is no longer only about legibility — an evidence citation written as prose is a claim the citation check cannot see, and the entry behind it will be deleted while the pattern still depends on it.
 
 ## See also
+
+- [Kaizen Resolve reader fixture](kaizen-resolve-reader-fixture.md) — controlled evidence, source-resolution, and retirement trials
 
 - `docs/templates/kaizen/` — the starter scaffold: a per-repo `README.md` plus `journal/` and `patterns/` directories
 - `Tools/migrate-kaizen-journal.sh` — converts a repo from the older single-file `journal.md` / `patterns.md` layout
