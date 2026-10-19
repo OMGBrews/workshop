@@ -1,6 +1,6 @@
 ---
 name: kaizen-resolve
-description: Close out a problem document once its flaw is actually fixed — verify the flaw gone from the world's side (evidence, not "the fix task merged"), then delete the document and the journal entries it consumed in one staged change, citation-gated, and prove the remaining links resolve. The problem-side counterpart of the kaizen-review skill's pattern cascade in the journal lifecycle. Invoke when a fix for a documented problem has landed and the record should be retired, when docs/work/problems/ carries documents whose flaws may already be fixed, or when closing a task that references a problem document. A run that cannot produce the evidence stops at the evidence gate and reports a dry run rather than deleting anything; nothing is committed or pushed.
+description: Close out a problem document once its flaw is actually fixed — verify the flaw gone from the world's side (evidence, not "the fix task merged"), then delete the document and the journal entries it consumed in one staged change, citation-gated, and account for repaired links and immutable historical journal links. The problem-side counterpart of the kaizen-review skill's pattern cascade in the journal lifecycle. Invoke when a fix for a documented problem has landed and the record should be retired, when docs/work/problems/ carries documents whose flaws may already be fixed, or when closing a task that references a problem document. A run that cannot produce the evidence stops at the evidence gate and reports a dry run rather than deleting anything; nothing is committed or pushed.
 ---
 
 # Kaizen Resolve
@@ -21,14 +21,14 @@ Repo-agnostic: it works in any project with a `docs/work/problems/` directory an
 ## Phase 1 — Preconditions
 
 1. **Does this repo track problems?** `docs/work/problems/` if it exists — with at least one document besides `README.md`. If the directory is absent, print `This project has no docs/work/problems/ directory — nothing to resolve. Problem documents are filed by the kaizen-review skill when a flaw-shaped cluster appears.` and **stop**. If it holds only the README, say so and stop.
-2. **Resolve the lifecycle source.** The guide ships beside this skill wherever the devtools tree lives — in the upstream tree at `docs/kaizen-guide.md`, and under any mount at `<mount>/docs/kaizen-guide.md` — so resolve it in this order:
+2. **Resolve the lifecycle source.** When the Workshop distribution includes its docs, the guide ships beside this skill wherever that tree lives — in the upstream tree at `docs/kaizen-guide.md`, and under any mount at `<mount>/docs/kaizen-guide.md` — so resolve it in this order:
 
    1. **Beside this file first**: `<this skill's physical directory>/../../../docs/kaizen-guide.md`, resolved by the physical-directory rule — follow the symlink (`readlink -f`, or equivalent) before taking `..`, so the path lands in the tree the skill actually lives in rather than the consumer's own `docs/`. One rule covers every layout and mount name ([`skill-path-resolution.md`](../../../docs/skill-path-resolution.md)).
    2. **Then the repo-root paths**, kept for repos that mount the docs elsewhere: `<mount>/docs/kaizen-guide.md` from the repo root — where `<mount>` is the name *this* repo mounts the tree under — and the project's `docs/work/kaizen/README.md` where it links the guide.
-   3. **Then the no-mount fallback, unchanged**: in a repo that consumes vendored skill copies with no devtools mount at all, the repo's own `docs/work/problems/README.md` must carry the cascade rules — the two greps and the keep-on-live-citation veto, seeded from the tree's `docs/templates/problems/README.md` (resolve the tree root from this skill's physical directory).
+   3. **Then the no-mount fallback**: read the already seeded local `docs/work/problems/README.md`. It must carry the lifecycle rules: verified-fixed problem retirement despite journal citations, immutable historical links, the two citation searches, the keep-on-live-citation veto for consumed journal entries, and the same-commit cascade. Seeding is prior setup from an available Workshop distribution's `docs/templates/problems/README.md`; a lone vendored skill cannot assume that template or any surrounding docs exist. Do not invent an upstream tree from its directory or seed rules from memory. If the local README lacks these rules, stop and name the missing rules and the distribution needed for setup.
 
    If none of these sources carries the rules, stop and say so — running the cascade from memory is how the lifecycle drifts across repos. Say which source you read: the Phase 6 report names it, so a run that degraded to a thinner source is distinguishable from one that found the full guide.
-3. **Read the lifecycle source now** — the guide's "The journal's lifecycle" section where it resolves, and this repo's `docs/work/problems/README.md` always (a seeded copy that may deliberately diverge). Not from memory, and not from this file — the two greps, the veto rules, and the same-commit reasoning are deliberately not restated here. One source per repo, so the skill and the rules cannot disagree.
+3. **Read the lifecycle source now** — the guide's "The journal's lifecycle" section where it resolves, and this repo's `docs/work/problems/README.md` when present (a seeded copy that may deliberately diverge). If local policy conflicts with the guide's retirement or citation rules, report an adoption blocker and stop before staging; do not silently override it. Not from memory, and not from this file — the two greps, the veto rules, and the same-commit reasoning are deliberately not restated here. One source per repo, so the skill and the rules cannot disagree.
 
 ---
 
@@ -52,11 +52,18 @@ Derive, from the document's own description, what the world looks like while the
 - **Evidence:** the reproduction the document describes no longer reproduces; the gate the document says is missing now exists *and names a deliberate mutation when you feed it one*; the state the document says is wrong (a config value, a dangling reference, a duplicated body) can no longer be found by the same search that used to find it.
 - **Apply `signal-hygiene.md`'s question**: what would this check print if the fix never happened? If the answer matches success, the check is decorative — design another. This is the step most tempting to shortcut when a fix "obviously" landed, and it is the entire reason this skill exists as a gate rather than a deletion convenience.
 
+Before executing any checks, enumerate **every observable** and classify its evidence:
+
+- **Deterministic** — state the exact input or case, expected result, and coverage of the problem's claim. A pure function or a passing example establishes only its tested cases; justify broader coverage separately.
+- **Sampled or intermittent** — state a case-specific observation plan **before viewing results**: planned count, conditions and inputs, detection rationale tied to available reproduction evidence, assumptions about independence and comparable conditions, and limits of the conclusion. Explain why this plan can detect the original flaw and why clean results would be sufficient for this claim. Historical clean or failing draws alone do not establish a reliable failure probability. There is no universal minimum or mandatory statistical formula.
+
+Record all observations, including failures and incomplete runs. Do not retry until clean, discard early failures, or revise the plan after seeing results to obtain a pass. Any deviation must be reported; it cannot erase a reproduction. If a new plan is needed, explain it and its justification before further observations, retaining the earlier results. Technically being able to run more checks does not supply a missing sufficiency rationale.
+
 Three outcomes:
 
-- **Verified gone** — every observable the document claims is refuted by a check you ran in this session, with output you can quote. Proceed to Phase 4.
-- **Cannot verify here** — the evidence needs something this session lacks (a deploy, a rebuild, host access, production data). **Stop.** Report a dry run: the checks that would settle it, why each is unavailable here, and where it could run. The document stays; nothing is staged. A dry run is a correct outcome, not a failure of the skill.
-- **Partially gone** — some of the flaw remains. Stop and say exactly which observables still reproduce. The document persists while any of its flaw exists; if the fixed part deserves recording, editing the document to narrow it is the human's call, not this skill's.
+- **Verified gone** — every observable is covered by justified evidence gathered in this session, with output you can quote. Deterministic conclusions stay within the established cases and coverage; sampled conclusions state their justified scope and limitations. No observable reproduced and no evidence justification is missing. Proceed to Phase 4.
+- **Cannot verify here** — the evidence needs something this session lacks (a deploy, a rebuild, host access, production data), or the observation plan lacks a defensible sufficiency rationale even if more checks could run. Clean samples with insufficient justification belong here. **Stop.** Report a dry run: the checks that would settle it, what evidence or justification is missing, and where or how it could be obtained. The document stays; nothing is staged. A dry run is a correct outcome, not a failure of the skill.
+- **Partially gone** — one or more observables reproduce (including a mixture of fixed deterministic cases and a reproduced intermittent flaw). Any reproduction prevents retirement, regardless of later clean draws or other missing evidence. Stop and say exactly which observables still reproduce. The document persists while any of its flaw exists; if the fixed part deserves recording, editing the document to narrow it is the human's call, not this skill's.
 
 ---
 
@@ -72,15 +79,16 @@ Then stage everything together — `git rm <problems-root>/<slug>.md <journal-ro
 
 ---
 
-## Phase 5 — Prove the remaining link-space resolves
+## Phase 5 — Repair editable links and account for historical links
 
 Deleting a document breaks links in files the diff never touched. Before reporting:
 
-1. **Inbound links to the document**: `grep -rn "<problem-doc-slug>" --exclude-dir=.git docs/ *.md` (extend to other directories the repo links docs from). Sort the hits:
-   - **Broken by the deletion** — a task citing the problem for context, a README index row, a "see also". Fix each in the same staged change: indexes lose the row; a task that exists *only* to fix this flaw is likely moot — flag it for the human rather than deleting it yourself.
-   - **Already wrong before you arrived** — fix either way, and say so.
+1. **Inbound links to the document**: `grep -rn "<problem-doc-slug>" --exclude-dir=.git docs/ *.md` (extend to other directories the repo links docs from). Sort the hits by whether they survive and are editable; apply the lifecycle source's problem-retirement rule:
+   - **Editable links broken by the deletion** — a task citing the problem for context, a README index row, a "see also". Fix each in the same staged change: indexes lose the row; a task that exists *only* to fix this flaw is likely moot — flag it for the human rather than deleting it yourself.
+   - **Already wrong before you arrived in editable artifacts** — fix and report them. Never edit a journal entry, including an already broken link.
 2. **Re-run the filename grep for every entry you staged for deletion.** Zero hits outside the staged deletions themselves is the proof; a surviving hit means the citation gate missed a citer — unstage that entry and report it.
-3. **Journal entries that link the deleted document dangle, and that is correct.** An entry is a record of what was true when it was written and is never edited. Name them in the report and leave them.
+3. **Surviving journal citations do not veto retirement of a verified-fixed problem.** Leave immutable entries byte-for-byte unchanged and name their historical links in the report; git history recovers the retired record. This is distinct from Phase 4's protection of consumed journal entries with live citers. Do not classify surviving journal links as editable repairs or claim that the remaining tree is link-clean.
+4. **Run the consumer's required link check.** Report its actual result alongside the intentional historical links. If it rejects those links, report an adoption blocker, leave the staged candidate reviewable, and do not claim the check passed or the change is ready to land. Do not weaken the check, add broad exclusions, restore the fixed problem as an evidence archive, or edit immutable entries to obtain a pass.
 
 ---
 
@@ -90,9 +98,9 @@ Print a concise block:
 
 - **The document**, and the flaw it recorded.
 - **The lifecycle source** — the file Phase 1 step 2 resolved, by path, and which branch found it (beside this file, a repo-root path, or the `docs/work/problems/README.md` fallback). Always present, so a run that degraded to the fallback announces it rather than looking identical to a full resolution.
-- **The evidence** — each check run, what it printed, and why that refutes the flaw's observables. For a dry run: the gate that stopped the pass, the checks that would settle it, and where they could run.
+- **The evidence** — each observable's classification and pre-test plan, deterministic cases and coverage, sampled planned and actual counts, all results, deviations, assumptions, and limitations; explain why the evidence suffices for each conclusion. For a dry run: the gate that stopped the pass, the checks that would settle it, and where they could run.
 - **The cascade** — every entry staged for deletion alongside the document, and every entry the citation check kept, naming what held it. Both halves: a cascade that reports only its deletions cannot be checked.
-- **Links** — inbound links fixed, prose citations repaired, journal entries left dangling by design, and any task flagged as possibly moot.
+- **Links** — inbound links fixed, prose citations repaired, surviving immutable entries with historical links (named by path), the required link check's actual result and any adoption blocker, and any task flagged as possibly moot.
 - **Uncommitted** — the staged deletions and edits, so the human can review `git status` and commit. Suggest a commit message shaped like `docs(problems): retire <slug> — flaw verified gone`.
 
 Do not commit and do not push. The changes are on disk and named; committing them is the human's.
@@ -102,7 +110,8 @@ Do not commit and do not push. The changes are on disk and named; committing the
 ## Hard "do NOT" list
 
 - **Do NOT treat a fix task's completion, a merge, or a commit message as evidence.** The gate is the world's side, checked in this session.
-- **Do NOT delete a document whose evidence gate did not pass here.** "It was verified last week" is a claim, not a check; re-run the check — it is cheap by construction.
+- **Do NOT delete a document whose evidence gate did not pass here.** "It was verified last week" is a claim, not a check; gather justified evidence again; if that is unavailable, report a dry run.
+- **Do NOT certify from unjustified clean samples or stop when clean.** Any reproduced observable prevents retirement.
 - **Do NOT delete the document and its entries in separate commits**, in either order. One staged change; the guide says why both directions lose.
 - **Do NOT delete an entry whose citation check found a live citer** — including another journal entry, whose link you could never repair.
 - **Do NOT edit, renumber, or cross-reference a journal entry.** Repairs to prose citations happen in the citing artifact, never in an entry.
@@ -119,3 +128,5 @@ The first three are named rather than linked: each sits at a path that differs p
 - `.agents/skills/problem-create/_TEMPLATE.md` — the canonical shape of newly filed problem documents.
 - `docs/templates/problems/README.md` — the problems-directory lifecycle this skill closes out, as seeded into each repo.
 - `signal-hygiene.md` — the standing rule the evidence gate is an instance of: a check whose pass state a no-op also satisfies reports success and ends the investigation. This repo's copy is linked from `AGENTS.md` and, for Claude Code, from `.claude/rules/`; the path differs per repo.
+
+- [Reader fixture](../../../docs/kaizen-resolve-reader-fixture.md) — controlled instruction trials shipped with a complete Workshop distribution.

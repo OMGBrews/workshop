@@ -3,6 +3,17 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **`/kaizen-resolve` requires justified evidence for each observable.**
+  Deterministic checks state cases and coverage; intermittent checks declare a
+  case-specific observation plan before testing and report every result. Clean
+  samples without sufficient justification cannot authorize retirement. Verified
+  fixed problems are deleted despite surviving immutable journal citations;
+  consumed journal entries retain their separate citation protection. Lifecycle
+  resolution supports an already seeded local README and stops if no source is
+  available. Consumer link checks that reject historical links remain adoption
+  blockers. Existing consumers need a pinned Workshop update and local policy
+  verification to adopt these rules.
+
 - **`/ship` defers a parent pull request that depends on an unmerged child.**
   A parent's checks now run against the gitlinks its candidate commit records
   (`git submodule update --checkout`), as CI sees them. A parent that passes
