@@ -281,6 +281,16 @@ they create a manually initiated milestone tag or GitHub Release.
   `docs/work/audits/` must carry its declaring `config.toml` and parseable
   JSON records.
 
+## Environment-aware shipping
+
+The shared ship skill now supports local direct pushes and cloud pull requests,
+with repository policy in `docs/work/ship/<environment>.md`. Repositories that
+require PRs locally declare that route in `local.md`; bundled defaults never
+override branch protection. The rewrite preserves dependent-parent deferral,
+adds shared-working-tree safeguards, and requires explicit repository policy
+for standing merge delegation. Consumers receive it by advancing their pin and
+restoring the shared skill link; prototype hook details stay in local policy.
+
 ## Release policy
 
 Tags and GitHub Releases are maintainer-initiated, immutable identifiers for

@@ -264,12 +264,16 @@ no standing rules**, with no error to say so.
   sandboxes) passes when it should not. The hook wrapper's translation only reaches
   the process the hook launches; long-lived shells that source the library directly
   never see it. So: **vendor environment variables are read in exactly one declared
-  seam file** (e.g. `scripts/lib/harness-signals.sh`), which translates them to neutral
+  seam file** (`scripts/lib/harness-signals.sh` for the shared ship skill), which translates them to neutral
   `AGENT_*` names at call time — neutral wins when both are set — and every consumer
   reads the neutral helper. Adding a harness is one fallback row in the seam, never a
   new read site. The seam is also where the neutral name gets *defined*: name the
   property (`AGENT_SESSION_REMOTE`: a recognized harness-managed remote sandbox), let
-  the seam own which vendor variable asserts it.
+  the seam own which vendor variable asserts it. For ship's location decision,
+  invoking `bash scripts/lib/harness-signals.sh` must print exactly one line:
+  `AGENT_SESSION_EPHEMERAL=<true|false> signal=<source>`. A true value means
+  a harness-managed ephemeral sandbox, not merely a remote SSH connection.
+  Ship reads this at call time; an error or malformed result stops shipping.
 
 ## Surface 4 — tool config
 

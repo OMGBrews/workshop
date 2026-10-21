@@ -3,7 +3,7 @@
 # normalize-remote.sh — reduce a git remote URL (or a declaration line) to a
 # canonical lowercase `owner/repo`, so `/ship` can compare the two.
 #
-# Phase 1 of the ship skill decides whether a declared parent is already in this
+# The ship skill's submodule reference decides whether a declared parent is already in this
 # session by comparing a repo's `origin` URL against the `owner/repo` lines in a
 # child's consumed-by declaration — docs/work/consumed-by.md. Both sides go through THIS
 # script, which is what

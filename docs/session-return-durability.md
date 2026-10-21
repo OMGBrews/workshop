@@ -4,7 +4,7 @@
 
 ## The question
 
-`/ship` (`.agents/skills/ship/SKILL.md`) tells a session to arm its own return: after opening PRs, schedule a check-in so the session comes back and drives the work to merged rather than going idle forever. The whole Phase 7 hand-off rests on that return actually happening.
+`/ship` (`.agents/skills/ship/SKILL.md`) tells a session to arm its own return: after opening PRs, schedule a check-in so the session comes back and drives the work to merged rather than going idle forever. The pull-request route's hand-off rests on that return actually happening.
 
 Three things have to be true for that to be sound:
 
@@ -217,7 +217,7 @@ arm, a second to cancel when the merge lands first.
 Not the primary finding — the subscription is still the wake mechanism, on the 2026-07-29
 numbers, and stays armed unconditionally. What changes is the fallback's **default**: arm the
 check-in only when the subscription did not arm, which is the one case where the timer is a
-sole return path rather than a duplicate of one. `/ship` Phase 5 step 5 states the rule; this
+sole return path rather than a duplicate of one. `/ship` Step 4 and its `references/cloud-return.md` state the rule; this
 section is its evidence.
 
 Two costs this measurement does **not** settle, so neither should be asserted: whether the
@@ -247,4 +247,4 @@ One caveat this run cannot retire: it observed a merge roughly two minutes after
 ## See also
 
 - [`signal-hygiene.md`](signal-hygiene.md) — how to know a step actually happened; this experiment is an application of it
-- [`ship`'s `SKILL.md`](../.agents/skills/ship/SKILL.md) — the skill whose Phase 7 hand-off depends on the answer
+- [`ship`'s `SKILL.md`](../.agents/skills/ship/SKILL.md) — the skill whose pull-request hand-off depends on the answer
