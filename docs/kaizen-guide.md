@@ -211,6 +211,7 @@ Link evidence as `[2026-07-12 — two log dirs](../journal/2026-07/2026-07-12-tw
 
 ## See also
 
+- [Kaizen reference](kaizen-reference.md) — the outside sources behind this practice and how their concepts map onto it
 - [Kaizen Resolve reader fixture](kaizen-resolve-reader-fixture.md) — controlled evidence, source-resolution, and retirement trials
 
 - `docs/templates/kaizen/` — the starter scaffold: a per-repo `README.md` plus `journal/` and `patterns/` directories
