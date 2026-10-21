@@ -14,6 +14,7 @@ policy beside them rather than baking it into a shared tool.
 | Path | Purpose | Owner |
 |------|---------|-------|
 | `docs/work/tasks/` | Task briefs and their lifecycle buckets | Task skills and the repository maintainer |
+| `docs/work/ship/<environment>.md` | Per-environment landing policy read by the ship skill | Repository maintainer |
 | `docs/work/definition-of-done.md` | Repository-required verification evidence | Repository maintainer |
 | `docs/work/kaizen/` | Process-friction journal and recurring patterns | Kaizen skills and the repository maintainer |
 | `docs/work/problems/` | Current, fixable flaws and the evidence that keeps them open | Problem skills, kaizen skills, and the repository maintainer |

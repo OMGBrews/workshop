@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests for Tools/normalize-remote.sh — the remote/declaration normalizer that
-# /ship Phase 1 step 3 uses to decide whether a declared parent is already in
+# /ship submodule reference (Declared parents) uses to decide whether a declared parent is already in
 # this session.
 #
 # The contract, asserted here:

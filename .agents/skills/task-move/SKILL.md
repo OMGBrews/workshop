@@ -103,5 +103,5 @@ ask its predicate, and apply the convention's local-versus-PR rule.
 Neither exit grants consent: the offer is the ask, and the user's acceptance
 of the offer is the authorization. In a cloud session or a PR-required repo,
 neither this skill nor any other public task skill opens or merges a PR and
-none assumes the private `ship` skill is installed — report that the committed
+none assumes the shared `ship` skill is installed — report that the committed
 change is ready and hand off to the repository's documented PR workflow.
