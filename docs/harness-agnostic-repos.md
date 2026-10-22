@@ -466,3 +466,5 @@ change. Each fact here backs a rule above.
   skill format reference
 - [Claude Code memory docs](https://code.claude.com/docs/en/memory) — `.claude/rules/`,
   imports, and when `AGENTS.md` loads natively
+
+The shared [session detector](session-environment.md) owns location assertions and their compatibility exports. Bootstrap seeds are checked copies of its canonical implementation; shipping resolves it directly from its own Workshop tree.

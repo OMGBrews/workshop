@@ -291,6 +291,9 @@ EOF
     cp "$TEMPLATES/session-start.sh" "$path/workshop/docs/templates/cloud-sessions/"
     cp "$TEMPLATES/agent-session-start.sh" "$path/scripts/agent/session-start.sh"
     cp "$TEMPLATES/session-start.sh" "$path/.claude/hooks/session-start.sh"
+    mkdir -p "$path/scripts/lib"
+    cp "$TEMPLATES/harness-signals.sh" "$path/workshop/docs/templates/cloud-sessions/"
+    cp "$TEMPLATES/harness-signals.sh" "$path/scripts/lib/harness-signals.sh"
     chmod +x "$path/scripts/agent/session-start.sh" "$path/.claude/hooks/session-start.sh"
     write_settings "$path" "$WRAPPER_COMMAND" command 120
 }
@@ -321,6 +324,29 @@ PY
 case_dir="$TMP/kit-complete"
 make_consumer "$case_dir"
 expect_pass "complete standard kit" "$case_dir"
+
+case_dir="$TMP/kit-missing-detector"
+make_consumer "$case_dir"
+rm "$case_dir/scripts/lib/harness-signals.sh"
+expect_fail "missing detector seed" "$case_dir" "scripts/lib/harness-signals.sh is absent"
+
+case_dir="$TMP/kit-detector-drift"
+make_consumer "$case_dir"
+printf '# drift\n' >> "$case_dir/scripts/lib/harness-signals.sh"
+expect_fail "drifted detector seed" "$case_dir" "differs from its canonical template workshop/docs/templates/cloud-sessions/harness-signals.sh"
+
+case_dir="$TMP/kit-detector-missing-source"
+make_consumer "$case_dir"
+rm "$case_dir/workshop/docs/templates/cloud-sessions/harness-signals.sh"
+expect_fail "new bootstrap cannot lose its detector source" "$case_dir" "carries no docs/templates/cloud-sessions/harness-signals.sh"
+
+case_dir="$TMP/kit-before-detector"
+make_consumer "$case_dir"
+# A distribution predating this capability has no detector and no caller.
+printf '# old bootstrap\n' > "$case_dir/workshop/docs/templates/cloud-sessions/agent-session-start.sh"
+cp "$case_dir/workshop/docs/templates/cloud-sessions/agent-session-start.sh" "$case_dir/scripts/agent/session-start.sh"
+rm "$case_dir/workshop/docs/templates/cloud-sessions/harness-signals.sh" "$case_dir/scripts/lib/harness-signals.sh"
+expect_pass "older pin keeps its two-file contract" "$case_dir"
 
 # The legacy redirecting URL is the spelling most of the fleet still records.
 # If normalization ever exempted it, every one of those repositories would drop

@@ -79,6 +79,7 @@ set -euo pipefail
 DEVTOOLS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HOOK_TEMPLATE="$DEVTOOLS_ROOT/docs/templates/cloud-sessions/session-start.sh"
 NEUTRAL_TEMPLATE="$DEVTOOLS_ROOT/docs/templates/cloud-sessions/agent-session-start.sh"
+DETECTOR_TEMPLATE="$DEVTOOLS_ROOT/docs/templates/cloud-sessions/harness-signals.sh"
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -92,7 +93,7 @@ git config --global user.email test@example.invalid
 git config --global user.name "hook test"
 git config --global protocol.file.allow always
 git config --global init.defaultBranch main
-unset CLAUDE_CODE_REMOTE SUBMODULE_READ_TOKEN || true
+unset CLAUDE_CODE_REMOTE SUBMODULE_READ_TOKEN AGENT_SESSION_ENVIRONMENT AGENT_SESSION_REMOTE AGENT_SESSION_EPHEMERAL AGENT_SESSION_SIGNAL || true
 
 fail() { echo "FAIL: $1" >&2; exit 1; }
 
@@ -141,9 +142,10 @@ make_src_repo() { # <path> — a repo usable as a file:// submodule source
 # neutral script by that fixed relative path, so a fixture missing either half
 # is not a smaller test — it is case 13, which asserts exactly that.
 deploy_hook() { # <superproject-path>
-  mkdir -p "$1/.claude/hooks" "$1/scripts/agent"
+  mkdir -p "$1/.claude/hooks" "$1/scripts/agent" "$1/scripts/lib"
   cp "$HOOK_TEMPLATE" "$1/.claude/hooks/session-start.sh"
   cp "$NEUTRAL_TEMPLATE" "$1/scripts/agent/session-start.sh"
+  cp "$DETECTOR_TEMPLATE" "$1/scripts/lib/harness-signals.sh"
   chmod +x "$1/.claude/hooks/session-start.sh" "$1/scripts/agent/session-start.sh"
 }
 
@@ -215,6 +217,7 @@ fixture_tpl="$TMP/clone1/devtools/docs/templates/cloud-sessions"
 mkdir -p "$fixture_tpl"
 cp "$HOOK_TEMPLATE" "$fixture_tpl/session-start.sh"
 cp "$NEUTRAL_TEMPLATE" "$fixture_tpl/agent-session-start.sh"
+cp "$DETECTOR_TEMPLATE" "$fixture_tpl/harness-signals.sh"
 out="$(run_hook "$TMP/clone1")" || fail "hook exited non-zero with templates present: $out"
 if echo "$out" | grep -q "DRIFT"; then
   fail "DRIFT reported for byte-identical copies: $out"
@@ -235,7 +238,22 @@ echo "$out" | grep "DRIFT" | grep -q ".claude/hooks/session-start.sh" \
   && fail "the restored wrapper was reported as drifted: $out"
 cp "$NEUTRAL_TEMPLATE" "$TMP/clone1/scripts/agent/session-start.sh"   # restore
 chmod +x "$TMP/clone1/scripts/agent/session-start.sh"
-echo "ok 3 - drift guard covers both kit files, silent on identical, loud and specific on drift"
+echo '# local hotfix' >> "$TMP/clone1/scripts/lib/harness-signals.sh"
+out="$(run_hook "$TMP/clone1")" || fail "hook failed on detector drift: $out"
+echo "$out" | grep "DRIFT" | grep -q 'scripts/lib/harness-signals.sh' \
+  || fail "detector drift was not reported: $out"
+cp "$DETECTOR_TEMPLATE" "$TMP/clone1/scripts/lib/harness-signals.sh"
+rm "$TMP/clone1/scripts/lib/harness-signals.sh"
+out="$(run_hook "$TMP/clone1")" || fail "hook failed on missing detector: $out"
+echo "$out" | grep -q 'MISSING: scripts/lib/harness-signals.sh' \
+  || fail "missing detector was not reported: $out"
+cp "$DETECTOR_TEMPLATE" "$TMP/clone1/scripts/lib/harness-signals.sh"
+out="$(AGENT_SESSION_ENVIRONMENT=local CLAUDE_CODE_REMOTE=true run_hook "$TMP/clone1")" \
+  || fail "hook failed on conflicting environment: $out"
+echo "$out" | grep -q 'environment detection failed: conflict:' \
+  || fail "conflicting environment was not reported: $out"
+echo "ok 3 - all three kit files are checked; missing or conflicting detection stops bootstrap"
+
 
 # --- 4. one failing submodule does not stop the rest -----------------------
 rm -rf "$TMP/sub-doomed"   # sub-doomed can no longer be fetched
@@ -754,6 +772,7 @@ ws="$TMP/clone-ws/workshop"
 mkdir -p "$ws/docs/templates/cloud-sessions" "$ws/Tools/hooks"
 cp "$HOOK_TEMPLATE" "$ws/docs/templates/cloud-sessions/session-start.sh"
 cp "$NEUTRAL_TEMPLATE" "$ws/docs/templates/cloud-sessions/agent-session-start.sh"
+cp "$DETECTOR_TEMPLATE" "$ws/docs/templates/cloud-sessions/harness-signals.sh"
 cp "$DEVTOOLS_ROOT/Tools/check-skill-roster-freshness.sh" "$ws/Tools/"
 cp "$DEVTOOLS_ROOT"/Tools/hooks/post-checkout "$DEVTOOLS_ROOT"/Tools/hooks/post-merge "$DEVTOOLS_ROOT"/Tools/hooks/post-rewrite "$ws/Tools/hooks/"
 out="$(run_hook "$TMP/clone-ws")" || fail "hook exited non-zero with a workshop/ mount: $out"
@@ -775,6 +794,7 @@ generic="$TMP/clone-generic/shared-kit"
 mkdir -p "$generic/docs/templates/cloud-sessions" "$generic/Tools/hooks"
 cp "$HOOK_TEMPLATE" "$generic/docs/templates/cloud-sessions/session-start.sh"
 cp "$NEUTRAL_TEMPLATE" "$generic/docs/templates/cloud-sessions/agent-session-start.sh"
+cp "$DETECTOR_TEMPLATE" "$generic/docs/templates/cloud-sessions/harness-signals.sh"
 cp "$DEVTOOLS_ROOT/Tools/check-skill-roster-freshness.sh" "$generic/Tools/"
 cp "$DEVTOOLS_ROOT"/Tools/hooks/post-checkout "$DEVTOOLS_ROOT"/Tools/hooks/post-merge "$DEVTOOLS_ROOT"/Tools/hooks/post-rewrite "$generic/Tools/hooks/"
 git -C "$TMP/clone-generic" config -f .gitmodules submodule.shared-kit.path shared-kit

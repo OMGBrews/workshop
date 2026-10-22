@@ -219,10 +219,11 @@ submodule must also carry the complete
 [cloud-session bootstrap kit](templates/cloud-sessions/README.md). The validator
 requires all three edges together:
 
-- `scripts/agent/session-start.sh` and `.claude/hooks/session-start.sh` exist and
+- `scripts/agent/session-start.sh`, `.claude/hooks/session-start.sh`, and
+  `scripts/lib/harness-signals.sh` (when supplied by the pin) exist and
   are byte-identical to the matching templates in that repository's own
   initialized Workshop mount;
-- both deployed copies are executable;
+- all deployed copies are executable;
 - `.claude/settings.json` registers the wrapper as a complete canonical
   `SessionStart` hook object — `type: "command"`, the wrapper command, and the
   120-second timeout.

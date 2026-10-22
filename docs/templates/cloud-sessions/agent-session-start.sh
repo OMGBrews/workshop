@@ -62,6 +62,18 @@
 set -u
 cd "${AGENT_PROJECT_DIR:-$(git rev-parse --show-toplevel)}" || exit 0
 
+# The checked standalone detector is available before any submodule init.
+# Missing or conflicting evidence must not license disposable-checkout actions.
+if [ ! -r scripts/lib/harness-signals.sh ]; then
+  echo "[session-start] MISSING: scripts/lib/harness-signals.sh — deploy the detector from the cloud-session kit; no bootstrap ran."
+  exit 0
+fi
+# shellcheck disable=SC1091
+if ! . scripts/lib/harness-signals.sh; then
+  echo "[session-start] environment detection failed: ${AGENT_SESSION_SIGNAL:-unavailable}; no bootstrap ran."
+  exit 0
+fi
+
 # Record that this run changed a submodule checkout, and so needs any
 # submodule-derived registry rebuilt. Called from inside `while read` loops,
 # which are pipeline subshells — a file, not a variable, is what survives that.
@@ -72,7 +84,7 @@ _mark_reload() {
 }
 
 # True when the checkout is a disposable sandbox and mutating it is safe.
-_ephemeral() { [ "${AGENT_SESSION_EPHEMERAL:-}" = "true" ]; }
+_ephemeral() { [ "$AGENT_SESSION_ENVIRONMENT" = cloud ] && [ "$AGENT_SESSION_EPHEMERAL" = true ]; }
 
 # The shared-tools mount: the tree this kit ships in, found by discovery rather
 # than by name. The fleet mounts it as devtools/; a public consumer mounts the
@@ -458,4 +470,5 @@ drift_check() { # <template-basename> <deployed-path>
 }
 drift_check agent-session-start.sh scripts/agent/session-start.sh
 drift_check session-start.sh .claude/hooks/session-start.sh
+drift_check harness-signals.sh scripts/lib/harness-signals.sh
 exit 0
