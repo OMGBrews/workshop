@@ -1,7 +1,7 @@
 # Focus documents
 
 A focus document records a repository owner's current direction for the task-selection
-skills that read it. This contract governs `<tasks>/focus.md` for both its writers and
+and problem-prioritization skills that read it. This contract governs `<tasks>/focus.md` for both its writers and
 readers; repository instructions and skills should link here instead of restating it.
 
 ## Format
@@ -48,4 +48,5 @@ retain a one-sentence conditional summary.
 
 - [`focus-update`](../.agents/skills/focus-update/SKILL.md) — the shared writer for this contract
 - [`task-reprioritize` ranking rubric](../.agents/skills/task-reprioritize/ranking-rubric.md#focus-weighting-tasksfocusmd) — reader-side matching, weighting, and staleness
+- [`problem-reprioritize` ranking rubric](../.agents/skills/problem-reprioritize/ranking-rubric.md) — problem attention horizons weighted by the same direction
 - [`check-docs-work-conformance.sh`](../Tools/check-docs-work-conformance.sh) — enforcement of the mechanical subset

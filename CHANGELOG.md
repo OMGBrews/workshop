@@ -3,6 +3,15 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **Problem records now support attention-horizon buckets.**
+  `problem-reprioritize` ranks flaws into now, soon, and later in one staged
+  pass, with a read-only dry run and explicit-only parking in never. Creation,
+  status, audit, and retirement share an inventory that includes legacy flat
+  records and all buckets, rejects duplicate slugs, and includes untracked
+  records. Existing collections remain readable; adoption repairs live links
+  while preserving immutable journal citations. Consumers adopt through a
+  requested Workshop pointer update; no fleet migration is automatic.
+
 - **`/kaizen-resolve` requires justified evidence for each observable.**
   Deterministic checks state cases and coverage; intermittent checks declare a
   case-specific observation plan before testing and report every result. Clean

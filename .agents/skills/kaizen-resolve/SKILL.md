@@ -20,7 +20,7 @@ Repo-agnostic: it works in any project with a `docs/work/problems/` directory an
 
 ## Phase 1 — Preconditions
 
-1. **Does this repo track problems?** `docs/work/problems/` if it exists — with at least one document besides `README.md`. If the directory is absent, print `This project has no docs/work/problems/ directory — nothing to resolve. Problem documents are filed by the kaizen-review skill when a flaw-shaped cluster appears.` and **stop**. If it holds only the README, say so and stop.
+1. **Does this repo track problems?** Resolve [bucket-definitions.md](../problem-create/bucket-definitions.md) and `list-records.py` beside it from this skill's physical directory. Run `python3 <physical-problem-create-dir>/list-records.py <repo-root>` and inspect its exit status. Stop on an inventory error; report absent or empty collections distinctly. Use the complete inventory, including root-level legacy records and never. A partial distribution missing this helper must obtain it before proceeding; do not fall back to a flat glob that omits records.
 2. **Resolve the lifecycle source.** When the Workshop distribution includes its docs, the guide ships beside this skill wherever that tree lives — in the upstream tree at `docs/kaizen-guide.md`, and under any mount at `<mount>/docs/kaizen-guide.md` — so resolve it in this order:
 
    1. **Beside this file first**: `<this skill's physical directory>/../../../docs/kaizen-guide.md`, resolved by the physical-directory rule — follow the symlink (`readlink -f`, or equivalent) before taking `..`, so the path lands in the tree the skill actually lives in rather than the consumer's own `docs/`. One rule covers every layout and mount name ([`skill-path-resolution.md`](../../../docs/skill-path-resolution.md)).
@@ -34,7 +34,7 @@ Repo-agnostic: it works in any project with a `docs/work/problems/` directory an
 
 ## Phase 2 — Pick the document, and read it whole
 
-If the argument names a document (slug or path), resolve it under `docs/work/problems/` and use it. Otherwise list the candidates — every `docs/work/problems/*.md` except the README — and check recent history for signs a fix landed (`git log --oneline -15`, commits naming a problem's subject). Present the list with whatever signal you found and let the human pick (a choose-one prompt, briefed first: the popup shows no file contents, so the message before it must say what each candidate is and why it might be ready).
+If the argument names a document (slug or path), resolve exactly one matching record from the inventory and use its actual path; refuse ambiguous matches and non-record paths. Otherwise list the candidates — every record from the inventory, including parked records — and check recent history for signs a fix landed (`git log --oneline -15`, commits naming a problem's subject). Present the list with whatever signal you found and let the human pick (a choose-one prompt, briefed first: the popup shows no file contents, so the message before it must say what each candidate is and why it might be ready).
 
 Then read the chosen document **in full**, and extract three things before anything else happens:
 
@@ -75,7 +75,7 @@ Only reached with the evidence gate passed. For **each entry** on the consumed l
 - **A prose citation from a live, editable artifact** — repair it to a relative link in the same change and keep the entry. A citation the filename grep cannot see is a dependency the next deletion pass will break; repairing it is what keeps the gate honest. (A journal entry is never edited — a prose mention inside one is a keep, full stop.)
 - **No live hit** → the entry goes.
 
-Then stage everything together — `git rm <problems-root>/<slug>.md <journal-root>/YYYY-MM/<entry>.md …`, where `<problems-root>` is `docs/work/problems/`, and `<journal-root>` is `docs/work/kaizen/journal/` — **one staged change**, document and passing entries side by side. The same-commit rule and both directions of its reasoning (earlier breaks the live evidence links; later never happens) are the guide's; this is where they are executed.
+Then stage everything together — `git rm <actual-problem-path> <journal-root>/YYYY-MM/<entry>.md …`, where `<actual-problem-path>` is the selected inventory path and `<journal-root>` is `docs/work/kaizen/journal/` — **one staged change**, document and passing entries side by side. The same-commit rule and both directions of its reasoning (earlier breaks the live evidence links; later never happens) are the guide's; this is where they are executed.
 
 ---
 

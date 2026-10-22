@@ -9,7 +9,9 @@ Create one document under this repository's `docs/work/problems/` for a flaw
 that exists now. A problem records the state of the world; it does not prescribe
 a solution or carry acceptance criteria.
 
-**Arguments**: an optional flaw name or path, plus any details the user already
+Read [bucket-definitions.md](bucket-definitions.md) for placement and discovery.
+
+**Arguments**: an optional flaw name or path and bucket, plus any details the user already
 provided about the flaw. Treat the full request as input before asking for more.
 
 ## Resolve the canonical files first
@@ -36,8 +38,9 @@ Check the directory and its README independently:
 - If either exists, preserve it. Never replace a customized README or alter an
   existing problem record while scaffolding.
 
-If scaffolding is declined, stop. Copy only the seed README; the canonical
-problem template stays inside this skill.
+If scaffolding is declined, stop. Create missing now, soon, later, and never
+directories (use .gitkeep for empty buckets); preserve existing records and local
+guidance. Copy only the seed README; the canonical template stays inside this skill.
 
 ## Phase 2 — Name and understand the flaw
 
@@ -55,13 +58,18 @@ only what is still needed:
    misrepresent the flaw. Never invent an observation or fill a section by
    inference merely to remove its guidance.
 
-Before writing, check the exact destination. If it exists, refuse the collision
-and report the path; do not overwrite, merge, suffix, or edit it.
+Run `python3 <physical-skill-dir>/list-records.py <repo-root>` and check its
+exit status before writing. Reject a matching slug anywhere in the collection,
+including root-level legacy and parked records. Refuse inventory errors and
+destination collisions; do not overwrite, merge, suffix, or edit another record.
+Use the explicitly requested bucket or default to soon. An explicit never
+placement requires the user's parking reason; retain it under Background.
+Reject unknown buckets and paths outside the defined collection.
 
 ## Phase 3 — Create the record
 
 Copy the physically resolved `_TEMPLATE.md` to
-`docs/work/problems/<flaw-name>.md`, then:
+`docs/work/problems/<bucket>/<flaw-name>.md`, then:
 
 1. Replace `# Flaw title` with the sentence-case title.
 2. Fill `**In brief**` and remove its guidance comment.
@@ -78,5 +86,5 @@ a task.
 
 ## Phase 4 — Report
 
-Print `Created docs/work/problems/<flaw-name>.md.`, followed by the template
+Print `Created docs/work/problems/<bucket>/<flaw-name>.md.`, followed by the template
 path read. Do not commit or push.

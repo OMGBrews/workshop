@@ -17,11 +17,15 @@ a finding: `kaizen-resolve` owns the separate verification and retirement gate.
 
 - The records root is `docs/work/problems/`. If it is absent, report that no
   problems directory exists and stop.
-- With no argument, audit each `docs/work/problems/*.md` file except
-  `README.md`. Stay inside this repository; never inventory sibling clones.
+- Resolve [bucket-definitions.md](../problem-create/bucket-definitions.md) and
+  `list-records.py` beside it from this skill's physical directory. Run
+  `python3 <physical-problem-create-dir>/list-records.py <repo-root>` and check
+  its exit status; stop on discovery errors. With no argument, audit every
+  returned record, including legacy root records and never. Stay inside this
+  repository; never inventory sibling clones.
   Keep the sweep broad, with one verdict per record and details for limitations
   or mixed findings.
-- With an argument, resolve exactly one record. Accept an exact path, filename,
+- With an argument, resolve exactly one record from that inventory. Accept an exact path, filename,
   or H1 title. If more than one record matches, list the matches and ask which
   one; if none matches, report that and stop. Read the named record and its
   cited evidence at full depth.
@@ -112,7 +116,7 @@ is fixed.
 
 For each audited record, report:
 
-- path, title, and `In brief` summary (or the disclosed legacy fallback);
+- path, bucket, title, and `In brief` summary (or the disclosed legacy fallback);
 - the creation baseline and history range used, or the precise fallback reason;
 - current supporting, contrary, and missing evidence, including which cited
   paths were tracked and which belonged elsewhere;
