@@ -1,5 +1,5 @@
 <!-- Template for problem documents. Copy this file to
-     `docs/work/problems/<flaw-name>.md`, fill it in, and delete this preamble
+     `docs/work/problems/<bucket>/<flaw-name>.md`, fill it in, and delete this preamble
      plus the footer comment at the end.
 
      Filename: kebab-case after the flaw, with no date prefix. `README.md` is

@@ -22,11 +22,14 @@ route a record needing historical re-verification to `problem-audit`.
 
 The problems root is `docs/work/problems/`.
 
-- With no argument, inspect every immediate `*.md` file except `README.md`. If
-  the directory is absent, say this repository has no problems collection. If
-  it contains no records, report the empty collection explicitly.
+- Resolve [bucket-definitions.md](../problem-create/bucket-definitions.md) and
+  `list-records.py` beside it from this skill's physical directory. Run
+  `python3 <physical-problem-create-dir>/list-records.py <repo-root>` and check
+  its exit status. With no argument, inspect every returned record, including
+  legacy root records and never. Report absent and empty collections distinctly;
+  an inventory error is not an empty collection.
 - With a path, resolve exactly one file beneath this repository's
-  `docs/work/problems/`, excluding `README.md`. Refuse an ambiguous match or a
+  `docs/work/problems/`, excluding guides and templates. Match against the inventory. Refuse an ambiguous match or a
   path outside that root. If the file does not exist, say so and stop.
 
 Read each selected record in full. Use its H1 as the title. Use the first
@@ -85,7 +88,7 @@ rot. Unknown evidence is **Cannot tell**, not a silent clean result.
 ## Report
 
 With no argument, print one concise line per record containing its title, the
-summary (noting any legacy fallback), and verdict. Then report the total; keep
+summary (noting any legacy fallback), bucket, and verdict. Then report the total; keep
 empty and absent collections distinguishable.
 
 For one record, report:

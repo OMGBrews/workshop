@@ -21,6 +21,20 @@ Do not create a problem document for:
 - **Friction in how we build** — collaboration loops between humans, AI agents, and tooling → `docs/work/kaizen/journal/`; recurring *tendencies* distilled from it → `docs/work/kaizen/patterns/`. A problem tracks a fixable *state*; a pattern tracks a *tendency*. The discriminator is whether "verified gone" is a meaningful endpoint.
 - **Speculative future features** → the repo's planning/ideas area
 
+## Priority buckets
+
+Problems are grouped by attention horizon: `now/` needs attention now, `soon/`
+is next, `later/` tolerates deferral, and `never/` is explicitly parked.
+The authority for placement, discovery, and moves is
+`.agents/skills/problem-create/bucket-definitions.md` (resolved from the repository
+root). These are courtesy summaries, not separate bucket definitions.
+
+`problem-reprioritize` stages moves and link repairs in one pass, or reports a
+read-only dry run. It ranks the cost of delay, uses the existing task focus, and
+never retires records. Status and audit include parked and legacy root records.
+New records default to soon unless a bucket is requested. Problems carry no
+execution buckets; related tasks own implementation.
+
 ## Lifecycle
 
 A problem document persists while the flaw exists. Delete it once the flaw is verified gone — usually after a task fixes it, but **task completion alone is not the trigger**: verify the flaw is gone first, from the world's side, then delete. Git preserves the history. Surviving journal citations do not veto retirement: delete the verified-fixed problem, leave immutable entries unchanged, and report their historical links. Repair editable inbound references in the same change; do not keep fixed problems as evidence archives. The canonical distinction between problem retirement and journal retention is in the Workshop distribution's `docs/kaizen-guide.md`, under *Retiring a fixed problem is distinct from retaining journal evidence*.
