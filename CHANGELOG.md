@@ -3,6 +3,14 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **Session environment detection has one shared implementation.** Shipping and
+  bootstrap use the canonical detector's local/cloud/unknown result and signal
+  provenance, preserving source-call compatibility and separating cloud location
+  from disposable-checkout permission. The cloud-session kit now includes a
+  checked detector seed; adopt it with both bootstrap scripts. Existing pins
+  retain their kit contract. Local launchers must declare their environment;
+  missing cloud markers no longer imply local execution.
+
 - **Problem records now support attention-horizon buckets.**
   `problem-reprioritize` ranks flaws into now, soon, and later in one staged
   pass, with a read-only dry run and explicit-only parking in never. Creation,

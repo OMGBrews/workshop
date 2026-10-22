@@ -30,24 +30,21 @@ direct-push route and is reported as such.
 
 1. **Environment.** Decide in this order and print which signal decided:
    1. the explicit argument;
-   2. the repository's location-fact seam, when it has one:
-      `bash scripts/lib/harness-signals.sh` prints
-      `AGENT_SESSION_EPHEMERAL=<true|false> signal=<variable>`; `true` →
-      `cloud`, `false` → `local`, and the plan quotes the line. A nonzero
-      exit or malformed result stops shipping; do not fall through to local;
-   3. with no seam, `AGENT_SESSION_EPHEMERAL=true` already exported in the
-      shell (a harness or wrapper that sets it for the whole session) →
-      `cloud`;
-   4. otherwise `local`.
+   2. otherwise run the canonical detector from this skill's physical tree:
+      `bash <physical-workshop-root>/docs/templates/cloud-sessions/harness-signals.sh`.
+      Follow [skill path resolution](../../../docs/skill-path-resolution.md);
+      never assume that a consumer's older `scripts/lib/harness-signals.sh`
+      implements this protocol. Quote the returned line:
+      `environment=<local|cloud|unknown> signal=<source>`.
+      Exit 0 with local or cloud selects that environment. Unknown, malformed
+      output, an unavailable detector, or nonzero exit stops shipping; report the
+      signal and ask for an explicit local/cloud argument. Never infer local from
+      a missing cloud variable, repository path, branch name, or origin URL.
 
-   The seam exists because a session-start hook's translation of a vendor
-   variable reaches only the process the hook launches: a shell command run
-   later never sees it, and on 2026-10-20 a live cloud session read the flag
-   as unset and would have taken the local route from a sandbox. Reading a
-   vendor variable here directly is not a substitute; the seam owns that
-   knowledge. The `origin` URL is not a signal: the cloud git proxy that a
-   `local_proxy@` origin once revealed is undocumented and a session has seen
-   a plain GitHub origin.
+   The [detector contract](../../../docs/session-environment.md) owns signal
+   precedence, compatibility, and provisioning. Explicit arguments override
+   detection. Supported launchers assert environment facts for every process;
+   exports inside a SessionStart child cannot configure later shell calls.
 
    **A result that contradicts the session's own knowledge is a stop, not a
    tiebreak.** If detection says `local` and the session knows it is in a
@@ -251,8 +248,8 @@ deferred, and why; and the merge waits on the CI result regardless. Absent any
 piece, run it locally.
 
 **Kit drift**, when the repository adopts the fleet's cloud-session bootstrap
-kit: `scripts/agent/session-start.sh` and `.claude/hooks/session-start.sh`
-must be byte-identical to their templates under
+kit: `scripts/agent/session-start.sh`, `.claude/hooks/session-start.sh`, and
+`scripts/lib/harness-signals.sh` must be byte-identical to their templates under
 `<mount>/docs/templates/cloud-sessions/` and executable. Test that the template
 exists before comparing: `cmp` against a missing file fails exactly like a
 drifted copy, and a missing template is "cannot evaluate", reported as such,

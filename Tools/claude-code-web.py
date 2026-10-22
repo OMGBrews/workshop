@@ -49,6 +49,7 @@ WORKSHOP_REPOSITORIES = frozenset({"OMGBrews/workshop", "OMGBrewmaster/workshop"
 BOOTSTRAP_KIT = (
     ("scripts/agent/session-start.sh", "docs/templates/cloud-sessions/agent-session-start.sh"),
     (".claude/hooks/session-start.sh", "docs/templates/cloud-sessions/session-start.sh"),
+    ("scripts/lib/harness-signals.sh", "docs/templates/cloud-sessions/harness-signals.sh"),
 )
 KIT_MARKER = "docs/templates/cloud-sessions/agent-session-start.sh"
 SESSION_START_COMMAND = '"$CLAUDE_PROJECT_DIR"/.claude/hooks/session-start.sh'
@@ -384,8 +385,8 @@ def validate_bootstrap_kit(root: Path, settings: dict[str, Any] | None, primary:
 
     Applies when a `configured` repository declares the public Workshop
     submodule. Three edges are checked together because each is separately
-    satisfiable while the bootstrap still never runs: both deployed scripts
-    matching their canonical templates byte-for-byte, both executable, and the
+    satisfiable while the bootstrap still never runs: the deployed scripts
+    matching their canonical templates byte-for-byte, all executable, and the
     wrapper registered as a complete `SessionStart` hook object. A repository
     whose agent surfaces link into Workshop while nothing bootstraps it starts
     every session with those links dangling and nothing printed to say so.
@@ -404,11 +405,18 @@ def validate_bootstrap_kit(root: Path, settings: dict[str, Any] | None, primary:
         copy = root / deployed
         canonical = root / mount / template
         redeploy = f"Fix: cp {mount}/{template} {deployed} && chmod +x {deployed}"
+        # Older pinned distributions predate the detector. A distribution
+        # advertising it (or a bootstrap that calls it) requires its seed;
+        # do not impose today's kit on deliberately older pins.
+        if deployed == "scripts/lib/harness-signals.sh" and not canonical.exists():
+            bootstrap = root / mount / KIT_MARKER
+            if "scripts/lib/harness-signals.sh" not in bootstrap.read_text(encoding="utf-8"):
+                continue
         if not canonical.is_file():
             raise DeclarationError(
                 f"{primary}: the pinned Workshop checkout at {mount!r} carries no "
                 f"{template} to check {deployed} against — the pin predates the standard "
-                "bootstrap kit. Fix: advance the Workshop pointer, then redeploy both kit files."
+                "bootstrap kit. Fix: advance the Workshop pointer, then redeploy the kit scripts."
             )
         if not copy.is_file():
             raise DeclarationError(

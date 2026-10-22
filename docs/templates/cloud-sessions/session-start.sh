@@ -36,10 +36,9 @@
 #     reports having initialized or re-synced a submodule — which it signals by
 #     writing the marker file named in AGENT_BOOTSTRAP_RELOAD_MARKER. A session
 #     that changed nothing asks for nothing.
-#   - the environment translation: CLAUDE_PROJECT_DIR -> AGENT_PROJECT_DIR, and
-#     CLAUDE_CODE_REMOTE -> AGENT_SESSION_EPHEMERAL. The neutral script names
-#     the property (a disposable sandbox checkout); only this file knows which
-#     vendor variable asserts it.
+#   - project-path translation: CLAUDE_PROJECT_DIR -> AGENT_PROJECT_DIR.
+#     Session detection belongs to the kit's shared harness-signals.sh, sourced
+#     by the neutral bootstrap. This wrapper does not interpret location signals.
 #
 # Silence is still silence: with no report and no reload to request, nothing is
 # printed at all. And if stdout ever fails to parse as JSON, Claude Code falls
@@ -98,14 +97,12 @@ _report_capture=""; _reload_marker=""
 if ! { _report_capture="$(mktemp 2>/dev/null)" && _reload_marker="$(mktemp 2>/dev/null)"; }; then
   rm -f "$_report_capture" "$_reload_marker"
   AGENT_PROJECT_DIR="$PWD" \
-  AGENT_SESSION_EPHEMERAL="$([ "${CLAUDE_CODE_REMOTE:-}" = "true" ] && echo true || echo false)" \
     bash "$NEUTRAL"
   exit 0
 fi
 trap 'rm -f "$_report_capture" "$_reload_marker"' EXIT
 
 AGENT_PROJECT_DIR="$PWD" \
-AGENT_SESSION_EPHEMERAL="$([ "${CLAUDE_CODE_REMOTE:-}" = "true" ] && echo true || echo false)" \
 AGENT_BOOTSTRAP_RELOAD_MARKER="$_reload_marker" \
   bash "$NEUTRAL" > "$_report_capture"
 
