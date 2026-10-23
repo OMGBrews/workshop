@@ -14,7 +14,18 @@
        - `problem-create` — creates a record from this template
        - `problem-status` and `problem-audit` — assess whether a record still
          matches the world
-       - `kaizen-resolve` — verifies a flaw gone before retiring its record -->
+       - `problem-plan` — decides what to do about a record, and writes its
+         Disposition line when the decision is to live with the flaw
+       - `kaizen-resolve` — verifies a flaw gone before retiring its record
+
+     Disposition: a new record carries none. `problem-plan` adds one line,
+     never a frontmatter field, directly after the In brief paragraph (after
+     an `**Issues**:` line where the repository uses one) when the user
+     decides to live with the flaw:
+       **Disposition**: Accepted YYYY-MM-DD. <why living with it beats fixing it>
+       **Disposition**: Deferred YYYY-MM-DD until <condition>. <one sentence>
+     A record planned into a task carries no Disposition line; the task citing
+     it is the mark. -->
 
 # Flaw title
 

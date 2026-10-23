@@ -33,7 +33,10 @@ The problems root is `docs/work/problems/`.
   path outside that root. If the file does not exist, say so and stop.
 
 Read each selected record in full. Use its H1 as the title. Use the first
-sentence of `**In brief**` as the summary when present. Legacy prose layouts are
+sentence of `**In brief**` as the summary when present. Note any
+`**Disposition**:` line, the decision `problem-plan` records when the user
+chose to live with the flaw; it is a decision, not evidence about the flaw,
+and never changes the verdict. Legacy prose layouts are
 valid: when `In brief` is absent, summarize the scope statement or flaw text and
 label that summary as a fallback. Missing headings from the current template,
 including `In brief` or Evidence, do not by themselves make evidence rotten.
@@ -88,12 +91,16 @@ rot. Unknown evidence is **Cannot tell**, not a silent clean result.
 ## Report
 
 With no argument, print one concise line per record containing its title, the
-summary (noting any legacy fallback), bucket, and verdict. Then report the total; keep
+summary (noting any legacy fallback), bucket, and verdict, plus the
+Disposition line's prefix and date (`Accepted 2026-10-21`, `Deferred
+2026-10-21 until <condition>`) when the record carries one, so a decided
+record reads differently from one nobody has looked at. Then report the total; keep
 empty and absent collections distinguishable.
 
 For one record, report:
 
 - the path, title, and summary;
+- the Disposition line, quoted in full, or that the record carries none;
 - the current signals checked and what they show;
 - relevant citations to or from the record;
 - tracking, repository-boundary, or other evidence limitations;

@@ -60,7 +60,18 @@ Name the file `kebab-case.md` after the flaw (e.g. `export-drops-step-3-narrativ
 
 The canonical shape lives at `.agents/skills/problem-create/_TEMPLATE.md`: an In brief paragraph followed by Scope statement, The flaw, Evidence, Impact, Background, and See also. This is a courtesy summary; the template is the single source. Avoid prescribing solutions. If a fix approach is obvious, mention it briefly under See also or leave it for a task document.
 
-Skills: `problem-create` files a record from the canonical template, `problem-status` reports current signals, `problem-audit` re-verifies the record in depth, and `kaizen-resolve` retires it only after the flaw is verified gone.
+### The Disposition line
+
+A record the user has decided to live with carries one line recording that decision, directly after the `**In brief**:` paragraph (after an `**Issues**:` line where this repository uses one). It is a body line, never a frontmatter field, and it starts with one of two fixed prefixes so a sweep can find it:
+
+```markdown
+**Disposition**: Accepted YYYY-MM-DD. <One sentence: why living with it beats fixing it.>
+**Disposition**: Deferred YYYY-MM-DD until <condition>. <One sentence.>
+```
+
+`problem-plan` writes it, replaces it on a revisit, and stops on a record that already carries one. An Accepted record is parked in `never/`, and the line is its parking reason. A record planned into a task carries no Disposition line: the task citing the record is the mark. A record with neither has not been decided yet.
+
+Skills: `problem-create` files a record from the canonical template, `problem-status` reports current signals, `problem-audit` re-verifies the record in depth, `problem-plan` decides what to do about it, and `kaizen-resolve` retires it only after the flaw is verified gone.
 
 ## See also
 
