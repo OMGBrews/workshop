@@ -3,6 +3,18 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **`/problem-plan` adds the problem lifecycle's decide stage.** Given one
+  record, it gates on the record's current status and any existing plan, widens
+  the candidate fixes with a small read-only fan-out when the fix is not
+  settled, agrees the approach with the user one question at a time, and hands
+  the decision to one or more tasks, a cross-repo handoff, a design, an idea, or
+  a `**Disposition**:` line for a flaw the user chose to live with. Accepted
+  records park in `never/`. The problem template and problems README seed define
+  the Disposition line, and `/problem-status` reports it. Consumers get the
+  skill by advancing their Workshop pointer and re-running
+  `Tools/sync-skill-symlinks.sh`; seeded problems READMEs do not update
+  themselves.
+
 - **Session environment detection has one shared implementation.** Shipping and
   bootstrap use the canonical detector's local/cloud/unknown result and signal
   provenance, preserving source-call compatibility and separating cloud location

@@ -20,8 +20,9 @@ once the flaw is verified gone. A completed task is not proof of resolution.
 
 `problem-reprioritize` moves records among now, soon, and later. Explicit user
 direction owns entry to or exit from never; automatic ranking neither parks nor
-unparks records. Record the user's parking reason in Background when parking;
-do not invent acceptance of a risk. Status and audit sweeps include never.
+unparks records. Record the user's parking reason in Background when parking,
+or as the record's `**Disposition**: Accepted` line when `problem-plan` parks
+it; do not invent acceptance of a risk. Status and audit sweeps include never.
 
 Aim for roughly three now and three soon problems, with later holding the rest.
 These are soft attention budgets, not quotas or severity caps. Never demote an
