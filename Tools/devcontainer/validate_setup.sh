@@ -112,8 +112,14 @@ validate_claude() {
     check "Claude status line wired into settings" grep -q '"statusLine"' "$HOME/.claude/settings.json"
     check "Claude Enter inserts newline" jq -e '.bindings[] | select(.context == "Chat") | .bindings.enter == "chat:newline"' "$HOME/.claude/keybindings.json"
     check "Claude Shift+Enter submits" jq -e '.bindings[] | select(.context == "Chat") | .bindings["shift+enter"] == "chat:submit"' "$HOME/.claude/keybindings.json"
-    check "Claude Code CLI installed" harness_locate claude
+    check "Claude Code CLI responds (including native CLI behind launcher)" check_claude_cli
     check "'cc' alias in bashrc and zshrc" check_alias_both_rcfiles cc
+}
+
+check_claude_cli() {
+    local cli
+    cli="$(harness_locate claude)" || return 1
+    "$cli" --version
 }
 
 validate_omp() {
