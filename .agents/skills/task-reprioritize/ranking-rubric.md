@@ -109,14 +109,13 @@ If a task doesn't fit any rule cleanly, default to **S** and note "(category amb
 
 ---
 
-## Area-coupling tiers (A / B / C)
+## Area-coupling tiers (B / C)
 
-Within each category, order tasks by **area-coupling tier**. In repos without a queue, every task is Tier B unless it matches an `in-progress` task in `now/` (Tier C).
+Within each category, order tasks by **area-coupling tier**. Every task is Tier B unless it matches an `in-progress` task in `now/` (Tier C).
 
 | Tier | Definition | Notes |
 |---|---|---|
-| **A** | Primary area matches a `queued/` task's area, OR the task explicitly references a queued task by filename | Promoting this primes follow-up work in the same area the autonomous worker is touching. |
-| **B** | Primary area is distinct from every `queued/` task's area | Safe complement — no contention with in-flight work. |
+| **B** | Primary area is distinct from every `in-progress` task in `now/` | Safe complement — no contention with in-flight work. |
 | **C** | Primary area matches an `in-progress` task already in `now/` | Avoid clumping competing tasks in the same area. Last resort. |
 
 ---

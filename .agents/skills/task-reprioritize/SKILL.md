@@ -18,7 +18,7 @@ This skill **stages** changes via `git mv` / `git rm` but does **NOT** auto-comm
 ## Repo conventions (resolve first)
 
 - **Tasks root**: `docs/work/tasks/` — written as `<tasks>/` below. If none exists, print "No tasks directory found — invoke the `task-create` skill to scaffold one." and stop.
-- **Lifecycle buckets**: `<tasks>/finalized/` holds tasks ready for supervised implementation; `<tasks>/queued/` (when it exists) holds tasks the autonomous runner is executing. Both are read-only context for this skill, never sources or targets of moves.
+- **Lifecycle buckets**: `<tasks>/finalized/` holds tasks ready for supervised implementation; legacy `<tasks>/queued/` briefs require recovery. Neither is a source or target of moves here.
 - **Bucket definitions**: [`../task-create/bucket-definitions.md`](../task-create/bucket-definitions.md) — resolve it relative to this file's **physical** directory (follow the symlink before taking `..`, per [`skill-path-resolution.md`](../../../docs/skill-path-resolution.md)), so the sibling is found in the same tree whatever the mount is called; shared with every other task skill so they cannot drift. If even that does not resolve (a partial vendored copy without `task-create`), find the file by mount discovery — the `Tools/sync-skill-symlinks.sh` pattern: this skill's physical location names the mount — and say you fell back.
 - **Focus document**: `<tasks>/focus.md` — the owner's statement of what matters right now, at the tasks root beside `README.md`. It sits outside every bucket directory, so a bucket glob never reaches it and it is never a candidate for a move. Format and parsing are specified in the [focus-document contract](../../../docs/focus-document.md); matching, weight, and staleness remain in [`ranking-rubric.md` § Focus weighting](ranking-rubric.md#focus-weighting-tasksfocusmd).
 - **`finalized/` and `never/` are excluded from rebalancing**: nothing is moved in or out of either by shape rules. Finalization owns entry to `finalized/`; parking and explicit moves out belong to `task-move`.
@@ -55,7 +55,6 @@ List all `.md` files under:
 - `<tasks>/soon/`
 - `<tasks>/later/`
 - `<tasks>/finalized/` *(read-only; ready for supervised implementation)*
-- `<tasks>/queued/` *(where it exists — read-only; these are executing, so they are not candidates for moves, only context for area-coupling)*
 
 Exclude `README.md`, `_TEMPLATE.md`, anything inside `queued/blocked/`, and `.gitkeep`.
 
@@ -85,14 +84,14 @@ With no focus document, every task's Focus cell is `—` and the column header s
 
 Apply [`ranking-rubric.md` § Area inference](ranking-rubric.md#area-inference). It covers the repo's optional "Area map" table, the mechanical fallback that descends past generic container directories, multi-area Scope sections (the **primary area** is the most-mentioned), and the title-based fallback when `## Scope` is missing — which must be called out in the Phase 3 rationale so the user can correct it.
 
-Print a compact inventory table grouped by bucket, including the queued section where present:
+Print a compact inventory table grouped by bucket, reporting legacy queued briefs separately for recovery:
 
 ```
-### Now (N) | Soon (N) | Later (N) | Finalized (N, read-only) | Queued (N, read-only)
+### Now (N) | Soon (N) | Later (N) | Finalized (N, read-only) | Legacy queued (N, recovery needed)
 | Bucket | Task | Status | Effort | Progress | Area | Focus | Goal (1 sentence) |
 ```
 
-If `now/`, `soon/`, and `later/` are all empty, print "No planning tasks — nothing to rebalance." Report finalized and queued counts as read-only context, then stop.
+If `now/`, `soon/`, and `later/` are all empty, print "No planning tasks — nothing to rebalance." Report finalized counts and any legacy queued briefs, then stop.
 
 ---
 
@@ -117,7 +116,7 @@ weighting is built to preserve — see below.
 Print a diagnosis block:
 
 ```
-Current shape: now=N, soon=N, later=N (finalized=N ready; queued=N executing)
+Current shape: now=N, soon=N, later=N (finalized=N ready)
 Targets:       now≈3, soon≈3, later=rest
 
 Focus: <present, last touched YYYY-MM-DD | present but >30 days old (YYYY-MM-DD) — using it anyway, does it still hold? | present but never committed — staleness unknown | ABSENT — this pass ranked on mechanics alone>
@@ -196,7 +195,7 @@ Before categorizing, apply [`ranking-rubric.md` § In-flight pinning](ranking-ru
 Order the tasks in each category in this sequence:
 
 1. **Focus** (rubric § How much focus weighs) — in-focus above out-of-focus, and below both, anything the `**Not now:**` line names. This runs *first*, ahead of the coupling tiers: it is the strongest thing focus does to ordinary ranking.
-2. **Area-coupling tier** — [`ranking-rubric.md` § Area-coupling tiers](ranking-rubric.md#area-coupling-tiers-a--b--c): **A** (shares an area with a `queued/` task), **B** (distinct from every queued area), **C** (shares an area with an `in-progress` task already in `now/`). In repos without a queue, every task is Tier B unless it matches an `in-progress` task in `now/`.
+2. **Area-coupling tier** — [`ranking-rubric.md` § Area-coupling tiers](ranking-rubric.md#area-coupling-tiers-b--c): **B** (distinct from work in progress), then **C** (shares an area with an `in-progress` task already in `now/`).
 3. **Tiebreakers** — [`ranking-rubric.md` § Tiebreakers](ranking-rubric.md#tiebreakers): higher progress fraction, explicit `high` / neutral `medium` / `low` priority, older creation date, smaller `effort`, then task slug alphabetical. Name a placement where explicit priority changed the result.
 
 With no focus document, step 1 is a no-op and the order is the coupling tier then the tiebreakers, exactly as before.
@@ -228,7 +227,6 @@ If the protections leave a bucket over tolerance, **stop trimming and name the d
 ### Edge cases
 
 - **Total task count too small**: e.g. only 4 tasks across now+soon+later. Use proportional targets: 2 in `now/`, 2 in `soon/`, 0 in `later/`. State the deviation explicitly: "Total tasks=4; treating target as now=2/soon=2."
-- **Many tasks in `queued/`**: when `queued/` has ≥3 tasks (the autonomous worker is well-fed), it's fine to leave `now/` slightly under-target (2 instead of 3). Note this deviation explicitly.
 - **No creation commit** (file never committed): the rubric's ordinary-placement tiebreaker treats it as oldest, while Step 5 protects it from trimming as fresh.
 - **Area inference fell back to title**: include "(area inferred from title)" in the rationale so the user can correct.
 - **Task already in the right bucket per its category**: no move needed. Don't churn for no-op reassignments.
@@ -330,14 +328,12 @@ or when it unblocks that path.
 | `later/` | `type-session-json-columns-against-schema-models` | not-started | large | 0/6 | (multi) | "constructed, typed, or loaded" |
 | `later/` | `refactor-simulator-test-architecture` | not-started | medium | 0/4 | tests:evals | — |
 
-`queued/` (read-only): `rebaseline-parser-fixtures-after-tokenizer-fix` (parser), `rework-task-reprioritize-skill` (skills), `tune-billing-proration-for-mid-cycle-upgrades` (billing).
-
 **Diagnosis:**
 
 - now=5 → over-target by 1 (tolerance ceiling is 4); soon=2 → under-target by 1; later=4
 - Focus present, last touched 6 days ago — current. In focus: 8 of 11. **Workable: 5 of 8** (`backfill`, `link-records`, `dedupe` are blocked) → the focus is workable, so no "entirely unworkable" report; the count is still printed.
 - Readiness overrides: four tasks blocked in `now/`.
-- Queued areas: parser, skills, billing. No candidate shares them — every candidate is Tier B.
+- No candidate shares an area with an in-progress task in `now/`; every candidate is Tier B.
 
 **Step 1 — Hard overrides:** all four blocked `now/` tasks demote to `soon/`. Three are in focus → **trim-protected**; `swap-the-report-renderer` is not. Recomputed: now=1, soon=6. `harden-importer-retry-backoff` is the only eligible in-flight task outside `now/`, so its 2/5 progress fills one of the two open slots: now=2, soon=5. No complete or blocked task can enter that promotion pool.
 

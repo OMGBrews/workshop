@@ -31,7 +31,7 @@ Capture the session's end state before changing anything. Run these and hold the
 - `git status --short` — uncommitted changes.
 - `git log --oneline '@{push}..HEAD'` — unpushed commits. **Check the exit code.** `@{push}` is unset on a branch with no upstream and on a detached HEAD, and the command then exits non-zero while printing nothing — identical to what "no unpushed commits" looks like. If it fails, fall back to `git fetch origin && git log --oneline "origin/$(git rev-parse --abbrev-ref origin/HEAD | sed 's|origin/||')..HEAD"`; if *that* fails, report unpushed state as **unknown**, never as zero. Reporting "nothing outstanding" over real unpushed work is the exact failure this checklist exists to prevent (see [`signal-hygiene.md`](../../../docs/signal-hygiene.md)).
 - `git worktree list` — active worktrees.
-- Background processes this session may have started — background shells launched with a run-in-background option, spawned agent sessions (other CLI-harness runs this session launched that may still be running work), and any autonomous runner the project uses (e.g. a task-queue runner). Identify them; do not kill yet.
+- Background processes this session may have started — background shells launched with a run-in-background option, spawned agent sessions (other CLI-harness runs this session launched that may still be running work), and any autonomous runner the project uses (e.g. a separate audit runner). Identify them; do not kill yet.
 - Spawned teammates still alive (check team/agent state).
 - Any scheduled wake-up timers or loop-mode background runs still pending.
 - Current task state from the task list.
@@ -141,7 +141,7 @@ Act on these without asking — they are unambiguous and reversible-by-nature:
 - **Scratch files** — remove `/tmp` files (or similar) the session created for its own scratch use.
 - **Stale tracking tasks** — delete session-scoped tracking tasks from the task list that were created for in-session progress tracking and are now moot. Do not delete tasks that represent real outstanding work.
 - **Idle teammates** — shut down spawned teammates whose work is done.
-- **Unchanged worktrees** — remove `isolation: "worktree"` worktrees that have no commits and no uncommitted changes. **Never remove a worktree owned by an autonomous runner** (e.g. a task-queue runner's worktrees) — those are infrastructure.
+- **Unchanged worktrees** — remove `isolation: "worktree"` worktrees that have no commits and no uncommitted changes. **Never remove a worktree owned by an autonomous runner** (e.g. a separate audit runner's worktrees) — those are infrastructure.
 
 <!-- END SYNC MARKER (Phase 5) -->
 
@@ -181,5 +181,5 @@ End there. Do not offer to commit, push, or schedule anything.
 - **Do NOT run full audits** — the `audit-and-fix` skill and other heavy audits are separate, not per-session.
 - **Do NOT force a `patterns/` review** — that's the periodic Act stage, not per-session.
 - **Do NOT write to `docs/work/kaizen/singletons.md`, `patterns/`, or `docs/work/problems/`** — the journal entry is the only kaizen artifact this skill writes. Matches are noted inside the entry (Phase 2c); a fixed flaw is flagged for the `kaizen-resolve` skill (Phase 4), never resolved here.
-- **Do NOT touch an autonomous runner or its worktrees.** If the project runs one (e.g. a task-queue runner), it actively mutates the repo while you work; leaving it running is correct.
+- **Do NOT touch an autonomous runner or its worktrees.** If the project runs one (e.g. a separate audit runner), it actively mutates the repo while you work; leaving it running is correct.
 - **Do NOT prompt the user to direct memory** — the memory self-check (Phase 3) is your own call.

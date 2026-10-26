@@ -16,7 +16,7 @@ and hands them off.
 ## Repo conventions (resolve first)
 
 - **Tasks root**: `docs/work/tasks/` — written as `<tasks>/` below. If none exists, print "No tasks directory found — invoke the `task-create` skill to scaffold one." and stop.
-- **Queue**: `<tasks>/queued/` (when it exists) holds tasks claimed by the autonomous runner — exclude it from the audit; the runner re-verifies its own briefs at pickup.
+- **Queue**: `<tasks>/queued/` (when it exists) contains legacy recovery work — report it separately for inspection; autonomous execution is retired.
 - **Creation dates** are not recorded in the documents — derive them from git: `git log --diff-filter=A --follow --format=%cs -- <task-file>`. Use the date only when reporting a task's age. For windowing history, use the creating *commit* (`--format=%H` on the same command, `| tail -1`) and a `<sha>..HEAD` range — never `--since=<date>`, which silently excludes commits merged after the task was written but dated before it.
 
 ## Modes
@@ -32,7 +32,7 @@ Execute the following phases in order.
 
 1. Read `<tasks>/README.md` to refresh on the task document format and conventions.
 
-2. List all `.md` files under `<tasks>/` (with a file-glob lookup; bucket folders: `now/`, `soon/`, `later/`, `finalized/`, `never/`). **Exclude README files, `_TEMPLATE.md`, `focus.md`, and everything under `queued/`** — the first three describe the folder or the repo's current focus, not tasks; the queue is the runner's. Finalized briefs remain in scope because their code observations can rot while they wait. `focus.md` in particular sits at the tasks root beside the buckets and is prose, not a task document: audited as one it fails every structural check it was never meant to pass.
+2. List all `.md` files under `<tasks>/` (with a file-glob lookup; bucket folders: `now/`, `soon/`, `later/`, `finalized/`, `never/`). **Exclude README files, `_TEMPLATE.md`, `focus.md`, and everything under `queued/`** — the first three describe the folder or the repo's current focus, not tasks; legacy queued work needs recovery first. Finalized briefs remain in scope because their code observations can rot while they wait. `focus.md` in particular sits at the tasks root beside the buckets and is prose, not a task document: audited as one it fails every structural check it was never meant to pass.
 
 3. Read every task document. For each, extract:
    - YAML frontmatter (`status`, `effort`, `priority`, `dependencies`); the creation date comes from `git log --diff-filter=A --follow` when needed

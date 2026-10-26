@@ -772,7 +772,7 @@ Located at `docs/work/definition-of-done.md`, one per repository. Six sections i
 
 ### Task documents
 
-Located in `docs/work/tasks/`, with planning buckets `now/`, `soon/`, `later/`, and `never/`; the lifecycle bucket `finalized/` for briefs ready for supervised implementation; and the opt-in `queued/` where the repo runs the autonomous task-queue runner.
+Located in `docs/work/tasks/`, with planning buckets `now/`, `soon/`, `later/`, and `never/`; the lifecycle bucket `finalized/` for briefs ready for supervised implementation. Autonomous task execution and its `queued/` bucket are retired.
 
 Tasks define the **problem and desired outcome** — not the implementation plan. Leave architectural decisions and step-by-step instructions for plan mode, or for `/task-finalize`, which writes a `## Recommended solution` while its analysis is fresh.
 
@@ -795,7 +795,7 @@ dependencies: []           # task slugs that must land before this one
 ---
 ```
 
-One further field, `finalized-at`, is **machine-written** — `/task-finalize` records a conservative comparison baseline shared by the inspected commit and a freshly fetched default branch when possible, falling back to the inspected commit with an explicit limited-durability disclosure. The task-queue worker diffs a usable baseline against `HEAD` over the scoped paths at pickup; unavailable history triggers full direct re-verification without blocking queue admission. Never fill it by hand.
+One further field, `finalized-at`, is **machine-written** — `/task-finalize` records a conservative comparison baseline shared by the inspected commit and a freshly fetched default branch when possible, falling back to the inspected commit with an explicit limited-durability disclosure. The implementing session diffs a usable baseline against `HEAD` over the scoped paths before implementation; unavailable history triggers full direct re-verification without requiring another finalization solely for missing history. Never fill it by hand.
 
 The body, in order:
 
@@ -821,14 +821,14 @@ The criteria list is wrapped in HTML comments that mark a machine-editable zone:
 
 ```markdown
 ## Acceptance criteria
-<!-- AC:BEGIN — DO NOT REMOVE: /task-finalize, /task-move, and the task-queue worker parse the AC list between these sentinels. -->
+<!-- AC:BEGIN — DO NOT REMOVE: /task-finalize, /task-audit, and /task-status parse the AC list between these sentinels. -->
 
 - [ ] Players can view a leaderboard for each pack
 
 <!-- AC:END -->
 ```
 
-**Keep them.** `/task-finalize`, `/task-move`, `/task-status`, and the autonomous task-queue worker all parse the list between them; a file missing the sentinels will not validate or run. Edits to the criteria stay inside them.
+**Keep them.** `/task-finalize`, `/task-audit`, and `/task-status` all parse the list between them; a file missing the sentinels will not validate or run. Edits to the criteria stay inside them.
 
 Write the sentinel lines as anchored HTML comments at the start of a line. Prose elsewhere in a document may name `AC:BEGIN` and `AC:END` — this guide does — and parsers distinguish the two by that anchoring.
 
@@ -842,7 +842,7 @@ A criterion is `- [ ]` (not done) or `- [x]` (done). A third marker, `- [~]`, is
 - **Constraints are acceptance criteria**, not background. Must work offline, must support both platforms — these get checkboxes.
 - **Delete unused optional sections** rather than leaving them empty.
 - **Completed tasks are deleted.** Git history preserves them; there is no `done` status. Reprioritize by moving the file between buckets — `/task-move` for one, `/task-reprioritize` for a rebalance.
-- **Slash commands**: `/task-list` (inventory), `/task-status` (liveness and closure verdicts), `/task-next` (what to work on), `/task-create`, `/task-move`, `/task-reprioritize`, `/task-audit` (validity against the codebase), `/task-finalize` (verify and resolve questions), `/task-implement` (execute in-session), `/task-queue` (the autonomous runner), `/problem-create`, `/problem-status`, `/problem-audit`, `/problem-reprioritize` (attention-horizon placement), `/problem-plan` (decide what to do about a record), `/thought-create` (capture a note into `docs/work/thoughts/`), `/thought-finalize` (decide what a thought becomes), and `/focus-update` (write or replace the repository's direction). They were renamed from verb-first names — `/list-tasks` → `/task-list` — in the 2026-07-26 convergence.
+- **Slash commands**: `/task-list` (inventory), `/task-status` (liveness and closure verdicts), `/task-next` (what to work on), `/task-create`, `/task-move`, `/task-reprioritize`, `/task-audit` (validity against the codebase), `/task-finalize` (verify and resolve questions), `/task-implement` (execute in-session), `/task-queue` (retirement notice), `/problem-create`, `/problem-status`, `/problem-audit`, `/problem-reprioritize` (attention-horizon placement), `/problem-plan` (decide what to do about a record), `/thought-create` (capture a note into `docs/work/thoughts/`), `/thought-finalize` (decide what a thought becomes), and `/focus-update` (write or replace the repository's direction). They were renamed from verb-first names — `/list-tasks` → `/task-list` — in the 2026-07-26 convergence.
 
 #### Metadata policy
 

@@ -170,7 +170,7 @@ those callers must stay identical rather than merely similar:
 |------|------------|--------------|
 | `task-create/_TEMPLATE.md` | `task-create` | task creation — read from inside the skill; no repo-side copy |
 | `problem-create/_TEMPLATE.md` | `problem-create` | problem creation and kaizen routing — read from inside the skill; no repo-side copy |
-| `task-queue/execution-discipline.md` | the task-queue worker | `task-implement` |
+| `task-queue/execution-discipline.md` (compatibility path) | `task-implement` | interactive implementing sessions |
 | `task-finalize/check-task-readiness.sh` | `task-finalize` | `task-move` and `Tools/check-docs-work-conformance.sh` |
 | `docs/focus-document.md` | `focus-update` and repository owners | `task-next`, `task-reprioritize`, `session-land`, and repository task guides |
 

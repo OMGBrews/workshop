@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
-# Self-termination for a worker session spawned by task-queue or audit-queue.
-#
-# Used by both:
-#   .claude/skills/task-queue/run.sh   (via TASK_QUEUE_SELF_TERMINATE)
-#   .claude/skills/audit-queue/run.sh  (via AUDIT_QUEUE_SELF_TERMINATE,
-#                                       which symlinks to this file)
+# Compatibility helper for the separate audit-queue runner.
+# Autonomous task execution is retired; audit-queue still links this path.
 #
 # Interactive `claude` does not exit on its own when it stops responding — it
 # sits at the TUI prompt, and the loop runner (run.sh) blocks forever waiting

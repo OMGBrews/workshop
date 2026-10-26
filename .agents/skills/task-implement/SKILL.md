@@ -8,10 +8,7 @@ description: Implement a prepared task in the current session — re-verify the 
 Take a prepared task and build it here, in this session, with the human
 watching. This is the supervised middle of the pipeline: the `task-next` skill
 recommends what to work on and offers `task-finalize`; `task-finalize`
-verifies the brief and stamps `finalized-at`, and this skill executes it. The
-autonomous task-queue runner does
-the same job unattended, on the same discipline — see [Relationship to the
-task-queue worker](#relationship-to-the-task-queue-worker).
+verifies the brief and stamps `finalized-at`, and this skill executes it.
 
 **Arguments**: optional task filename (with or without `.md`) or
 full path. If omitted, Phase 1 helps pick one.
@@ -19,7 +16,7 @@ full path. If omitted, Phase 1 helps pick one.
 ## Repo conventions (resolve first)
 
 - **Tasks root**: `docs/work/tasks/` — written as `<tasks>/` below. If none exists, print "No tasks directory found — invoke the `task-create` skill to scaffold one." and stop.
-- **Queue**: `<tasks>/queued/` (when it exists) belongs to the autonomous task-queue runner. Never pick from it — a task sitting there is already claimed, and implementing it here races a worker that may be mid-flight on the same brief. If the user names a queued task explicitly, say that and offer the `task-move` skill to pull it back into a human bucket first.
+- **Legacy queue**: autonomous execution is retired. Recover any old queued brief into a planning bucket after checking for surviving work; never launch a runner.
 - **Definition of done**: `docs/work/definition-of-done.md` where it exists — the project-wide requirements that no individual brief restates.
 - **The brief's vintage** is a commit, not a date: the commit that created the task file is `git log --diff-filter=A --format=%H --follow -- <task-file> | tail -1`. Window history with `<that-sha>..HEAD`, never with `--since=<date>` — commit dates aren't topology, so a branch merged after the brief was written carries commits dated before it, and a date window silently excludes exactly those.
 
@@ -35,37 +32,6 @@ Its five blocks are the discipline this skill runs on:
 | `definition-of-done` | Finding `definition-of-done.md` and satisfying every applicable requirement | Phase 4, Phase 6 |
 | `ac-sentinels` | Edits to the acceptance list stay inside `AC:BEGIN` / `AC:END` | Phase 4 |
 | `ask-with-briefing` | Briefing the human before any question-prompt call | throughout |
-
-That file is single-sourced because the task-queue worker runs on the same five
-blocks — the runner expands them into the prompt it dispatches. It is written
-in the worker's voice, so read it through the inversions below rather than
-literally.
-
-## Relationship to the task-queue worker
-
-Same discipline, different setting: the worker is a fresh unattended session in
-a runner-managed worktree, this skill is the human's own session. Four rules
-invert, and only these four:
-
-| # | The worker | This skill | Why |
-|---|-----------|-----------|-----|
-| 1 | Does not tick acceptance criteria — the runner deletes the whole brief | Ticks each criterion inside the sentinels as it is verifiably met | The human is watching progress in a file that stays on disk until the end |
-| 2 | Never removes the brief; the runner runs `git rm` afterwards | Deletes the brief itself, in the completing commit — but only once the human confirms (Phase 6d) | There is no runner here to do it, and a human who can be asked should be the one to call it finished |
-| 3 | Is forbidden final-state narration ("do not add a final state verification Bash call") | Closes with a report of what was implemented and how it was verified | The runner inspects the branch directly; a human cannot |
-| 4 | Moves a blocked brief into `queued/blocked/` | Leaves it in its bucket with `status: blocked` and an appended `## Blocked` section | `queued/blocked/` exists in one repo only; the in-place shape is what the `session-land` and `task-status` skills read |
-
-Two more differences follow from the setting rather than inverting a rule.
-**Work happens in the current working tree**, not a worktree (Phase 4). And an
-**unfinalized brief gets the full finalize-style verification inline**
-(Phase 3) rather than the worker's lighter "treat its claims as unverified and
-check them as you go" — the human is present to answer what the check turns up,
-and 195 of the fleet's 199 tasks carry no stamp, so this is the ordinary case
-rather than the edge.
-
-Anywhere else the in-session flow would diverge from the worker's discipline,
-**stop and record an open question on the brief** instead of inventing a rule.
-
----
 
 ## Phase 1 — Pick the task
 
@@ -162,13 +128,8 @@ that is a finalize-shaped problem: stop and recommend `task-finalize`.
 
 ## Phase 4 — Implement
 
-Work **in the current working tree**. Worktree isolation only when the user
-explicitly asks for it, and then carefully: Claude Code's worktree management
-has known bugs, and the task-queue runner's worktrees work only because
-`run.sh` maintains a repo-specific shared-paths symlink list (`SHARED_PATHS`
-plus `.task-queue-shared-paths`) that a skill body cannot reproduce — an
-env-file or `node_modules` symlink this skill forgets is a test suite that
-fails for reasons that have nothing to do with the task.
+Work **in the current working tree**. If the user requests worktree isolation,
+verify its dependencies and environment before implementing.
 
 While building:
 
@@ -265,14 +226,8 @@ them differently:
   `dependencies:` list. Closing this task satisfies that dependency, so on a
   confirmed close-out remove the item *in the completing commit*, leaving
   `dependencies: []` when the list empties. On a decline the dependency is still
-  unmet: leave it exactly as it is. A stale entry would not block anything —
-  `task-next` and the runner both read a slug whose brief is gone as finished —
-  but every later reader would have to prove that from git history, and the
-  dependent's brief would go on claiming a wait that ended. Two limits:
-  - **Never edit a brief under `<tasks>/queued/`.** The runner owns that tree,
-    and a worker may be rewriting or deleting the very file you would edit; that
-    is how concurrent closures collide. The runner resolves the entry from
-    history, so leaving it costs nothing.
+  unmet: leave it exactly as it is. Do not infer completion from a missing
+  filename alone: history must distinguish completion from renaming or rejection.
   - **Remove the entry; change nothing else about the dependent.** If its list
     empties, or it carries `status: blocked` on this task alone, name it in the
     report as now unblocked. Whether to clear its status or re-bucket it is a

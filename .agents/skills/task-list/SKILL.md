@@ -10,7 +10,7 @@ Summarize all tasks in this repo's tasks directory.
 ## Repo conventions (resolve first)
 
 - **Tasks root**: `docs/work/tasks/` — written as `<tasks>/` below. If none exists, print "No tasks directory found — invoke the `task-create` skill to scaffold one." and stop.
-- **Lifecycle buckets**: `<tasks>/finalized/` holds briefs ready for supervised implementation; `<tasks>/queued/` (when it exists) is owned by the autonomous runner. List both separately from the planning buckets.
+- **Lifecycle buckets**: `<tasks>/finalized/` holds briefs ready for supervised implementation; any surviving `<tasks>/queued/` briefs are legacy recovery work. List them separately from the planning buckets.
 
 ## Phase 1 — Find Tasks
 
@@ -46,7 +46,7 @@ Append ` (deps: a, b)` to the Task cell when the task lists dependencies.
 
 If `<tasks>/queued/` exists and holds task files, add a final read-only section:
 
-### Queued (N tasks — autonomous runner)
+### Legacy queued briefs (N tasks — recovery required)
 | Task | Priority | Effort |
 |------|----------|--------|
 

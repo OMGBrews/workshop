@@ -311,12 +311,12 @@ Act on these without asking — they are unambiguous and reversible-by-nature:
 - **Scratch files** — remove `/tmp` files (or similar) the session created for its own scratch use.
 - **Stale tracking tasks** — delete session-scoped tracking tasks from the task list that were created for in-session progress tracking and are now moot. Do not delete tasks that represent real outstanding work.
 - **Idle teammates** — shut down spawned teammates whose work is done.
-- **Unchanged worktrees** — remove `isolation: "worktree"` worktrees that have no commits and no uncommitted changes. **Never remove a worktree owned by an autonomous runner** (e.g. a task-queue runner's worktrees) — those are infrastructure.
+- **Unchanged worktrees** — remove `isolation: "worktree"` worktrees that have no commits and no uncommitted changes. **Never remove a worktree owned by an autonomous runner** (e.g. a separate audit runner's worktrees) — those are infrastructure.
 
 <!-- END SYNC MARKER (Phase 7) -->
 
 Also stop background processes this session started (background shells, spawned sessions,
-pending loop-mode runs) — but **never** an autonomous runner such as a task-queue worker;
+pending loop-mode runs) — but **never** an autonomous runner such as a separate audit worker;
 those are infrastructure and leaving them running is correct. Report anything left alive.
 
 ---
