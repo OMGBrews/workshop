@@ -40,8 +40,7 @@ status.
 
 `<tasks>/finalized/` holds briefs that passed `/task-finalize` and are available
 for supervised implementation. Finalization moves the brief here automatically;
-`/task-implement` removes it on completion, and `/task-move` may hand it to
-`queued/` where an autonomous runner exists.
+`/task-implement` removes it on confirmed completion.
 
 This is a lifecycle bucket, not a fifth planning horizon. It sits outside queue
 shape and reprioritization, and `/task-next` considers it before unfinalized work.
@@ -75,14 +74,10 @@ A parked task keeps its real `status:`, which for work nobody is doing is
 `not-started`. `never/` holding an `in-progress` task is a contradiction, and
 `/task-status` reports it as one.
 
-## `queued/`
+## Retired `queued/` bucket
 
-`<tasks>/queued/` exists only in repos running the autonomous task-queue runner — a
-deliberate per-repo opt-in, never scaffolded by default. It holds briefs the runner
-has claimed or will claim, so it belongs to the runner rather than to a human triage
-pass: `/task-move` moves a task in once `/task-finalize` has made it pass readiness,
-and the runner moves it out, deleting the brief on completion or setting it aside in
-`queued/blocked/`.
+Autonomous task execution is retired. Do not create or promote work into
+`queued/`. Recover surviving briefs through the [retirement guidance](../task-queue/README.md).
 
 ## Queue shape
 
@@ -90,11 +85,9 @@ The planning buckets aim for **roughly 3 tasks in `now/`, 3 in `soon/`, and the 
 `later/`**. It is a soft target rather than a quota: `/task-reprioritize` owns the
 tolerances and the fill order that enforce it, and names its own deviations.
 
-`finalized/`, `never/`, and `queued/` sit **outside** that shape. `/task-reprioritize`
-never moves a task in or out of them. `/task-next` prefers `finalized/`, ignores
-`never/`, and leaves `queued/` to the autonomous runner. Explicit moves out of these
-buckets belong to `/task-move`; it enforces the readiness rules on the way into
-`queued/`.
+`finalized/` and `never/` sit **outside** that shape. `/task-reprioritize`
+never moves a task in or out of them. `/task-next` prefers `finalized/` and
+ignores `never/`. Explicit moves out belong to `/task-move`.
 
 ## See also
 

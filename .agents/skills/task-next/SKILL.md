@@ -62,7 +62,7 @@ tasks root — append `git log -1 --format=%cs -- <tasks>/focus.md` to the same 
 
 **Candidates are the `*.md` files in the first non-empty bucket**, in the order
 `finalized/` → `now/` → `soon/` → `later/`. Exclude `README.md` and `_TEMPLATE.md`. `never/` is never
-read; `queued/` (where it exists) belongs to the autonomous runner and is never read
+read; legacy `queued/` briefs require recovery and are never selected
 either. A later bucket enters **only if** every candidate in the chosen one is screened
 out in step 3 — say so when that happens ("`finalized/` is all blocked; picking from
 `now/`" or "`now/` is all blocked; picking from `soon/`").

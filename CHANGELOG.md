@@ -3,6 +3,13 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **Autonomous task execution is retired.** The task-queue command now refuses
+  to launch, and shared skills use `task-next` → `task-finalize` →
+  `task-implement`. Recover any surviving queued briefs before removing the
+  legacy bucket. Interactive execution guidance and the separate audit runner's
+  termination helper remain available at their compatibility paths. Consumers
+  adopt the retirement by advancing their Workshop pin.
+
 - **`/problem-plan` adds the problem lifecycle's decide stage.** Given one
   record, it gates on the record's current status and any existing plan, widens
   the candidate fixes with a small read-only fan-out when the fix is not

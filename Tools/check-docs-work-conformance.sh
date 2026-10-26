@@ -355,19 +355,11 @@ else
     absent 9 "no focus document — ranking runs on mechanics alone"
 fi
 
-# --- 10: queued/README.md (required alongside the queue opt-in) ---------------
-# The queue is an opt-in: its presence enables the autonomous runner, and the
-# README is what keeps the empty directory alive in git.
-if [ "$tasks_active" -eq 0 ]; then
-    absent 10 "no task system — no queue to keep alive"
-elif [ -d docs/work/tasks/queued ]; then
-    if [ -f docs/work/tasks/queued/README.md ]; then
-        pass 10 "docs/work/tasks/queued/README.md present — the queue directory is opted in and kept alive in git"
-    else
-        fail 10 "docs/work/tasks/queued/ exists but docs/work/tasks/queued/README.md is missing — the README is what keeps the empty queue directory alive in git"
-    fi
+# --- 10: autonomous execution is retired ------------------------------------
+if [ -d docs/work/tasks/queued ]; then
+    fail 10 "autonomous task queue is retired — recover surviving work and remove docs/work/tasks/queued/"
 else
-    absent 10 "no queued/ directory — the autonomous runner is not opted in"
+    pass 10 "no retired queued/ bucket"
 fi
 
 # --- 11: the document-format contract (required for task documents) -----------

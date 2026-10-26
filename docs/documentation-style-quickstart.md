@@ -80,7 +80,7 @@ who has never opened the repo should understand it.
 1-3 sentences: what and why. Start with an action verb.
 
 ## Acceptance criteria
-<!-- AC:BEGIN — DO NOT REMOVE: /task-finalize, /task-move, and the task-queue worker parse the AC list between these sentinels. -->
+<!-- AC:BEGIN — DO NOT REMOVE: /task-finalize, /task-audit, and /task-status parse the AC list between these sentinels. -->
 
 - [ ] Describe outcomes, not implementation steps
 
@@ -95,7 +95,7 @@ Write outcomes ("players can view a leaderboard"), not steps ("create a Leaderbo
 
 Three things the format depends on:
 
-- **The `AC:BEGIN` / `AC:END` sentinels are load-bearing.** `/task-finalize`, `/task-move`, `/task-status`, and the task-queue worker parse the list between them, and a file missing them will not validate or run. Keep them, and keep edits to the criteria inside them.
+- **The `AC:BEGIN` / `AC:END` sentinels are load-bearing.** `/task-finalize`, `/task-audit`, and `/task-status` parse the list between them, and a file missing them will not validate or run. Keep them, and keep edits to the criteria inside them.
 - **There is no `Created` field**, and no date line of any kind. A recorded date goes stale on every edit; git's does not. Derive it when needed: `git log --diff-filter=A --follow --format=%cs -- <task-file>`.
 - **`finalized-at` is machine-written** — `/task-finalize` records a conservative comparison baseline shared by the inspected commit and freshly fetched default branch when possible, with a limited-durability inspected-commit fallback. Consumers fully re-verify when that history is unavailable. Do not fill it by hand.
 

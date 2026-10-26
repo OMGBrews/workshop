@@ -10,8 +10,7 @@ dependencies: []
      fill in the placeholders, and delete this preamble block plus
      any optional sections you don't need.
 
-     Frontmatter fields (all four required; the task skills and the
-     task-queue runner parse them):
+     Frontmatter fields (all four required; the task skills parse them):
        - `status` — `not-started` | `in-progress` | `blocked`.
            `not-started`: filed, no work begun. `in-progress`: a human or
            Claude session is actively working it. `blocked`: work cannot
@@ -22,14 +21,11 @@ dependencies: []
            tasks go to `never/` — see `bucket-definitions.md`, beside
            this template. There is no `done` status.
        - `effort` — `small` | `medium` | `large`.
-       - `priority` — `high` | `medium` | `low`. The task-queue runner
-           claims queued tasks highest-priority first (alphabetical
-           within a priority). Default `medium`.
-       - `dependencies` — list of task slugs (queue filenames minus
-           `.md`) that must merge to `main` before this task may be
-           claimed. A strict DAG, not a hint: the runner skips this task
-           until every listed slug's brief has been queued AND has left
-           `queued/` cleanly (merged, not crashed/blocked). Default `[]`.
+       - `priority` — `high` | `medium` | `low`. Default `medium`.
+       - `dependencies` — task filenames minus `.md` that must be completed
+           before implementation. Default `[]`. Verify completion from current
+           evidence and history; absence alone can also mean renaming or rejection.
+           `task-implement` prunes satisfied edges on confirmed close-out.
 
      One further field is machine-written — do NOT fill it by hand:
        - `finalized-at` — a conservative comparison baseline shared by the
@@ -48,7 +44,7 @@ dependencies: []
      Don't use `README.md` or `_TEMPLATE.md` — those are reserved.
 
      Audience: human task authors and the `/task-create`, `/task-finalize`,
-     `/task-move`, `/task-audit`, and task-queue runner skills.
+     `/task-move`, and `/task-audit` skills.
 
      Key references — open these if you're unsure what to write:
        - `bucket-definitions.md`, beside this template — what each bucket
@@ -57,11 +53,8 @@ dependencies: []
        - the tasks directory's `README.md` — when to file a task, and any
          repo-specific authoring notes (domain jargon to avoid in In brief,
          area maps, completion requirements)
-       - `queued/README.md` (repos with an autonomous queue) — readiness
-         rules for the task-queue runner
        - `/task-finalize` — interactive open-questions resolver that also
-         validates readiness (`/task-move` handles promotion into `queued/`
-         where a queue exists) -->
+         validates readiness and moves passing briefs into `finalized/` -->
 
 # Task Title
 
@@ -115,7 +108,7 @@ dependencies: []
      If this task follows a procedure, link it here. -->
 
 ## Acceptance criteria
-<!-- AC:BEGIN — DO NOT REMOVE: /task-finalize, /task-move, and the task-queue worker parse the AC list between these sentinels. -->
+<!-- AC:BEGIN — DO NOT REMOVE: /task-finalize, /task-audit, and /task-status parse the AC list between these sentinels. -->
 
 <!-- REQUIRED. What must be true when done. Describe capabilities and outcomes,
      NOT implementation steps. Write "users can view a report" not
@@ -166,7 +159,5 @@ dependencies: []
 
 <!-- See also (for template readers, not authored tasks):
        - `./README.md` — task bucket map and repo-specific authoring notes
-       - `./queued/README.md` — readiness rules for the autonomous runner
-         (repos with a queue)
        - `/task-finalize`, `/task-move`, `/task-audit` — skills that consume
          this template -->

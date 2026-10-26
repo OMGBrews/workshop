@@ -337,7 +337,7 @@ expect "focus document links into a task bucket" 1 task_link_focus \
 
 add_queue() { mkdir -p "$1/docs/work/tasks/queued"; }
 expect "queue opted in without its README" 1 add_queue \
-    "FAIL 10" "queued/README.md is missing"
+    "FAIL 10" "autonomous task queue is retired"
 
 queue_conformant() {
     mkdir -p "$1/docs/work/tasks/queued"
@@ -347,8 +347,8 @@ queue_conformant() {
     git -C "$1" add -A
     git -C "$1" commit -qm "fixture: queue with a finalized brief"
 }
-expect "queue with README and a finalized brief is green" 0 queue_conformant \
-    "queued/README.md present" "finalized-at"
+expect "retired queue with README and finalized brief is rejected" 1 queue_conformant \
+    "FAIL 10" "autonomous task queue is retired"
 
 finalized_conformant() {
     sha=$(git -C "$1" rev-parse HEAD)
@@ -377,9 +377,9 @@ queue_bad_sha() {
     write_brief "$1/docs/work/tasks/queued" "queued-task" \
         "finalized-at: 0123456789abcdef0123456789abcdef01234567"
 }
-expect "queued brief with a nonexistent finalized-at commit warns but conforms" 0 queue_bad_sha \
+expect "retired queue with unavailable history is rejected" 1 queue_bad_sha \
     "note  11" "WARN finalized-at history is unavailable" \
-    "docs/work conformance: all evaluated clauses conform"
+    "FAIL 10" "autonomous task queue is retired"
 
 queue_malformed_sha() {
     mkdir -p "$1/docs/work/tasks/queued"
