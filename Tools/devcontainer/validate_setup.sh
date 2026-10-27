@@ -45,6 +45,26 @@ check() {
     fi
 }
 
+# --global selects one file when ~/.gitconfig exists; normal Git reads both
+# that file and the XDG global file where setup.sh writes its defaults. Ask
+# Git for its merged configuration, retain only global entries, and use the
+# last global value so host preferences still take precedence. Local, system,
+# and command-scope values cannot stand in for missing global configuration.
+global_git_value() {
+    local entries scope value result=""
+    entries="$(mktemp)" || return 1
+    if ! git config --null --show-scope --get-all "$1" > "$entries"; then
+        rm -f "$entries"
+        return 1
+    fi
+    while IFS= read -r -d '' scope && IFS= read -r -d '' value; do
+        if [ "$scope" = global ]; then result="$value"; fi
+    done < "$entries"
+    rm -f "$entries" || return 1
+    [ -n "$result" ] || return 1
+    printf '%s\n' "$result"
+}
+
 # An alias must be in BOTH rc files, not just .bashrc.
 #
 # setup.sh has always written to .bashrc and .zshrc — the base image's login shell is zsh
@@ -62,9 +82,9 @@ check_alias_both_rcfiles() {
 echo "=== Validating devcontainer setup ==="
 
 # --- Neutral: true of every image this kit has ever built --------------------------
-check "Git LFS clean filter" git config --global filter.lfs.clean
-check "Git LFS smudge filter" git config --global filter.lfs.smudge
-check "Git LFS process filter" git config --global filter.lfs.process
+check "Git LFS clean filter" global_git_value filter.lfs.clean
+check "Git LFS smudge filter" global_git_value filter.lfs.smudge
+check "Git LFS process filter" global_git_value filter.lfs.process
 # The Claude status line shells out to jq on every turn; a missing jq would leave it
 # silently blank rather than erroring visibly.
 check "jq present (status line depends on it)" command -v jq
@@ -81,12 +101,12 @@ check "jq present (status line depends on it)" command -v jq
 # cannot satisfy this check by any action taken inside it — asserting it there would go
 # red across the fleet for a rebuild nobody has done.
 #
-# --global scope, not unscoped: a repo-local identity — the hand-configured workaround
+# Global scope, not unscoped: a repo-local identity — the hand-configured workaround
 # people reach for when a container comes up anonymous — would satisfy an unscoped read
 # in exactly the no-inheritance state this exists to catch.
 if [ -f "$HOME/.config/git/config" ]; then
-    identity_name="$(git config --global --get user.name 2>/dev/null || true)"
-    identity_email="$(git config --global --get user.email 2>/dev/null || true)"
+    identity_name="$(global_git_value user.name 2>/dev/null || true)"
+    identity_email="$(global_git_value user.email 2>/dev/null || true)"
     if [ -n "$identity_name" ] && [ -n "$identity_email" ]; then
         echo "  OK: git identity present in global scope ($identity_email)"
     else

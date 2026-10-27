@@ -17,6 +17,11 @@ finalizer, and launcher runtime. A consumer's Python Dev Container feature may
 select a project-specific version later, but features layer on after the
 Dockerfile and cannot supply dependencies to `build/setup.sh`.
 
+Setup writes Git defaults to `~/.config/git/config`, leaving `~/.gitconfig`
+available for the host identity copy. The runtime validator reads Git's merged
+global scope, preserving host precedence across both files while rejecting
+repository-local substitutes for missing global configuration.
+
 Consumers that use a volume workspace may copy `workspace-bootstrap.sh` and
 their own project-local lifecycle wrapper. The public kit receives paths and
 environment values from that consumer; it does not read HQ records or assume a

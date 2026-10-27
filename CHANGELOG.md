@@ -3,6 +3,11 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **Setup validation reads both global Git configuration files.** A host
+  identity file no longer hides the LFS defaults written to the XDG global
+  file. Global precedence is preserved, and repository-local settings cannot
+  satisfy missing global filters or identity.
+
 - **The build kit installs Python before configuring the Claude launcher.**
   The root package phase supplies `python3`, so launcher installation and PATH
   finalization work before Python Dev Container features are applied.
