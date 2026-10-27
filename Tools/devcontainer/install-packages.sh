@@ -19,6 +19,7 @@ apt-get update && apt-get install -y \
     jq \
     libfontconfig1 \
     libfreetype6 \
+    python3 \
     ripgrep \
     shellcheck \
     tmux \

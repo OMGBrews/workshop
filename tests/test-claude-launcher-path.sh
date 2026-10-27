@@ -9,8 +9,10 @@ python3 - <<'PY'
 import os
 from pathlib import Path
 import shutil
+import shlex
 import stat
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -101,6 +103,45 @@ class LauncherPathTests(unittest.TestCase):
         for name, target in self.links.items():
             self.assertTrue((self.home / name).is_symlink(), name)
             self.assertEqual(os.readlink(self.home / name), target)
+
+    def test_root_packages_supply_python_before_features(self):
+        # Model a base image without Python. Only an explicit apt installation
+        # makes the real interpreter available to the real setup and launcher.
+        # Mock apt and its root cleanup so this test needs no privilege/network
+        # and cannot alter the host's package cache.
+        root = Path(self.scratch.name)
+        binaries = root / "image-bin"
+        binaries.mkdir()
+        python = binaries / "python3"
+        python.write_text("#!/bin/sh\necho 'python3: not installed' >&2\nexit 127\n")
+        python.chmod(0o755)
+        self.env["PATH"] = str(binaries) + os.pathsep + self.env["PATH"]
+        missing = subprocess.run(["python3", "--version"], env=self.env,
+                                 text=True, capture_output=True)
+        self.assertEqual(missing.returncode, 127)
+
+        privileged = root / "root-phase-bin"
+        privileged.mkdir()
+        apt = privileged / "apt-get"
+        apt.write_text(
+            "#!/bin/sh\nset -eu\n"
+            'if [ "$1" = install ]; then\n'
+            '  for package in "$@"; do\n'
+            '    if [ "$package" = python3 ]; then\n'
+            "      ln -sf " + shlex.quote(sys.executable) + " " + shlex.quote(str(python)) + "\n"
+            "    fi\n  done\nfi\n"
+        )
+        apt.chmod(0o755)
+        cleanup = privileged / "rm"
+        cleanup.write_text("#!/bin/sh\nexit 0\n")
+        cleanup.chmod(0o755)
+        env = dict(self.env, PATH=str(privileged) + os.pathsep + self.env["PATH"])
+        packages = Path(os.environ["WORKSHOP_ROOT"]) / "Tools/devcontainer/install-packages.sh"
+        installed = subprocess.run(["bash", str(packages)], env=env,
+                                   text=True, capture_output=True)
+        self.assertEqual(installed.returncode, 0, installed.stdout + installed.stderr)
+        self.setup()
+        self.assert_shell_selects_launcher("--noprofile", "--norc", "-c")
 
     def test_real_setup_finalizes_after_late_installers_and_preserves_startup(self):
         native_bytes = (self.native / "claude").read_bytes()
