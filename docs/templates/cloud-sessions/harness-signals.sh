@@ -62,6 +62,25 @@ agent_detect_session() {
   return "$rc"
 }
 
+# Legacy service/context hints. These read current values at call time and do
+# not classify the session or change the detector's outputs. Sourcing below
+# normalizes AGENT_SESSION_REMOTE; its unknown sentinel permits vendor fallback.
+# Only agent_detect_session establishes shipping/bootstrap location authority.
+harness_remote() {
+  case "${AGENT_SESSION_REMOTE:-}" in
+    ''|unknown) printf '%s\n' "${CLAUDE_CODE_REMOTE:-}" ;;
+    *) printf '%s\n' "$AGENT_SESSION_REMOTE" ;;
+  esac
+}
+
+harness_project_dir() {
+  printf '%s\n' "${AGENT_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-}}"
+}
+
+harness_agent_shell() {
+  printf '%s\n' "${AGENT_SHELL:-${CLAUDECODE:-}}"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
   detector_rc=0
   if [[ "$#" == 0 ]]; then

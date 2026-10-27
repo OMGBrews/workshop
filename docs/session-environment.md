@@ -63,6 +63,33 @@ Check the source command's status. Do not treat a non-true compatibility value a
 proof of local execution. These exports reach descendants only: sourcing a library
 inside a SessionStart hook cannot configure a later independent shell process.
 
+### Legacy service and context hints
+
+Sourcing also defines three compatibility helpers for existing service
+orchestration and context discovery:
+
+| Helper | Current-value lookup |
+|---|---|
+| `harness_remote` | Nonempty `AGENT_SESSION_REMOTE`, except `unknown`; otherwise `CLAUDE_CODE_REMOTE`, or empty when undeclared. |
+| `harness_project_dir` | Nonempty `AGENT_PROJECT_DIR`; otherwise `CLAUDE_PROJECT_DIR`, or empty. |
+| `harness_agent_shell` | Nonempty `AGENT_SHELL`; otherwise `CLAUDECODE`, or empty. |
+
+Each call reads the variables as they exist at that moment, after any detector
+normalization performed by sourcing. No pre-source values are retained.
+`unknown` is a fallback sentinel only for the remote helper; project and shell
+hints retain their original empty-value fallback behavior. The helpers print
+literal values and do not change classifier outputs or establish shipping or
+bootstrap authority.
+
+For example, sourcing with legacy remote `false` and a positive cloud marker
+still classifies the session as cloud and normalizes `AGENT_SESSION_REMOTE` to
+`true`. The helper then reads `true`. If a caller subsequently changes that
+compatibility variable to `false`, the helper reports the current `false`
+hint even while the classifier's earlier environment result remains cloud.
+Re-evaluate `agent_detect_session` and check its status whenever authoritative
+location is needed; a legacy hint of `false`, empty, or `unknown` is not proof
+of local execution.
+
 ## Provisioning and delivery
 
 Local launchers declare `AGENT_SESSION_ENVIRONMENT=local`; cloud launchers declare
@@ -96,3 +123,5 @@ updates remain separately requested work.
 unknown and invalid inputs, conflicts, explicit overrides, legacy callers, capability
 separation, and the ship command resolved through a differently named mount. The
 bootstrap and declaration tests exercise missing and drifted deployed copies.
+`tests/test-harness-context-hints.sh` exercises the legacy helpers' call-time
+lookups, neutral precedence, vendor fallbacks and classifier non-interference.
