@@ -208,5 +208,12 @@ if [ "$harness_count" -eq 0 ]; then
     exit 1
 fi
 
+# Installers may prepend native binary paths in shell startup files. Run
+# harness-owned finalizers only after every installer has finished.
+for finalizer in "$BUILD_DIR"/finalize-*.sh; do
+    [ -f "$finalizer" ] || break
+    bash "$finalizer"
+done
+
 echo "  $harness_count harness(es) configured: $(tr '\n' ' ' < "$HARNESS_MANIFEST")"
 echo "=== Devcontainer setup complete ==="

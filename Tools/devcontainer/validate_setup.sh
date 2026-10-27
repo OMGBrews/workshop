@@ -113,6 +113,9 @@ validate_claude() {
     check "Claude Enter inserts newline" jq -e '.bindings[] | select(.context == "Chat") | .bindings.enter == "chat:newline"' "$HOME/.claude/keybindings.json"
     check "Claude Shift+Enter submits" jq -e '.bindings[] | select(.context == "Chat") | .bindings["shift+enter"] == "chat:submit"' "$HOME/.claude/keybindings.json"
     check "Claude Code CLI responds (including native CLI behind launcher)" check_claude_cli
+    if [ -x "$HOME/.local/share/workshop/bin/claude" ]; then
+        check "Claude PATH selects the installed launcher" check_claude_launcher_path
+    fi
     check "'cc' alias in bashrc and zshrc" check_alias_both_rcfiles cc
 }
 
@@ -120,6 +123,12 @@ check_claude_cli() {
     local cli
     cli="$(harness_locate claude)" || return 1
     "$cli" --version
+}
+
+check_claude_launcher_path() {
+    local selected
+    selected="$(command -v claude)" || return 1
+    [ "$(readlink -f "$selected")" = "$(readlink -f "$HOME/.local/share/workshop/bin/claude")" ]
 }
 
 validate_omp() {
