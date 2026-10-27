@@ -12,6 +12,11 @@ Copy the directory, not selected files: the setup script discovers harnesses
 and its scripts resolve siblings beside it. A generic host-side connection
 helper is available as `connect.sh`.
 
+The root package phase supplies Python 3 for the launcher installer, startup
+finalizer, and launcher runtime. A consumer's Python Dev Container feature may
+select a project-specific version later, but features layer on after the
+Dockerfile and cannot supply dependencies to `build/setup.sh`.
+
 Consumers that use a volume workspace may copy `workspace-bootstrap.sh` and
 their own project-local lifecycle wrapper. The public kit receives paths and
 environment values from that consumer; it does not read HQ records or assume a

@@ -3,6 +3,10 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **The build kit installs Python before configuring the Claude launcher.**
+  The root package phase supplies `python3`, so launcher installation and PATH
+  finalization work before Python Dev Container features are applied.
+
 - **Claude's launcher keeps priority after shell startup.** The build kit
   finalizes its PATH hooks after all harness installers, retaining launcher
   selection when another installer or a login profile prepends native binary
