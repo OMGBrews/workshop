@@ -3,6 +3,21 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **Three cloud dispatch skills fan a bucket out to Claude Code on the web.**
+  `problem-plan-cloud`, `task-finalize-cloud`, and `task-implement-cloud` give
+  every eligible record in one bucket its own cloud session running the matching
+  stage skill, from a cloud session through the session tools or from a local
+  session through `claude --cloud`. They read the records from the default
+  branch, skip work already decided, planned, or in flight, print the plan
+  before anything launches, verify each session, and report its link.
+  `task-implement-cloud` classifies each remaining acceptance criterion against
+  the consuming repository's `docs/work/claude-code-web.md`, which must carry a
+  "What a cloud session can do" section and may add its own table of examples.
+  The shared launch procedure is `problem-plan-cloud/cloud-dispatch.md`.
+  Consumers get the skills by advancing their Workshop pointer and re-running
+  `Tools/sync-skill-symlinks.sh`; a project that carried local copies deletes
+  them first.
+
 - **Autonomous task execution is retired.** The task-queue command now refuses
   to launch, and shared skills use `task-next` → `task-finalize` →
   `task-implement`. Recover any surviving queued briefs before removing the
