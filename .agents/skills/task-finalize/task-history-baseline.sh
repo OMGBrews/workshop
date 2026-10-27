@@ -32,12 +32,14 @@ if ! repo="$(git -C "$repo" rev-parse --show-toplevel 2>/dev/null)"; then
 fi
 repo="$(cd -P "$repo" && pwd)"
 
-if ! [[ "$inspected" =~ ^[0-9a-f]{40}$ ]] \
-    || ! git -C "$repo" cat-file -e "$inspected^{commit}" 2>/dev/null; then
+if ! resolved_inspected="$(git -C "$repo" rev-parse --verify --quiet --end-of-options "$inspected^{commit}" 2>/dev/null)"; then
     emit STATUS error
     emit REASON "inspected commit is unavailable: $inspected"
     exit 2
 fi
+
+# Normalize before either mode can emit or compare the inspected commit.
+inspected="$resolved_inspected"
 
 if [ "$mode" = check ]; then
     stamp="$3"

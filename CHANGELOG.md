@@ -3,6 +3,11 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **Task history checks accept Git revision names.** The inspected commit may
+  be `HEAD`, an unambiguous short hash, or a branch name. Both modes resolve it
+  to a full commit SHA before comparisons or fallback output; recorded
+  `finalized-at` stamps still require a lowercase 40-hex SHA.
+
 - **Legacy service/context hint helpers remain available beside the session
   detector.** `harness_remote`, `harness_project_dir`, and
   `harness_agent_shell` resolve current neutral values and vendor fallbacks
