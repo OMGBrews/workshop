@@ -3,6 +3,12 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **Legacy service/context hint helpers remain available beside the session
+  detector.** `harness_remote`, `harness_project_dir`, and
+  `harness_agent_shell` resolve current neutral values and vendor fallbacks
+  without changing the detector's classification or authority. The normalized
+  remote `unknown` sentinel permits fallback; undeclared hints remain empty.
+
 - **Setup validation reads both global Git configuration files.** A host
   identity file no longer hides the LFS defaults written to the XDG global
   file. Global precedence is preserved, and repository-local settings cannot
