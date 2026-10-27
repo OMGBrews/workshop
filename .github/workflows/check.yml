@@ -19,7 +19,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install shellcheck
-        run: sudo apt-get update && sudo apt-get install --yes shellcheck
+      - name: Install check dependencies
+        run: sudo apt-get update && sudo apt-get install --yes shellcheck zsh
       - name: Run Workshop checks
         run: make check

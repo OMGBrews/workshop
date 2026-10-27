@@ -33,6 +33,13 @@ Rebuild and confirm `command -v claude` selects the launcher, while
 The existing `cc` alias calls the same launcher. Installing the file alone or
 setting PATH only in a shell rc file does not establish adoption.
 
+After all harness installers finish, `build/finalize-claude.sh` restores the
+launcher prefix at the end of Bash, Zsh, and login startup files. This ordering
+matters because another installer or the default profile can prepend
+`~/.local/bin` and shadow the image PATH. Existing startup content and symlinks
+are preserved; no higher-priority login file is created. Verify both a fresh
+interactive terminal and a non-interactive command after rebuilding.
+
 At each local launch, the launcher finds the current Git checkout and checks
 its generated standing-rule links. For each rule supplied by that checkout,
 it excludes only generated ancestor links to that rule, using exact escaped

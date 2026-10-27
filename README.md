@@ -35,7 +35,9 @@ for the image-build path, the live-apply command, and the host-terminal prerequi
 ## Checks and releases
 
 Run `make check` from a standalone clone to execute Workshop's complete public
-verification suite. GitHub Actions runs that same command for pushes, pull requests, and
+verification suite. It requires Bash, Git, Python 3.11+, jq, ShellCheck, and
+Zsh; the launcher tests exercise real Bash and Zsh startup behavior.
+GitHub Actions runs that same command for pushes, pull requests, and
 tags. Maintainers create milestone tags and GitHub Releases manually after the
 check passes; tags are immutable and identify the exact release commit. There
 is no promised release cadence or semantic-versioning compatibility contract.
