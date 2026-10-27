@@ -18,6 +18,14 @@ they create a manually initiated milestone tag or GitHub Release.
   `Tools/sync-skill-symlinks.sh`; a project that carried local copies deletes
   them first.
 
+- **The local Claude launcher excludes ancestor standing-rule links per
+  process.** The devcontainer build kit installs a separate PATH shim that
+  preserves native settings and updates; consumers adopt it with an explicit
+  image PATH change and a rebuild. It retains each checkout's own rules and
+  clean-library inheritance without writing layout-dependent checkout
+  settings. Fresh trusted-import runtime evidence is required before rollout;
+  the shared regression suite checks argument and settings preservation.
+
 - **Autonomous task execution is retired.** The task-queue command now refuses
   to launch, and shared skills use `task-next` → `task-finalize` →
   `task-implement`. Recover any surviving queued briefs before removing the

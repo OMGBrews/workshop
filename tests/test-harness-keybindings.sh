@@ -62,6 +62,11 @@ run_harness() {
 }
 
 run_harness claude
+test -x "$SCRATCH_HOME/.local/share/workshop/bin/claude" \
+  || fail "Claude PATH launcher was not installed as an executable"
+cmp "$BUILD_DIR/claude-launcher.py" "$SCRATCH_HOME/.local/share/workshop/bin/claude" \
+  || fail "Claude PATH launcher differs from the build-kit source"
+test -x "$WORK/claude" || fail "native Claude executable was removed"
 run_harness codex
 run_harness omp
 

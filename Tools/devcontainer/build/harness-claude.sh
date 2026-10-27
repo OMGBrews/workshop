@@ -15,6 +15,10 @@ source "$BUILD_DIR/lib.sh"
 
 # 1. Claude Code CLI
 harness_install_via_curl claude https://claude.ai/install.sh "Claude Code CLI"
+# An adopted image can have the PATH shim but lack its native executable.
+# Finding the shim alone must never count as a usable Claude installation.
+claude_probe="$(harness_locate claude)"
+"$claude_probe" --version
 
 # 2. Claude Code settings (YOLO mode for sandbox) + status line
 CLAUDE_DIR="$HOME/.claude"
@@ -192,7 +196,21 @@ chmod +x "$statusline_tmp"
 mv -f "$statusline_tmp" "$CLAUDE_DIR/statusline.sh"
 echo "  Claude status line installed"
 
-# 5. 'cc' — launch Claude Code with permission prompts skipped.
+# 5. Per-process ancestor-rule exclusions. Keep the native install untouched so
+# `claude update` continues to own it. Consumer Dockerfiles must put this bin
+# directory before the native CLI on PATH (see ../README.md); shell aliases
+# alone do not cover direct launches or non-interactive shells.
+LAUNCHER_SRC="$BUILD_DIR/claude-launcher.py"
+LAUNCHER_BIN="$HOME/.local/share/workshop/bin"
+python3 -c 'import ast, pathlib, sys; ast.parse(pathlib.Path(sys.argv[1]).read_text())' "$LAUNCHER_SRC"
+mkdir -p "$LAUNCHER_BIN"
+launcher_tmp="$(mktemp "$LAUNCHER_BIN/.claude.XXXXXX")"
+cp "$LAUNCHER_SRC" "$launcher_tmp"
+chmod +x "$launcher_tmp"
+mv -f "$launcher_tmp" "$LAUNCHER_BIN/claude"
+echo "  Claude launcher installed (consumer PATH must prefer $LAUNCHER_BIN)"
+
+# 6. 'cc' — launch Claude Code with permission prompts skipped.
 #
 # Safe here and nowhere else: the container is the sandbox. See the README's
 # "Launch shortcuts and permission behavior" section for the contract this shares
