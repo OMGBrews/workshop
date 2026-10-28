@@ -77,6 +77,24 @@ commit_file "$REPO" tracked.txt first 'tracked change'
 INSPECTED="$(git -C "$REPO" rev-parse HEAD)"
 expect_check ancestor usable "$REPO" "$INSPECTED" "$BASE"
 expect_check same-commit usable "$REPO" "$INSPECTED" "$INSPECTED"
+# Git revision inputs must behave like their resolved full commit, while the
+# recorded finalized-at marker remains an immutable lowercase full SHA.
+SHORT="$(git -C "$REPO" rev-parse --short HEAD)"
+for revision in HEAD "$SHORT" trunk; do
+    expect_check "inspected $revision" usable "$REPO" "$revision" "$BASE"
+    assert_equal "inspected $revision check baseline" "$(field BASELINE)" "$BASE"
+    select_conservative "inspected $revision" "$REPO" "$revision" "$BASE"
+done
+for stamp in HEAD "$SHORT" trunk "${INSPECTED^^}"; do
+    expect_check "symbolic or noncanonical stamp $stamp" malformed "$REPO" "$INSPECTED" "$stamp"
+done
+BLOB="$(git -C "$REPO" rev-parse HEAD:tracked.txt)"
+for revision in no-such-revision "$BLOB" --all; do
+    expect_check "invalid inspected $revision" error "$REPO" "$revision" "$BASE"
+    invoke select "$REPO" "$revision"
+    assert_equal "invalid inspected $revision selection status" "$(field STATUS)" error
+    assert_equal "invalid inspected $revision selection exit" "$RC" 2
+done
 expect_check missing-object reverify "$REPO" "$INSPECTED" 1111111111111111111111111111111111111111
 expect_check malformed-marker malformed "$REPO" "$INSPECTED" not-a-commit
 BLOB="$(git -C "$REPO" rev-parse HEAD:tracked.txt)"
@@ -97,6 +115,15 @@ select_conservative non-main-default "$REPO" "$INSPECTED" "$BASE"
 # its limited durability. Never substitute whichever checkout HEAD is current.
 git -C "$REPO" remote remove origin
 select_limited no-remote "$REPO" "$INSPECTED"
+# HEAD now names the sibling commit; trunk and the short hash still name
+# INSPECTED. Resolve each argument rather than substituting checkout HEAD.
+for revision in HEAD "$SHORT" trunk; do
+    resolved="$(git -C "$REPO" rev-parse "$revision^{commit}")"
+    invoke select "$REPO" "$revision"
+    assert_equal "no-remote $revision selection exit" "$RC" 0
+    assert_equal "no-remote $revision durability" "$(field DURABILITY)" limited
+    assert_equal "no-remote $revision resolved baseline" "$(field BASELINE)" "$resolved"
+done
 
 make_remote unavailable
 commit_file "$REPO" feature.txt change 'unpublished work'
