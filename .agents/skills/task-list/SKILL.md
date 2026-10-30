@@ -14,7 +14,7 @@ Summarize all tasks in this repo's tasks directory.
 
 ## Phase 1 — Find Tasks
 
-List all `.md` files in `<tasks>/now/`, `<tasks>/soon/`, `<tasks>/later/`, `<tasks>/finalized/`, and `<tasks>/never/` (with a file-glob lookup). Exclude `README.md` and `_TEMPLATE.md` files.
+List all `.md` files in `<tasks>/now/`, `<tasks>/soon/`, `<tasks>/later/`, `<tasks>/finalized/`, and `<tasks>/parked/` (with a file-glob lookup). Exclude `README.md` and `_TEMPLATE.md` files.
 
 If no task files are found, print "No tasks found in `<tasks>/`." and stop.
 
@@ -33,7 +33,7 @@ A task with bold-metadata lines (`**Status**: Not Started`) instead of frontmatt
 
 ## Phase 3 — Present Results
 
-Print one table per bucket, in this order: Finalized, Now, Soon, Later, Never. Only include buckets that have tasks. Label Finalized as “ready for supervised implementation” so it is not mistaken for completed work.
+Print one table per bucket, in this order: Finalized, Now, Soon, Later, Parked. Only include buckets that have tasks. Label Finalized as “ready for supervised implementation” so it is not mistaken for completed work.
 
 Format:
 

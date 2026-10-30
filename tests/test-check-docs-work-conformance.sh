@@ -70,7 +70,7 @@ make_conformant() {
     git_init "$1"
     mkdir -p "$1/docs/work/tasks/now" "$1/docs/work/tasks/soon" \
              "$1/docs/work/tasks/later" "$1/docs/work/tasks/finalized" \
-             "$1/docs/work/tasks/never"
+             "$1/docs/work/tasks/parked"
     cat >"$1/docs/work/definition-of-done.md" <<'EOF'
 # Definition of done
 
@@ -83,7 +83,7 @@ EOF
     write_brief "$1/docs/work/tasks/now" "a-fixture-task"
     write_brief "$1/docs/work/tasks/soon" "b-fixture-task"
     write_brief "$1/docs/work/tasks/later" "c-fixture-task"
-    write_brief "$1/docs/work/tasks/never" "d-fixture-task"
+    write_brief "$1/docs/work/tasks/parked" "d-fixture-task"
     git -C "$1" add -A
     git -C "$1" commit -qm "fixture: conformant docs/work"
 }
@@ -183,7 +183,7 @@ rm -rf "$d"
 make_conformant "$d"
 out=$(bash "$SCRIPT" "$d" 2>&1) && rc=0 || rc=$?
 [ "$rc" -eq 0 ] || fail "conformant fixture: exit $rc, wanted 0"
-for n in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do
+for n in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17; do
     printf '%s\n' "$out" | grep -Eq "(^| )$n " || fail "conformant: no verdict for clause $n"
 done
 # Its definition of done is in the older single-table shape, so clause 6
@@ -349,6 +349,17 @@ queue_conformant() {
 }
 expect "retired queue with README and finalized brief is rejected" 1 queue_conformant \
     "FAIL 10" "autonomous task queue is retired"
+
+never_bucket() { git -C "$1" mv docs/work/tasks/parked docs/work/tasks/never; }
+expect "never/ task bucket not yet renamed parked/" 1 never_bucket \
+    "FAIL 17" "the never/ task bucket was renamed parked/" \
+    "FAIL 1" "missing planning bucket docs/work/tasks/parked/"
+
+parked_brief_malformed() {
+    sed -i 's/^status: .*/status: done/' "$1/docs/work/tasks/parked/d-fixture-task.md"
+}
+expect "parked briefs are format-validated" 1 parked_brief_malformed \
+    "FAIL 11" "parked/d-fixture-task.md"
 
 finalized_conformant() {
     sha=$(git -C "$1" rev-parse HEAD)

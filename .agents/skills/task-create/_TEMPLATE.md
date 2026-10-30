@@ -18,7 +18,7 @@ dependencies: []
            else's PR, a third-party fix, a vendor decision) — use
            `## Open questions` for blocking decisions, not this field.
            Completed tasks are deleted (git preserves history); parked
-           tasks go to `never/` — see `bucket-definitions.md`, beside
+           tasks go to `parked/` — see `bucket-definitions.md`, beside
            this template. There is no `done` status.
        - `effort` — `small` | `medium` | `large`.
        - `priority` — `high` | `medium` | `low`. Default `medium`.
@@ -26,6 +26,11 @@ dependencies: []
            before implementation. Default `[]`. Verify completion from current
            evidence and history; absence alone can also mean renaming or rejection.
            `task-implement` prunes satisfied edges on confirmed close-out.
+
+     One optional author field, only on a parked brief whose unpark
+     condition is a date:
+       - `unpark-after` — `YYYY-MM-DD`. Supplements the brief's required
+           `## Parked` section; see `bucket-definitions.md`.
 
      One further field is machine-written — do NOT fill it by hand:
        - `finalized-at` — a conservative comparison baseline shared by the

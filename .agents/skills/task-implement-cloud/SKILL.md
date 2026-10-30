@@ -38,7 +38,7 @@ unfinalized brief needs `task-finalize-cloud` before it is worth a session.
 ## Repo conventions (resolve first)
 
 - **Tasks root**: `docs/work/tasks/`. This skill reads `finalized/`; dependency
-  checks also read `now/`, `soon/`, `later/`, `never/`, and a legacy `queued/`
+  checks also read `now/`, `soon/`, `later/`, `parked/`, and a legacy `queued/`
   where one survives. The shared [task bucket definitions](../task-create/bucket-definitions.md)
   say what each holds.
 - **What a cloud session can do**: the section of that name in the repository's
@@ -91,7 +91,7 @@ task is not classified.
    `## Blocked` section.
 3. **Unmet dependency.** For each slug in `dependencies:`, look for a brief of that
    name under every tasks bucket in the snapshot, by explicit path. A live brief,
-   in `never/` too, means the dependency has not landed: skip, naming it. A missing
+   in `parked/` too, means the dependency has not landed: skip, naming it. A missing
    brief is not proof of completion, because `task-implement` requires history to
    tell completion from a rename. Find the newest commit that removed it with
    `git log --diff-filter=D --format=%h -n 1 "$default" -- ":(glob)docs/work/tasks/**/<slug>.md"`,

@@ -11,7 +11,7 @@ documentation it names, the git history, and anything else relevant before
 delivering your report. You decide what is important to report; there is no
 template. Given a task file (`task-status <task-file>`), go deep on that one.
 Given none, sweep the tasks root — `docs/work/tasks/` — buckets
-`finalized/ now/ soon/ later/ never/`, plus any legacy `queued/` briefs awaiting recovery — and keep each verdict brief. Scope is this repo only; sibling
+`finalized/ now/ soon/ later/ parked/`, plus any legacy `queued/` briefs awaiting recovery — and keep each verdict brief. Scope is this repo only; sibling
 clones in a workspace checkout are out of scope.
 
 **Strictly read-only.** Report; never edit, delete, or move anything. Route

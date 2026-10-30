@@ -88,7 +88,7 @@ docs/
     ├── tasks/                  [required for repos on the task system]
     │   ├── README.md           [optional curation]
     │   ├── focus.md            [opt-in]
-    │   ├── now/ soon/ later/ finalized/ never/
+    │   ├── now/ soon/ later/ finalized/ parked/
     │   └── queued/ (+blocked/) [opt-in]
     ├── kaizen/                 [opt-in]
     ├── problems/               [opt-in]
@@ -107,7 +107,7 @@ docs/
 | `setup/` | Initial setup and configuration | `development-environment.md` |
 | `style-guides/` | Coding and documentation conventions | `csharp-style-guide.md` |
 | `testing/` | Test plans, coverage strategy | `test-coverage-plan.md` |
-| `work/` | The machine's directory — every file and directory the shared devtools machine reads and writes | `definition-of-done.md`, `claude-code-web.md`, `consumed-by.md`, `tasks/` (+`now/soon/later/finalized/never`, opt-in `queued/`), `kaizen/`, `problems/`, `handoffs/`, `thoughts/` |
+| `work/` | The machine's directory — every file and directory the shared devtools machine reads and writes | `definition-of-done.md`, `claude-code-web.md`, `consumed-by.md`, `tasks/` (+`now/soon/later/finalized/parked`, opt-in `queued/`), `kaizen/`, `problems/`, `handoffs/`, `thoughts/` |
 
 ### File naming
 
@@ -772,7 +772,7 @@ Located at `docs/work/definition-of-done.md`, one per repository. Six sections i
 
 ### Task documents
 
-Located in `docs/work/tasks/`, with planning buckets `now/`, `soon/`, `later/`, and `never/`; the lifecycle bucket `finalized/` for briefs ready for supervised implementation. Autonomous task execution and its `queued/` bucket are retired.
+Located in `docs/work/tasks/`, with planning buckets `now/`, `soon/`, `later/`, and `parked/`; the lifecycle bucket `finalized/` for briefs ready for supervised implementation. Autonomous task execution and its `queued/` bucket are retired.
 
 Tasks define the **problem and desired outcome** — not the implementation plan. Leave architectural decisions and step-by-step instructions for plan mode, or for `/task-finalize`, which writes a `## Recommended solution` while its analysis is fresh.
 

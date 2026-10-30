@@ -83,12 +83,12 @@ means, against the snapshot. Skip what they catch:
 1. **Decided.** The record carries a `**Disposition**:` line. Skip, quoting the
    line, unless `include-planned` was given.
 2. **Planned.** Search for the record's filename without `.md` across
-   `docs/work/tasks/now`, `soon`, `later`, `finalized`, `never`, `queued` where it
+   `docs/work/tasks/now`, `soon`, `later`, `finalized`, `parked`, `queued` where it
    exists, and `docs/work/handoffs/` where it exists, in the snapshot, by explicit
    path, never a recursive search from the root whose omissions are invisible. A
    hit from a live task: skip as "already planned: see `<task>`", unless
-   `include-planned` was given. A hit from `never/` only is a parked rejection:
-   skip and say so.
+   `include-planned` was given. A hit from `parked/` only is parked work:
+   skip and quote its parking note.
 3. **In flight.** Apply cloud dispatch step 3 with the tag `problem-plan:<slug>`.
    `include-planned` does not override this gate: a second session on a record
    already being planned is a duplicate, not a re-plan.

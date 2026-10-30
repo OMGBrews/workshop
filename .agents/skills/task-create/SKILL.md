@@ -36,14 +36,14 @@ If no tasks root exists at all, offer to create one at `docs/work/tasks/` (the
 machine-owned location):
 - `docs/work/tasks/` with a `README.md` — the template is not copied or linked into
   the tasks root; Phase 3 reads the canonical file from inside this skill.
-- `docs/work/tasks/now/`, `docs/work/tasks/soon/`, `docs/work/tasks/later/`, `docs/work/tasks/finalized/`, `docs/work/tasks/never/` each with a one-liner `README.md`. Write each one-liner from [`bucket-definitions.md`](bucket-definitions.md) and point at it for the definition of record — the one-liner is a courtesy summary, not a second definition. Write that pointer as the repo-root-relative path in prose (`.agents/skills/task-create/bucket-definitions.md` — the repo's own canonical skills surface, whatever the devtools tree is mounted as, per [`skill-path-resolution.md`](../../../docs/skill-path-resolution.md)), **not** a markdown relative link: the tree sits outside the tasks tree, so a `../../..` hyperlink renders broken on GitHub even where it resolves on disk. (Do **not** create `queued/` — autonomous execution is retired.)
+- `docs/work/tasks/now/`, `docs/work/tasks/soon/`, `docs/work/tasks/later/`, `docs/work/tasks/finalized/`, `docs/work/tasks/parked/` each with a one-liner `README.md`. Write each one-liner from [`bucket-definitions.md`](bucket-definitions.md) and point at it for the definition of record — the one-liner is a courtesy summary, not a second definition. Lead `parked/README.md` with deferral and the return path, not rejection: "Parked: deferred work nobody is watching; promote with `/task-move`." Write that pointer as the repo-root-relative path in prose (`.agents/skills/task-create/bucket-definitions.md` — the repo's own canonical skills surface, whatever the devtools tree is mounted as, per [`skill-path-resolution.md`](../../../docs/skill-path-resolution.md)), **not** a markdown relative link: the tree sits outside the tasks tree, so a `../../..` hyperlink renders broken on GitHub even where it resolves on disk. (Do **not** create `queued/` — autonomous execution is retired.)
 
 If the user declines, stop.
 
 ## Phase 2 — Gather Info
 
 1. If no task name was provided in the arguments, ask for one (kebab-case, action-verb-first, e.g., `fix-login-crash`).
-2. Ask which bucket to place the task in. Options: `now`, `soon` (default), `later`. (`finalized/` is entered only by successful `task-finalize`; `never/` is entered later via `task-move`.)
+2. Ask which bucket to place the task in. Options: `now`, `soon` (default), `later`. (`finalized/` is entered only by successful `task-finalize`; `parked/` is entered later via `task-move`.)
 3. Ask for a brief goal statement (1-2 sentences starting with an action verb).
 4. Ask for effort estimate: `small`, `medium` (default), or `large`.
 5. Priority defaults to `medium` and dependencies to `[]` — don't ask unless the user signals urgency (then offer `high`/`medium`/`low`) or names other tasks this one must wait for (then record their slugs as dependencies).

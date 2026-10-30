@@ -56,7 +56,7 @@ make_good_repo() { # <repo>
     local repo="$1"
     git_init "$repo"
     mkdir -p "$repo/docs/work/tasks/now" "$repo/docs/work/tasks/soon" \
-        "$repo/docs/work/tasks/later" "$repo/docs/work/tasks/never"
+        "$repo/docs/work/tasks/later" "$repo/docs/work/tasks/parked"
     printf 'fixture baseline\n' >"$repo/README.md"
     git -C "$repo" add README.md
     git -C "$repo" commit -qm 'fixture: readiness baseline'

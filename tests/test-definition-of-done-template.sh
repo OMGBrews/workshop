@@ -156,7 +156,7 @@ fi
 cp "$PAGE" "$REPO/docs/work/definition-of-done.md"
 mkdir -p "$REPO/docs/work/tasks/now" "$REPO/docs/work/tasks/soon" \
          "$REPO/docs/work/tasks/later" "$REPO/docs/work/tasks/finalized" \
-         "$REPO/docs/work/tasks/never"
+         "$REPO/docs/work/tasks/parked"
 rc=0
 out=$(bash "$CONFORMANCE" "$REPO" 2>&1) || rc=$?
 if [ "$rc" -eq 1 ] && printf '%s\n' "$out" | grep -Eq '^FAIL +6 .*is empty' \

@@ -35,7 +35,7 @@ Its five blocks are the discipline this skill runs on:
 
 ## Phase 1 — Pick the task
 
-If the argument resolves to a real task file under `<tasks>/{finalized,now,soon,later,never}/`, use it. Print the resolved path.
+If the argument resolves to a real task file under `<tasks>/{finalized,now,soon,later,parked}/`, use it. Print the resolved path.
 
 Otherwise, with no usable argument:
 
