@@ -61,7 +61,7 @@ In one command: list `finalized/`, `now/`, `soon/`, and `later/`, and — if `fo
 tasks root — append `git log -1 --format=%cs -- <tasks>/focus.md` to the same command.
 
 **Candidates are the `*.md` files in the first non-empty bucket**, in the order
-`finalized/` → `now/` → `soon/` → `later/`. Exclude `README.md` and `_TEMPLATE.md`. `never/` is never
+`finalized/` → `now/` → `soon/` → `later/`. Exclude `README.md` and `_TEMPLATE.md`. `parked/` is never
 read; legacy `queued/` briefs require recovery and are never selected
 either. A later bucket enters **only if** every candidate in the chosen one is screened
 out in step 3 — say so when that happens ("`finalized/` is all blocked; picking from
@@ -136,7 +136,7 @@ Then one honesty line and one offer, and stop — never invoke anything:
 ### When nothing is workable
 
 An empty answer is a failed answer. All buckets empty: say so and offer `task-create`
-(note how many tasks sit in `never/`, excluded by convention). Everything screened out
+(note how many tasks sit in `parked/`, excluded by convention). Everything screened out
 everywhere: list each task with its blocker in a short table; if some blocker is itself
 a task in this repo, recommend *that* as the pick; if every blocker is external, say
 the queue needs new work and offer `task-create`.

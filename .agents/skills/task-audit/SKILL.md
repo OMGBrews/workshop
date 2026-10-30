@@ -32,7 +32,7 @@ Execute the following phases in order.
 
 1. Read `<tasks>/README.md` to refresh on the task document format and conventions.
 
-2. List all `.md` files under `<tasks>/` (with a file-glob lookup; bucket folders: `now/`, `soon/`, `later/`, `finalized/`, `never/`). **Exclude README files, `_TEMPLATE.md`, `focus.md`, and everything under `queued/`** — the first three describe the folder or the repo's current focus, not tasks; legacy queued work needs recovery first. Finalized briefs remain in scope because their code observations can rot while they wait. `focus.md` in particular sits at the tasks root beside the buckets and is prose, not a task document: audited as one it fails every structural check it was never meant to pass.
+2. List all `.md` files under `<tasks>/` (with a file-glob lookup; bucket folders: `now/`, `soon/`, `later/`, `finalized/`, `parked/`). **Exclude README files, `_TEMPLATE.md`, `focus.md`, and everything under `queued/`** — the first three describe the folder or the repo's current focus, not tasks; legacy queued work needs recovery first. Finalized briefs remain in scope because their code observations can rot while they wait. `focus.md` in particular sits at the tasks root beside the buckets and is prose, not a task document: audited as one it fails every structural check it was never meant to pass.
 
 3. Read every task document. For each, extract:
    - YAML frontmatter (`status`, `effort`, `priority`, `dependencies`); the creation date comes from `git log --diff-filter=A --follow` when needed

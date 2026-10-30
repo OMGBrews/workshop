@@ -30,14 +30,14 @@ All optional, in any order, besides the shared slug filter and `dry-run`:
 
 - a bucket name: `now`, the default, `soon`, or `later`. `finalized` is not
   dispatched, because those briefs are already finalized and the next stage is
-  `task-implement-cloud`; `never` holds parked tasks nobody is watching; and
+  `task-implement-cloud`; `parked` holds deferred tasks nobody is watching; and
   `queued/` is a retired bucket, whose legacy briefs are recovered through
   `task-move`, never dispatched.
 
 ## Repo conventions (resolve first)
 
 - **Tasks root**: `docs/work/tasks/`, with the planning buckets `now/`, `soon/`,
-  `later/`, and `never/`, and the lifecycle bucket `finalized/`. The shared
+  `later/`, and `parked/`, and the lifecycle bucket `finalized/`. The shared
   [task bucket definitions](../task-create/bucket-definitions.md) say what each
   holds. A bucket's `README.md` is not a task.
 - **The stage skill**: [`task-finalize`](../task-finalize/SKILL.md). Read its

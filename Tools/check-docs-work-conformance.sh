@@ -70,7 +70,7 @@ fi
 
 failures=0
 notes=0
-task_brief_buckets=(now soon later finalized never queued queued/blocked)
+task_brief_buckets=(now soon later finalized parked queued queued/blocked)
 
 pass()   { printf 'ok   %-2s %s\n' "$1" "$2"; }
 fail()   { printf 'FAIL %-2s %s\n' "$1" "$2"; failures=$((failures + 1)); }
@@ -116,7 +116,7 @@ else
     if [ ! -d docs/work/tasks ]; then
         problems="${problems}docs/work/tasks/ does not exist — migrate the tasks tree to the machine-owned location; "
     fi
-    for b in now soon later never; do
+    for b in now soon later parked; do
         if [ ! -d "docs/work/tasks/$b" ]; then
             problems="${problems}missing planning bucket docs/work/tasks/$b/; "
         fi
@@ -132,7 +132,7 @@ else
     if [ -n "$problems" ]; then
         fail 1 "$problems"
     else
-        pass 1 "docs/work/tasks/ with now/ soon/ later/ never/ planning buckets; finalized/ is created on first successful finalization; no legacy root, no done/ bucket"
+        pass 1 "docs/work/tasks/ with now/ soon/ later/ parked/ planning buckets; finalized/ is created on first successful finalization; no legacy root, no done/ bucket"
     fi
 fi
 
@@ -449,6 +449,15 @@ else
     else
         pass 16 "docs/work/audits/ with its declaring config and parseable records"
     fi
+fi
+
+# --- 17: the never/ task bucket was renamed parked/ ---------------------------
+# A leftover never/ is a half-adopted rename: its briefs are no longer listed,
+# validated, or found by bare name, so it fails rather than being tolerated.
+if [ -d docs/work/tasks/never ]; then
+    fail 17 "the never/ task bucket was renamed parked/ — git mv docs/work/tasks/never docs/work/tasks/parked and rewrite its README"
+else
+    pass 17 "no renamed never/ task bucket"
 fi
 
 # --- verdict ------------------------------------------------------------------

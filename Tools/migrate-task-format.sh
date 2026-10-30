@@ -43,7 +43,7 @@ TASKS_DIR="$REPO_ROOT/$TASKS_REL"
 # ---- convert task files ----------------------------------------------
 migrated=0 wrapped=0 skipped=0 failed=0
 
-for f in "$TASKS_DIR"/{now,soon,later,never}/*.md; do
+for f in "$TASKS_DIR"/{now,soon,later,parked}/*.md; do
   [[ -e "$f" ]] || continue
   base="$(basename "$f")"
   [[ "$base" == "README.md" || "$base" == "_TEMPLATE.md" ]] && continue

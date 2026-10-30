@@ -3,6 +3,22 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **The `never/` task bucket is renamed `parked/`.** The bucket held deferred
+  work, not rejected work, and its old name led readers to treat its briefs as
+  retired. `parked/` holds deferred work nobody is watching; every brief in it
+  carries a `## Parked` section stating **Why** and **Unpark when**, with an
+  optional `unpark-after: YYYY-MM-DD` frontmatter date, and a parked brief's
+  filename never changes. Rejected briefs are deleted with the rationale in the
+  commit message, and `blocked` stays a status rather than a bucket. The task
+  skills, the readiness search, and `check-docs-work-conformance.sh` read
+  `parked/`; the checker's new clause 17 fails on a leftover
+  `docs/work/tasks/never/`. The problem-records `never/` bucket is unchanged.
+  Consumers adopt the rename by advancing their Workshop pin and, in the same
+  commit, running `git mv docs/work/tasks/never docs/work/tasks/parked`,
+  rewriting `<tasks>/README.md` and `parked/README.md`, adding a `## Parked`
+  section to every brief in it, and deleting briefs that were rejections; hq,
+  which reads Workshop `main` without a pin, renames first.
+
 - **Task history checks accept Git revision names.** The inspected commit may
   be `HEAD`, an unambiguous short hash, or a branch name. Both modes resolve it
   to a full commit SHA before comparisons or fallback output; recorded

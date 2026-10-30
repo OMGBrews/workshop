@@ -13,7 +13,7 @@ together.
 
 ## This document is the authority
 
-A repo's `<tasks>/README.md` bucket list and its `never/README.md` one-liner are
+A repo's `<tasks>/README.md` bucket list and its `parked/README.md` one-liner are
 **courtesy summaries** — they exist so someone landing in a directory learns what it
 holds without following a link. Where a summary and this document disagree, this
 document is right and the summary is the bug to fix. A summary that grows past a
@@ -30,7 +30,7 @@ are, and not by what they touch.
 | `now/` | Active work — in progress, or the next thing to pick up | Completed, or demoted by `/task-reprioritize` |
 | `soon/` | Planned — starts once current work clears | Promoted to `now/` by `/task-reprioritize`, or moved by `/task-move` |
 | `later/` | Backlog — valuable, not yet scheduled | Promoted by `/task-reprioritize` when the queue has room, or by `/task-move` |
-| `never/` | Parked — see below | Promoted to any bucket by `/task-move` |
+| `parked/` | Deferred work nobody is watching — see below | Promoted to any bucket by `/task-move` |
 
 **Completed tasks are deleted, not archived.** Git preserves the history and
 `git log --diff-filter=D` finds them. There is no `done/` bucket and no `done`
@@ -52,27 +52,50 @@ The name describes the recorded finalization event, not a permanent freshness cl
 the implementer checks what changed after a usable baseline, and fully re-verifies
 the brief when the stamped history is unavailable or outside current ancestry.
 
-### `never/` is parked, not terminal
+### `parked/` holds deferred work nobody is watching
 
-A task lands in `never/` for one of three reasons:
+`parked/` sits below `later/`: real work, set aside with no date on it, that no
+skill will bring back on its own. The ranking and rebalancing skills skip it, so
+a parked task resurfaces only when someone asks for it. The return path is
+ordinary: `/task-move` accepts `parked` as both a source and a target.
 
-- **Rejected** — considered and decided against, filed because the rejection itself
-  is worth preserving so it is not re-litigated.
-- **Deferred indefinitely** — real work with no date on it, waiting on something
-  that may never come or on a reminder far enough out that a live bucket would only
-  make noise.
-- **Kept for reference** — not work any more, but the document is worth keeping
-  where task-shaped things live.
+**Every parked brief carries a parking note.** It is a `## Parked` section placed
+immediately after the `**In brief**:` paragraph, with two lead-ins:
 
-**A task in `never/` is parked, not dead.** `/task-move` accepts `never` as both a
-source and a target with no special handling, and the return path is ordinary. What
-the bucket really means is *nobody is watching this one*: the ranking and
-rebalancing skills skip it, so a task parked there will not resurface on its own.
-Someone has to ask for it back.
+```markdown
+## Parked
+
+**Why**: <why the work was set aside>
+
+**Unpark when**: <the condition that should bring it back>
+```
+
+When the unpark condition is a date, the brief may also carry the optional
+frontmatter field `unpark-after: YYYY-MM-DD` so tooling can sort and flag it. The
+field supplements the section; it never replaces it.
+
+**A parked brief's filename never changes** on park or unpark. The slug is how
+`dependencies:`, the readiness checker's dependency search, `/task-next`, and the
+cloud dispatch skills identify a task, so a date or marker in the filename would
+break every reference to it. Dates go in `unpark-after:`.
+
+**Rejected briefs are deleted, not parked.** A task considered and decided
+against is removed the way a completed one is, with the rationale in the commit
+message or a decision record. Where a rejection is worth keeping in place, the
+brief carries a `## Rejection rationale` section, and such a brief leaves
+`parked/` only by a deliberate move of that one task — never by a bulk or
+filter-driven move, which would revive the rejected work along with the deferred.
+
+**`blocked` is a status, not a bucket.** A brief waiting on an external
+dependency carries `status: blocked` and stays in its horizon, where
+`/task-reprioritize` already demotes it from `now/` to `soon/` and exempts a
+blocked in-focus brief from the trim. It is parked only when nobody is watching
+for the unblock, and its parking note then names the unblock as the unpark
+condition.
 
 A parked task keeps its real `status:`, which for work nobody is doing is
-`not-started`. `never/` holding an `in-progress` task is a contradiction, and
-`/task-status` reports it as one.
+`not-started` or `blocked`. `parked/` holding an `in-progress` task is a
+contradiction, and `/task-status` reports it as one.
 
 ## Retired `queued/` bucket
 
@@ -85,9 +108,9 @@ The planning buckets aim for **roughly 3 tasks in `now/`, 3 in `soon/`, and the 
 `later/`**. It is a soft target rather than a quota: `/task-reprioritize` owns the
 tolerances and the fill order that enforce it, and names its own deviations.
 
-`finalized/` and `never/` sit **outside** that shape. `/task-reprioritize`
+`finalized/` and `parked/` sit **outside** that shape. `/task-reprioritize`
 never moves a task in or out of them. `/task-next` prefers `finalized/` and
-ignores `never/`. Explicit moves out belong to `/task-move`.
+ignores `parked/`. Explicit moves out belong to `/task-move`.
 
 ## See also
 

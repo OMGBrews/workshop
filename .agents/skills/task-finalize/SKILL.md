@@ -26,7 +26,7 @@ Phases 3, 4a, 5b, 7, and 8 flag the edits that make a run authored-content as th
 
 ## Phase 1 — Resolve the Task
 
-**The task argument is required.** Resolve it against `<tasks>/{now,soon,later,finalized,never}/`, accepting a bare name (with or without `.md`) or a path. Autonomous execution is retired. Recover a legacy queued brief through `task-move` after checking for surviving work before finalizing it.
+**The task argument is required.** Resolve it against `<tasks>/{now,soon,later,finalized,parked}/`, accepting a bare name (with or without `.md`) or a path. Autonomous execution is retired. Recover a legacy queued brief through `task-move` after checking for surviving work before finalizing it.
 
 One match → use it, printing the resolved path before continuing. Anything else — no argument, no match, or several — stop and say which it was.
 

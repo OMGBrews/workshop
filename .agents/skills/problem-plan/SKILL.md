@@ -99,13 +99,13 @@ which fixes the record and continues.
    continue and let Phase 7 replace the line.
 
 2. **Already planned.** Search for the record's filename (without `.md`)
-   across `docs/work/tasks/now`, `soon`, `later`, `finalized`, `never`,
+   across `docs/work/tasks/now`, `soon`, `later`, `finalized`, `parked`,
    `queued` where it exists, and `docs/work/handoffs/`, by explicit path —
    never a recursive grep from the root whose omissions are invisible. A hit
    from a live task: report "already planned: see `<task>`", offer
    `task-finalize` or `task-implement` on it as its state warrants, and stop.
-   A hit from `never/` only is a parked rejection: report it and stop unless
-   the user wants to re-open. Citations from planning documents, journal
+   A hit from `parked/` only is parked work: stop, show its parking note, and
+   continue only if the user wants to re-open it. Citations from planning documents, journal
    entries, and other records are context, not plans.
 
 3. **Status.** Apply `problem-status`'s single-record procedure and verdict
