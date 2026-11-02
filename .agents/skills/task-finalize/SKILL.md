@@ -81,7 +81,7 @@ The task document is a **cache of code observations made at some past commit**, 
 
 Then act on what you found:
 
-- **If verification shows the task is already done or no longer applies, stop finalizing** — Phases 4–9 assume a task worth handing on. Already done (the work is in the tree, the criteria are met, only the brief never closed) → say so and offer the `task-implement` skill, whose close-out path owns that state. Moot (the premise is gone, superseded, overtaken by other work) → present the evidence and recommend deletion or reprioritization — the proposal is the whole deliverable here: this skill deletes and moves nothing, and acting on the recommendation (removing the file, or re-bucketing via the `task-move` skill) is the user's, outside this run. Do not resolve open questions about work that should not happen. Either disposition message is also the user's first contact with this task in a long while — write it to Phase 4b's zero-context rules: plain terms, every repo-specific name glossed or dropped.
+- **If verification shows the task is already done or no longer applies, stop finalizing** — Phases 4–9 assume a task worth handing on. Already done (the work is in the tree, the criteria are met, only the brief never closed) → say so and offer the `task-implement` skill, whose close-out path owns that state. Moot (the premise is gone, superseded, overtaken by other work) → present the evidence and recommend deletion or reprioritization — the proposal is the whole deliverable here: this skill deletes and moves nothing, and acting on the recommendation (removing the file, or re-bucketing via the `task-move` skill) is the user's, outside this run. Do not resolve open questions about work that should not happen. Either disposition message is also the user's first contact with this task in a long while — apply Phase 4b's context-first explanation and comprehension review to the disposition: explain the necessary arrangement before why the task is done or moot. Omit the interview agenda and readiness exits because no interview follows.
 - **Rewrite `## Context` / `## Scope` so they are true at HEAD.** Say what changed and name the commits that changed it — the implementer should inherit the corrected history, not rediscover it. Prefer **durable anchors** — a symbol name plus a short greppable quote (`` `run_tools`'s `if isinstance(result, Exception)` branch ``) — over bare line numbers, which rot fastest; keep line numbers only as a secondary convenience.
 - **If verification answers or moots an open question, don't silently drop the question.** Carry the evidence into the Phase 4a prep and let the user confirm the evidence-based resolution in Phase 5 — the answer changed because the ground changed, and the user should see that.
 - **Re-check `effort:` and `priority:`** against the corrected picture. If verification resized the task (machinery already landed; the problem grew), propose the change alongside the Phase 5 questions.
@@ -160,11 +160,17 @@ anything is shown to the user:
   built from.
 - Note the facts the item's discussion will rely on.
 
-Then split those noted facts: **a premise shared by two or more items, or one
-the task itself stands on, goes into the orientation card; a fact only one
-item needs stays out**, delivered just-in-time in that item's own turn. This
-rule — not a summary of the document — is what scopes the card: the user gets
-exactly the footing the upcoming decisions need, nothing else.
+Prepare the explanatory prerequisites alongside those decision facts: what the
+relevant system does, whom it serves, how its normal operation works, and why
+the arrangements the problem depends on exist. Identify the concepts a reader
+must understand before the problem or any remaining choice makes sense. Ground
+this context in Phase 3 evidence; make additional reads now where necessary.
+
+Put necessary understanding into the orientation even when it supports only
+one remaining decision. Keep option-specific facts, trade-offs, and advocacy
+for that question's interview turn. The distinction is explanatory context
+versus choosing an option, not how many agenda items use a fact. Omit background
+that helps explain neither the problem nor the decisions.
 
 Order the agenda by leverage: Phases 2–3's proposals first — they change the
 premises the questions stand on — then the question whose answer constrains
@@ -178,36 +184,49 @@ arrive pre-argued.
 
 ### 4b — Orient the user
 
-Present one orientation card, then stop and let the user set the pace. Assume
-a reader with **zero context** beyond "I filed this once"; shrink the card
-only on evidence from this conversation (a `task-next` or `task-status` report
-on this task already on screen), never on how recent the file looks.
+Present one orientation, then stop and let the user set the pace. This is the
+“orientation card” stopping point named by `task-finalize-cloud`; the name does
+not impose a card layout or length limit. Assume the user remembers neither
+the task nor the subsystem. Use established understanding from this conversation
+to avoid repetition, never the apparent recency of the task file.
 
-The card is one screen, hard caps, in this order:
+Build understanding before asking for a decision. Explain in this order:
 
-- **The problem** — ≤3 sentences, plain words: what's wrong or missing, and
-  why anyone cares. Seed from `**In brief**:` where present, corrected to what
-  Phase 3 verified — never pasted stale.
-- **The proposed fix** — ≤3 sentences, same register.
-- **What's changed since this was written** — only when Phase 3 found drift;
-  1–2 sentences naming the practical effect, not the commits.
-- **What you'll be deciding** — the agenda in 4a's order, one plain line each
-  with its stakes ("decides scope", "wording only, low stakes"). Phase 5
-  numbers its turns against this list.
-- **Terms that will come up** — ≤3 entries, only where a repo-specific term is
-  unavoidable in the questions ahead.
+- **Necessary context:** What does this part of the system do, for whom, and
+  how does the relevant mechanism work? Explain why the arrangements the
+  problem depends on exist.
+- **The problem:** What is missing, broken, or inconsistent, according to
+  current evidence? Use `**In brief**:` as a starting point where present,
+  corrected by Phase 3, not as a substitute for explanation.
+- **Why it matters:** Explain the concrete effect on users, maintainers, or
+  future changes. Distinguish observed defects from inferred or unestablished
+  consequences where material; do not add a ritual disclaimer to every task.
+- **The intended work:** Explain the outcome, scope boundary, and why an
+  apparently obvious fix may be insufficient. Integrate relevant drift by its
+  practical effect.
+- **The remaining decisions:** Give the agenda in 4a's order and explain what
+  each answer changes. Keep an explicit decision list for Phase 5's numbered
+  turns, including when there is only one decision. Save recommendations and
+  option-specific trade-offs for the interview.
 
-Writing rules for the card — they also bind Phase 5's question messages and
-Phase 3's early-exit dispositions:
+This is an explanatory progression, not five required visible headings. Use
+connected prose, introducing terms before relying on them and explaining
+relationships as well as definitions. Prefer plain descriptions over
+repository-specific names; include names and paths when they help the reader.
+Scale length to necessary understanding, without screen or sentence caps.
+Straightforward tasks should remain concise; complex tasks may need several
+paragraphs. Do not withhold essential background until the user asks for it.
 
-- Every repo-specific noun is glossed in plain words on first use or omitted:
-  "the script that copies the shared skills into each repo" beats its
-  filename, which goes in parentheses only where a question will need it.
-- Each line is understandable without the others — no explanation that leans
-  on adjacent material.
-- Depth on demand, not by default: the card is the floor. Close by naming one
-  or two expansions on offer ("I can go deeper on why the current approach
-  fails") rather than including them.
+Before sending, review comprehension: could an unfamiliar reader explain the
+current arrangement, the defect, why it matters, the intended outcome, and
+what remains to decide from this message alone? Check concept ordering and
+rewrite passages that depend on unstated technical or historical knowledge.
+Optional depth can be offered after that footing is supplied.
+
+These plain-language and comprehension rules also apply to Phase 3's early-exit
+dispositions and Phase 5's question messages. Adapt the explanation to their
+purpose; do not repeat the whole orientation on every question. Reader-side
+trials are described in [the orientation fixture](orientation-fixture.md).
 
 End the turn in prose with the three exits visible:
 
@@ -242,7 +261,9 @@ question, numbering every turn against the orientation's decision list
 
 Each question message assumes **the orientation card and nothing else** — not
 the task document, not earlier threads beyond their **Recording:** lines. The
-question-specific facts 4a held back arrive here, in the turn that needs them.
+option-specific facts 4a held back arrive here, in the turn that needs them.
+Necessary explanatory context was already supplied by the orientation; repair
+any newly discovered gap before asking the user to choose.
 
 For each open question, post one message containing:
 

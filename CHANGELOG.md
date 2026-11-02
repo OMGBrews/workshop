@@ -3,6 +3,11 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **Task finalization builds understanding before decisions.** Orientations
+  explain the necessary system context before the problem, scale length to
+  the reader's needs, and check concept ordering before presenting the decision
+  agenda. The interview pause and one-question flow are preserved.
+
 - **Task moves repair links before reporting success.** `task-reprioritize`
   and `task-move` share a procedure that prefers repository-local repair tools,
   preserves inbound and outbound targets across a complete move map, stages
