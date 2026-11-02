@@ -21,7 +21,7 @@ a finding: `kaizen-resolve` owns the separate verification and retirement gate.
   `list-records.py` beside it from this skill's physical directory. Run
   `python3 <physical-problem-create-dir>/list-records.py <repo-root>` and check
   its exit status; stop on discovery errors. With no argument, audit every
-  returned record, including legacy root records and never. Stay inside this
+  returned record, including legacy root records and parked. Stay inside this
   repository; never inventory sibling clones.
   Keep the sweep broad, with one verdict per record and details for limitations
   or mixed findings.

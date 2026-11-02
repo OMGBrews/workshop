@@ -460,6 +460,13 @@ else
     pass 17 "no renamed never/ task bucket"
 fi
 
+# --- 18: the never/ problem bucket was renamed parked/ ------------------------
+if [ -d docs/work/problems/never ]; then
+    fail 18 "the never/ problem bucket was renamed parked/ — git mv docs/work/problems/never docs/work/problems/parked and update live references"
+else
+    pass 18 "no renamed never/ problem bucket"
+fi
+
 # --- verdict ------------------------------------------------------------------
 echo
 if [ "$failures" -ne 0 ]; then

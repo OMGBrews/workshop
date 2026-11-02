@@ -46,7 +46,7 @@ claims may warrant immediate investigation rather than automatic demotion.
 ## Decide once
 
 Rank root-level, now, soon, and later records with the rubric. Never automatically
-move a never record. Classify legacy root records into the same horizons; do not
+move a parked record. Classify legacy root records into the same horizons; do not
 bulk-file all legacy records into the default creation bucket.
 
 Print a compact inventory and diagnosis: counts, focus state, urgent exposure,

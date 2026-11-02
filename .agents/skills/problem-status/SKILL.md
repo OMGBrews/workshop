@@ -26,7 +26,7 @@ The problems root is `docs/work/problems/`.
   `list-records.py` beside it from this skill's physical directory. Run
   `python3 <physical-problem-create-dir>/list-records.py <repo-root>` and check
   its exit status. With no argument, inspect every returned record, including
-  legacy root records and never. Report absent and empty collections distinctly;
+  legacy root records and parked. Report absent and empty collections distinctly;
   an inventory error is not an empty collection.
 - With a path, resolve exactly one file beneath this repository's
   `docs/work/problems/`, excluding guides and templates. Match against the inventory. Refuse an ambiguous match or a

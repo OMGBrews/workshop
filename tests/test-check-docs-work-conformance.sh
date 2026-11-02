@@ -355,6 +355,21 @@ expect "never/ task bucket not yet renamed parked/" 1 never_bucket \
     "FAIL 17" "the never/ task bucket was renamed parked/" \
     "FAIL 1" "missing planning bucket docs/work/tasks/parked/"
 
+never_problem_bucket() {
+    mkdir -p "$1/docs/work/problems/never"
+    echo "# Problems" > "$1/docs/work/problems/README.md"
+}
+expect "never/ problem bucket not yet renamed parked/" 1 never_problem_bucket \
+    "FAIL 18" "the never/ problem bucket was renamed parked/"
+
+parked_problem_bucket() {
+    mkdir -p "$1/docs/work/problems/parked"
+    echo "# Problems" > "$1/docs/work/problems/README.md"
+    echo "# Accepted flaw" > "$1/docs/work/problems/parked/flaw.md"
+}
+expect "parked problem bucket is accepted" 0 parked_problem_bucket \
+    "ok   18" "no renamed never/ problem bucket"
+
 parked_brief_malformed() {
     sed -i 's/^status: .*/status: done/' "$1/docs/work/tasks/parked/d-fixture-task.md"
 }

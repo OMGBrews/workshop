@@ -38,7 +38,7 @@ Check the directory and its README independently:
 - If either exists, preserve it. Never replace a customized README or alter an
   existing problem record while scaffolding.
 
-If scaffolding is declined, stop. Create missing now, soon, later, and never
+If scaffolding is declined, stop. Create missing now, soon, later, and parked
 directories (use .gitkeep for empty buckets); preserve existing records and local
 guidance. Copy only the seed README; the canonical template stays inside this skill.
 
@@ -62,7 +62,7 @@ Run `python3 <physical-skill-dir>/list-records.py <repo-root>` and check its
 exit status before writing. Reject a matching slug anywhere in the collection,
 including root-level legacy and parked records. Refuse inventory errors and
 destination collisions; do not overwrite, merge, suffix, or edit another record.
-Use the explicitly requested bucket or default to soon. An explicit never
+Use the explicitly requested bucket or default to soon. An explicit parked
 placement requires the user's parking reason; retain it under Background.
 Reject unknown buckets and paths outside the defined collection.
 
