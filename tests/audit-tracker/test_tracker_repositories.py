@@ -333,7 +333,7 @@ class RecordingTest(SubjectRepositoryTestCase):
         self.assertIn("does not exist in repository 'library'", err)
         self.assertFalse(self.record_file("library").exists())
 
-    def test_done_refuses_a_commit_outside_the_subject_head_history(self) -> None:
+    def test_done_accepts_a_commit_outside_the_subject_head_history(self) -> None:
         git(self.library, "switch", "-q", "-c", "side")
         support.write_file(self.library / "src/core.py", "VALUE = 3\n")
         side = commit_all(self.library, "side work")
@@ -341,14 +341,18 @@ class RecordingTest(SubjectRepositoryTestCase):
         code, _out, err = self.run_cli(
             "done", "src/core.py", "code-quality", "--repository", "library", "--commit", side
         )
-        self.assertEqual(code, 1)
-        self.assertIn("not in the history", err)
-        self.assertFalse(self.record_file("library").exists())
-
-    def test_self_keeps_accepting_any_commit_string(self) -> None:
-        code, _out, err = self.run_cli("done", "tool.py", "code-quality", "--commit", "c1")
         self.assertEqual(code, 0, err)
-        self.assertEqual(self.read_record()["tool.py"]["last_audit_commit"], "c1")
+        entry = self.read_record("library")["src/core.py"]
+        self.assertEqual(entry["last_audit_commit"], side)
+        self.assertIn("content_fingerprint", entry)
+        # The side commit reviewed different content from checked-out HEAD.
+        self.assertIn(("library", "src/core.py"), self.identities("--stale"))
+
+    def test_self_rejects_an_unknown_commit_without_writing(self) -> None:
+        code, _out, err = self.run_cli("done", "tool.py", "code-quality", "--commit", "c1")
+        self.assertEqual(code, 1)
+        self.assertIn("does not exist in repository 'self'", err)
+        self.assertFalse(self.record_file().exists())
 
 
 class StalenessTest(SubjectRepositoryTestCase):
@@ -383,7 +387,7 @@ class StalenessTest(SubjectRepositoryTestCase):
         commit_all(self.repo, "control change and gitlink bump")
         self.assertEqual(self.stale(), {("self", "tool.py")})
 
-    def test_a_rewritten_subject_history_makes_the_record_stale(self) -> None:
+    def test_a_rewritten_subject_history_preserves_content_freshness(self) -> None:
         support.write_file(self.library / "src/core.py", "VALUE = 4\n")
         commit_all(self.library, "fix before push")
         code, _out, err = self.run_cli("done", "src/core.py", "code-quality", "--repository", "library")
@@ -392,9 +396,9 @@ class StalenessTest(SubjectRepositoryTestCase):
 
         # A squash or rebase before landing replaces the recorded commit.
         git(self.library, "commit", "-q", "--amend", "-m", "rewritten")
-        self.assertEqual(self.stale(), {("library", "src/core.py")})
+        self.assertEqual(self.stale(), set())
 
-        # Re-recording against the commit that is now checked out is cheap.
+        # A subsequent review can update provenance without changing freshness.
         code, _out, err = self.run_cli("done", "src/core.py", "code-quality", "--repository", "library")
         self.assertEqual(code, 0, err)
         self.assertEqual(self.stale(), set())

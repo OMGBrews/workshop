@@ -1,7 +1,7 @@
 """Audit tracker queries: next, done, status, list-types.
 
 All queries read/write through a live SQLite connection. Staleness is
-computed against git history (via ``git_utils``) so the DB does not need
+computed against committed content (via ``git_utils``) so the DB does not need
 to cache per-path mtimes.
 
 Every row belongs to a repository — ``self`` (the control repository) or a
@@ -271,7 +271,8 @@ def _applicable_rows(
           p.path            AS path,
           p.kind            AS kind,
           a.last_audited_at AS last_audited_at,
-          a.last_audit_commit AS last_audit_commit
+          a.last_audit_commit AS last_audit_commit,
+          a.content_fingerprint AS content_fingerprint
         FROM path_audit_applicability ap
         JOIN paths p ON p.repository = ap.repository AND p.path = ap.path
         LEFT JOIN audits a
@@ -349,8 +350,8 @@ def _round_robin_by_parent_dir(
 
 _UNKNOWN_COMMIT = -1
 """Sentinel stored in the ``commits_since`` cache when the recorded SHA is
-no longer present in the repo. Classified as stale so the path re-surfaces
-for re-audit — we cannot prove the prior audit is current."""
+not reachable from HEAD. Exposed as zero for compatibility; it says nothing
+about content freshness."""
 
 
 def _classify_audited_rows(
@@ -359,7 +360,7 @@ def _classify_audited_rows(
     roots: Mapping[str, Path] | None = None,
     subject_paths: Collection[str] = (),
 ) -> list[tuple[AuditReason, NextCandidate]]:
-    """Classify audited rows with one Git history walk per repository and SHA.
+    """Compare content, retaining batched history counts per repository.
 
     ``subject_paths`` are the control-relative paths of declared subjects;
     changes at exactly those names (gitlink moves) never stale a control
@@ -396,28 +397,14 @@ def _classify_repository_rows(
     grouped: dict[str, list[sqlite3.Row]] = defaultdict(list)
     classified: list[tuple[AuditReason, NextCandidate]] = []
     for row in rows:
-        if not row["last_audit_commit"]:
-            classified.append(
-                (
-                    "stale",
-                    NextCandidate(
-                        path=row["path"],
-                        kind=row["kind"],
-                        last_audited_at=row["last_audited_at"],
-                        commits_since_audit=0,
-                        reason="stale",
-                        repository=repository,
-                    ),
-                )
-            )
-        else:
-            grouped[row["last_audit_commit"]].append(row)
+        grouped[row["last_audit_commit"] or ""].append(row)
 
     head = git_utils.head_sha(root)
+    policy = git_utils.content_policy(ignore, metadata_dir)
     cached_rows = conn.execute(
         "SELECT audit_commit, path, commits_since FROM staleness_cache "
-        "WHERE repository = ? AND head_commit = ?",
-        (repository, head),
+        "WHERE repository = ? AND head_commit = ? AND policy = ?",
+        (repository, head, policy),
     ).fetchall()
     cached = {
         (row["audit_commit"], row["path"]): row["commits_since"]
@@ -433,19 +420,19 @@ def _classify_repository_rows(
         if missing
         else {}
     )
-    cache_writes: list[tuple[str, str, str, str, int]] = []
+    cache_writes: list[tuple[str, str, str, str, str, int]] = []
     for sha, paths in missing.items():
         counts = computed.get(sha)
         for path in paths:
             value = counts[path] if counts is not None else _UNKNOWN_COMMIT
             cached[(sha, path)] = value
-            cache_writes.append((repository, head, sha, path, value))
+            cache_writes.append((repository, head, policy, sha, path, value))
     if cache_writes:
         with conn:
             conn.executemany(
                 "INSERT OR REPLACE INTO staleness_cache "
-                "(repository, head_commit, audit_commit, path, commits_since) "
-                "VALUES (?, ?, ?, ?, ?)",
+                "(repository, head_commit, policy, audit_commit, path, commits_since) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
                 cache_writes,
             )
             # Prune only this repository's older HEADs: another repository's
@@ -455,13 +442,24 @@ def _classify_repository_rows(
                 (repository, head),
             )
 
+    current = git_utils.content_fingerprints(
+        head, [row["path"] for row in rows], root, ignore, metadata_dir
+    )
     for sha, sha_rows in grouped.items():
+        legacy = git_utils.content_fingerprints(
+            sha, [row["path"] for row in sha_rows if row["content_fingerprint"] is None],
+            root, ignore, metadata_dir,
+        )
         paths = [row["path"] for row in sha_rows]
         counts = {path: cached[(sha, path)] for path in paths}
         for row in sha_rows:
             commits = counts[row["path"]]
+            evidence = row["content_fingerprint"]
+            if evidence is None:
+                evidence = legacy.get(row["path"])
             reason: AuditReason = (
-                "stale" if commits == _UNKNOWN_COMMIT or commits > 0 else "clean"
+                "clean" if evidence is not None and evidence == current.get(row["path"])
+                else "stale"
             )
             classified.append(
                 (
@@ -567,6 +565,7 @@ def done(
     note: str | None = None,
     records_dir: Path | None = None,
     repository: RepositoryContext | None = None,
+    subject_paths: Collection[str] = (),
 ) -> str:
     """Upsert an audit record at the given commit (defaults to current HEAD).
 
@@ -577,7 +576,8 @@ def done(
     ``note`` is ``None`` on re-audit, the existing note (if any) is
     preserved; pass an explicit empty string to clear it. Raises
     ``ValueError`` if the path is not applicable for ``audit_type``, or if a
-    subject's commit is unknown there or not in the history of its HEAD.
+    commit is unknown or the path is absent at that commit. Nonancestor
+    commits are accepted; the SHA records provenance, not freshness.
     Returns the recorded commit.
     """
     name = repository.name if repository is not None else SELF_REPOSITORY
@@ -592,12 +592,19 @@ def done(
             f"path {path!r}{where} is not applicable for audit type {audit_type!r}; "
             "run refresh or check the config"
         )
-    if repository is None or repository.is_self:
-        # The control repository keeps its historical contract: any commit
-        # string is stored as given.
-        sha = commit or git_utils.head_sha()
-    else:
-        sha = _verified_subject_commit(repository, commit)
+    context = repository or control()
+    requested = commit if commit is not None else "HEAD"
+    sha = git_utils.resolve_commit(context.root, requested)
+    if sha is None:
+        raise ValueError(f"commit {requested!r} does not exist in repository {name!r}")
+    fingerprints = git_utils.content_fingerprints(
+        sha, [path], context.root,
+        subject_paths if context.is_self else (),
+        records.RECORDS_SUBDIR if context.is_self else None,
+    )
+    if path not in fingerprints:
+        raise ValueError(f"path {path!r} does not exist at commit {requested!r}")
+    fingerprint = fingerprints[path]
     now = datetime.now(UTC).isoformat()
     # Records are the source of truth; write them first so a crash between
     # writes leaves the cache stale-but-rebuildable rather than the
@@ -607,6 +614,7 @@ def done(
         path,
         last_audited_at=now,
         last_audit_commit=sha,
+        content_fingerprint=fingerprint,
         notes=note,
         records_dir=records_dir,
         repository=name,
@@ -615,38 +623,15 @@ def done(
         conn.execute(
             """
             INSERT INTO audits
-              (repository, path, audit_type, last_audited_at, last_audit_commit, notes)
-            VALUES (?, ?, ?, ?, ?, ?)
+              (repository, path, audit_type, last_audited_at, last_audit_commit, notes, content_fingerprint)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(repository, path, audit_type) DO UPDATE SET
               last_audited_at = excluded.last_audited_at,
               last_audit_commit = excluded.last_audit_commit,
+              content_fingerprint = excluded.content_fingerprint,
               notes = COALESCE(excluded.notes, audits.notes)
             """,
-            (name, path, audit_type, now, sha, note),
-        )
-    return sha
-
-
-def _verified_subject_commit(repository: RepositoryContext, commit: str | None) -> str:
-    """Full SHA of the subject commit to record, proven to be in its history.
-
-    Local only: nothing is fetched, and whether the commit has landed
-    anywhere is not this check's question. A record naming a commit that
-    later leaves the subject's history (a rebase, a squash merge) is caught
-    by staleness, which treats an unreachable audit commit as stale.
-    """
-    requested = commit or "HEAD"
-    sha = git_utils.resolve_commit(repository.root, requested)
-    if sha is None:
-        raise ValueError(
-            f"commit {requested!r} does not exist in repository {repository.name!r} "
-            f"({repository.root})"
-        )
-    if not git_utils.is_ancestor_of_head(repository.root, sha):
-        raise ValueError(
-            f"commit {requested!r} is not in the history of repository "
-            f"{repository.name!r}'s checked-out HEAD; record a commit that "
-            "contains the reviewed content"
+            (name, path, audit_type, now, sha, note, fingerprint),
         )
     return sha
 

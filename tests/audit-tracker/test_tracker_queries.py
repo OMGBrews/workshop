@@ -116,8 +116,11 @@ class NextOrderingTest(QueriesTestBase):
         queries.done(conn, "c.py", "code", commit="SHA_C")
 
         fake.commits_by_path[("SHA_A", "a.py")] = 1
+        fake.content_by_path[(fake.head, "a.py")] = "changed"
         fake.commits_by_path[("SHA_B", "b.py")] = 5
+        fake.content_by_path[(fake.head, "b.py")] = "changed"
         fake.commits_by_path[("SHA_C", "c.py")] = 3
+        fake.content_by_path[(fake.head, "c.py")] = "changed"
 
         candidates = queries.next_paths(conn, "code", limit=3)
         self.assertEqual([c.path for c in candidates], ["b.py", "c.py", "a.py"])
@@ -130,6 +133,7 @@ class NextOrderingTest(QueriesTestBase):
         queries.done(conn, "a.py", "code", commit="SHA_A")  # clean
         queries.done(conn, "b.py", "code", commit="SHA_B")  # stale
         fake.commits_by_path[("SHA_B", "b.py")] = 2
+        fake.content_by_path[(fake.head, "b.py")] = "changed"
         # c.py is never audited
 
         candidates = queries.next_paths(conn, "code", limit=3)
@@ -142,6 +146,7 @@ class NextOrderingTest(QueriesTestBase):
         conn = self.seeded(fake)
         queries.done(conn, "a.py", "code", commit="SHA_A")
         fake.commits_by_path[("SHA_A", "a.py")] = 7  # stale but not never
+        fake.content_by_path[(fake.head, "a.py")] = "changed"
         candidates = queries.next_paths(conn, "code", limit=10, only_never=True)
         self.assertEqual({c.path for c in candidates}, {"b.py", "c.py"})
 
@@ -152,7 +157,8 @@ class NextOrderingTest(QueriesTestBase):
         queries.done(conn, "a.py", "code", commit="SHA_A")
         queries.done(conn, "b.py", "code", commit="SHA_B")
         fake.commits_by_path[("SHA_A", "a.py")] = 1
-        # b.py has 0 commits since audit → clean
+        fake.content_by_path[(fake.head, "a.py")] = "changed"
+        # b.py retains the reviewed content → clean
         candidates = queries.next_paths(conn, "code", limit=10, only_stale=True)
         self.assertEqual([c.path for c in candidates], ["a.py"])
 
@@ -212,11 +218,25 @@ class StalenessClassificationTest(QueriesTestBase):
         self.assertEqual([c.path for c in candidates], ["a.py"])
         self.assertEqual(candidates[0].reason, "stale")
 
-    # 14. a SHA dropped from history (rebase/GC) re-surfaces as stale --------
-    def test_next_treats_unknown_sha_as_stale(self) -> None:
+    # 14. Saved evidence remains usable after provenance disappears.
+    def test_next_uses_saved_content_when_sha_disappears(self) -> None:
         fake = self.fake_git()
         conn = self.seeded(fake)
         queries.done(conn, "a.py", "code", commit="GONE")
+        fake.unknown_shas.add("GONE")
+        candidates = queries.next_paths(conn, "code", limit=10)
+        audited = next(c for c in candidates if c.path == "a.py")
+        self.assertEqual(audited.reason, "clean")
+        self.assertEqual(audited.commits_since_audit, 0)
+
+    def test_next_treats_unknown_legacy_sha_as_stale(self) -> None:
+        fake = self.fake_git()
+        conn = self.seeded(fake)
+        conn.execute(
+            "INSERT INTO audits (path, audit_type, last_audited_at, last_audit_commit) "
+            "VALUES ('a.py', 'code', '2020-01-01T00:00:00+00:00', 'GONE')"
+        )
+        conn.commit()
         fake.unknown_shas.add("GONE")
         candidates = queries.next_paths(conn, "code", limit=10, only_stale=True)
         self.assertEqual([c.path for c in candidates], ["a.py"])
@@ -283,6 +303,7 @@ class StatusAndTypesTest(QueriesTestBase):
         queries.done(conn, "a.py", "code", commit="SHA_A")
         queries.done(conn, "b.py", "code", commit="SHA_B")
         fake.commits_by_path[("SHA_A", "a.py")] = 3  # stale
+        fake.content_by_path[(fake.head, "a.py")] = "changed"
         # b.py clean; c.py never
 
         stats = queries.status(conn, "code")
@@ -302,6 +323,19 @@ class StatusAndTypesTest(QueriesTestBase):
             queries.status(conn, "code")
             queries.status(conn, "code")
         self.assertEqual(batch.call_count, 1)
+
+    def test_freshness_is_independent_of_cached_history_counts(self) -> None:
+        fake = self.fake_git()
+        conn = self.seeded(fake)
+        queries.done(conn, "a.py", "code", commit="SHA_A")
+        fake.commits_by_path[("SHA_A", "a.py")] = 8
+        # History can include edits and an exact revert: content is equal.
+        self.assertEqual(queries.status(conn, "code").stale, 0)
+        # An independently changed snapshot stales even with the same cache.
+        fake.content_by_path[(fake.head, "a.py")] = "changed"
+        self.assertEqual(queries.status(conn, "code").stale, 1)
+        fake.content_by_path[(fake.head, "a.py")] = "a.py"
+        self.assertEqual(queries.status(conn, "code").stale, 0)
 
     # 19. list_types names types that have applicable paths --------------------
     def test_list_types_returns_audit_types_with_paths(self) -> None:

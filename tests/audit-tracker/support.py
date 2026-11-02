@@ -128,6 +128,9 @@ class FakeGit:
         self.head: str = "HEAD_SHA"
         self.commits_by_path: dict[tuple[str, str], int] = {}
         self.unknown_shas: set[str] = set()
+        # Snapshot identity is independent of history counts. A missing key
+        # means unchanged content; tests opt into edits or absent paths.
+        self.content_by_path: dict[tuple[str, str], str | None] = {}
         # Subset of ``files`` a submodule owns / whose indexed content is
         # empty. Empty by default so every test keeps its whole file list.
         self.submodule_owned: set[str] = set()
@@ -164,6 +167,28 @@ class FakeGit:
                 git_utils, "symlink_paths", lambda root=None: set(self.symlink_files)
             )
         )
+
+        test.enterContext(
+            mock.patch.object(
+                git_utils, "resolve_commit",
+                lambda root, revision: None if not revision or revision in self.unknown_shas
+                else self.head if revision == "HEAD" else revision,
+            )
+        )
+
+        def _content_fingerprints(revision, paths, root=None, ignore=(), metadata_dir=None):
+            if not revision or revision in self.unknown_shas:
+                return {}
+            revision = self.head if revision == "HEAD" else revision
+            policy = git_utils.content_policy(ignore, metadata_dir)
+            result = {}
+            for path in paths:
+                content = self.content_by_path.get((revision, path), path)
+                if content is not None:
+                    result[path] = policy + ":" + content
+            return result
+
+        test.enterContext(mock.patch.object(git_utils, "content_fingerprints", _content_fingerprints))
 
         def _commits_since(since_sha: str, path: str, root=None) -> int:
             if since_sha in self.unknown_shas:

@@ -1,12 +1,12 @@
 ---
 name: audit-done
-description: Mark a file or directory as audited for a given audit type. Records the current git HEAD so future runs can detect staleness.
+description: Mark a file or directory as audited for a given audit type. Records the reviewed content fingerprint and commit SHA so future runs can detect staleness.
 ---
 
 # Audit Done
 
 Mark the given path as audited for the given audit type at the current git HEAD
-of the repository that holds it. Use this for an operator recording a review
+of the repository that holds it, storing its content fingerprint and commit SHA. Use this for an operator recording a review
 that already happened, after the reviewed content has been committed.
 
 **Compatibility**: Requires Git, Python 3.11+, and the sibling
@@ -42,8 +42,8 @@ Then run with the canonical path returned by validation, passing through the opt
 python3 .agents/skills/audit-and-fix/tracker.py done <canonical-path> <audit-type> [--note "..."] [--repository <name>]
 ```
 
-Report the tracker's response. If Git or audit configuration changed after validation and `done` now says the path is not applicable, run `refresh` and retry once; if it still fails, report the race instead of weakening validation. For a nested repository, `done` records that repository's `HEAD` and refuses a commit outside its history; it never fetches.
+Report the tracker's response. If Git or audit configuration changed after validation and `done` now says the path is not applicable, run `refresh` and retry once; if it still fails, report the race instead of weakening validation. `done` records the audited repository's `HEAD`; the tracker also accepts an explicit `--commit <revision>` when it resolves locally to a commit containing the path, including a nonancestor. It validates both repositories the same way and never fetches.
 
 Commit only the updated record — `docs/work/audits/records/<audit-type>.json`, or `docs/work/audits/records/<name>/<audit-type>.json` for a nested repository — in a record-only metadata commit, staged by explicit pathspec, so the shared record names the already-reviewed content commit. Never include a nested repository's gitlink, and do not push, open a pull request, or move a submodule pointer as part of recording.
 
-This is also how a nested-repository review that landed through a squash-merged or rebased pull request is re-recorded: the tracker reports the path as stale because the recorded commit left the subject's history, and once the landed commit is checked out in the subject, `audit-done <path> <audit-type> --repository <name>` records it without a new review.
+Content equality determines freshness, so a squash merge or rebase preserves a review when the audited content is unchanged; an exact revert is fresh too. The commit SHA remains provenance. Older records without fingerprints use locally readable commit content as a fallback, but queries do not persist that evidence to JSON. If the old commit is unavailable, the record is stale until a new review records usable evidence.

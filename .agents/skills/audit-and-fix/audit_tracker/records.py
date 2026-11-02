@@ -64,6 +64,7 @@ class _AuditEntry(TypedDict, total=False):
 
     last_audited_at: str
     last_audit_commit: str | None
+    content_fingerprint: str | None
     notes: str | None
 
 
@@ -232,7 +233,7 @@ def _load_repository(conn: sqlite3.Connection, base: Path, repository: str) -> N
         audit_type = json_path.stem
         data = _read_records_file(json_path)
         audits = data.get("audits") or {}
-        rows: list[tuple[str, str, str, str | None, str | None, str | None]] = []
+        rows: list[tuple[str, str, str, str | None, str | None, str | None, str | None]] = []
         orphans: list[str] = []
         for path, entry in audits.items():
             # Records can outlive a path that has been deleted from git
@@ -249,6 +250,7 @@ def _load_repository(conn: sqlite3.Connection, base: Path, repository: str) -> N
                     audit_type,
                     entry.get("last_audited_at"),
                     entry.get("last_audit_commit"),
+                    entry.get("content_fingerprint"),
                     entry.get("notes"),
                 )
             )
@@ -262,8 +264,9 @@ def _load_repository(conn: sqlite3.Connection, base: Path, repository: str) -> N
         conn.executemany(
             """
             INSERT INTO audits
-              (repository, path, audit_type, last_audited_at, last_audit_commit, notes)
-            VALUES (?, ?, ?, ?, ?, ?)
+              (repository, path, audit_type, last_audited_at, last_audit_commit,
+               content_fingerprint, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             rows,
         )
@@ -383,6 +386,7 @@ def write_record(
     last_audited_at: str,
     last_audit_commit: str | None,
     notes: str | None,
+    content_fingerprint: str | None = None,
     pick_counter: int | None = None,
     records_dir: Path | None = None,
     repository: str = SELF_REPOSITORY,
@@ -393,6 +397,9 @@ def write_record(
     exists, matching the SQLite ``done()`` semantic. Pass an empty
     string to clear the note. ``pick_counter`` is accepted but ignored for
     compatibility with callers from before rotation state became local-only.
+    ``content_fingerprint`` is omitted when absent so legacy callers can
+    still write records without content evidence. Evidence is never carried
+    over from a previous review when a new write omits it.
     """
     file_path = records_path(audit_type, records_dir, repository)
     with _records_lock(audit_type, repository):
@@ -406,6 +413,8 @@ def write_record(
             "last_audited_at": last_audited_at,
             "last_audit_commit": last_audit_commit,
         }
+        if content_fingerprint is not None:
+            new_entry["content_fingerprint"] = content_fingerprint
         if notes is None:
             prior = existing.get("notes")
             if prior is not None:

@@ -3,6 +3,15 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **Audit freshness survives squash merges and rebases.** New records store
+  a versioned content fingerprint and resolved provenance SHA. Equal content
+  stays fresh even when the original commit disappears, including after an
+  exact revert. Explicit revisions must resolve locally and contain the
+  audited path; nonancestor commits are accepted for every repository. Legacy
+  records derive evidence when readable and otherwise remain stale until
+  re-audit, without a manual migration. Directory coverage and bookkeeping
+  exclusions are preserved; derived caches rebuild automatically.
+
 - **The devcontainer kit installs an `update-harnesses` alias** in Bash and
   Zsh. It runs the updater from the mounted Workshop checkout, using
   `WORKSPACE_DIR` or `/workspace`, when requested interactively.

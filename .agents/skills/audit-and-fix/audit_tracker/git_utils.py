@@ -365,8 +365,8 @@ def commits_since_many_by_sha(
     let the Python side reproduce ``SHA..HEAD`` correctly across merges by
     excluding the full ancestor set of each audit commit.
 
-    SHAs not reachable from HEAD are omitted. Callers classify those records
-    as stale because the prior audit can no longer be proved current.
+    SHAs not reachable from HEAD are omitted. Their history counts are
+    unavailable; content fingerprints determine freshness independently.
 
     Names in ``ignore`` never count as changes. The control repository
     passes its declared subjects' paths: a commit that only moves a
@@ -457,3 +457,73 @@ def commits_since_many_by_sha(
                     counts[path] += 1
         result[audit_sha] = counts
     return result
+
+
+CONTENT_VERSION = "git-content-v1"
+
+
+def content_policy(ignore: Collection[str] = (), metadata_dir: str | None = None) -> str:
+    """Version and directory coverage policy carried by every fingerprint."""
+    import json
+
+    policy = json.dumps([sorted(set(ignore)), metadata_dir], separators=(",", ":"))
+    return CONTENT_VERSION + ":" + hashlib.sha256(policy.encode()).hexdigest()
+
+
+def content_fingerprints(
+    revision: str,
+    paths: list[str],
+    root: Path | None = None,
+    ignore: Collection[str] = (),
+    metadata_dir: str | None = None,
+) -> dict[str, str]:
+    """Fingerprint committed content for many paths with one tree read.
+
+    The version/policy prefix prevents comparing evidence under incompatible
+    coverage rules. Read raw NUL-delimited tree bytes: names may contain tabs,
+    newlines, or non-UTF-8 bytes. Directories hash leaf entries, not subtree
+    IDs, because IDs include bookkeeping and declared gitlinks we exclude.
+    Missing revisions/paths produce no evidence; worktree/index never enter it.
+    """
+    if not paths:
+        return {}
+    sha = resolve_commit(root or repo_root(), revision)
+    if sha is None:
+        return {}
+    result = subprocess.run(
+        ["git", "ls-tree", "-r", "-t", "-z", "--full-tree", sha],
+        cwd=root or repo_root(), env=_env_for(root), capture_output=True, check=True,
+    )
+    entries: dict[bytes, tuple[bytes, bytes, bytes]] = {}
+    for record in result.stdout.split(b"\0"):
+        if record:
+            meta, name = record.split(b"\t", 1)
+            mode, kind, oid = meta.split(b" ")
+            entries[name] = (mode, kind, oid)
+    ignored = {os.fsencode(name) for name in ignore}
+    policy = content_policy(ignore, metadata_dir)
+    fingerprints: dict[str, str] = {}
+    for path in paths:
+        name = os.fsencode(path)
+        entry = (b"040000", b"tree", b"") if path == ROOT else entries.get(name)
+        if entry is None:
+            continue
+        mode, kind, oid = entry
+        digest = hashlib.sha256()
+        digest.update(mode + b"\0" + kind + b"\0")
+        if kind != b"tree":
+            digest.update(oid)
+        else:
+            prefix = b"" if path == ROOT else name + b"/"
+            above_metadata = metadata_dir and (
+                path == ROOT or metadata_dir.startswith(path + "/")
+            )
+            metadata_prefix = os.fsencode(metadata_dir + "/") if above_metadata else None
+            for child, (child_mode, child_kind, child_oid) in sorted(entries.items()):
+                if child_kind == b"tree" or not child.startswith(prefix):
+                    continue
+                if child in ignored or (metadata_prefix and child.startswith(metadata_prefix)):
+                    continue
+                digest.update(child[len(prefix):] + b"\0" + child_mode + b"\0" + child_oid + b"\0")
+        fingerprints[path] = policy + ":" + digest.hexdigest()
+    return fingerprints

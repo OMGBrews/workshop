@@ -79,7 +79,7 @@ def _build_parser() -> argparse.ArgumentParser:
     bucket.add_argument(
         "--stale",
         action="store_true",
-        help="Only paths changed since their last audit (mutually exclusive with --never)",
+        help="Only paths with changed content or unusable audit evidence (mutually exclusive with --never)",
     )
     p_next.add_argument(
         "--kind",
@@ -112,7 +112,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p_done.add_argument("path")
     p_done.add_argument("audit_type")
-    p_done.add_argument("--commit", help="Override the commit SHA (default: current HEAD)")
+    p_done.add_argument("--commit", help="Reviewed revision containing the path; resolved to a full SHA (default: current HEAD)")
     p_done.add_argument("--note", help="Optional free-form note for the audit record")
     p_done.add_argument(
         "--repository", metavar="NAME", help=repository_help + " Default: self."
@@ -293,7 +293,10 @@ def _cmd_next(
         if c.reason == "never-audited":
             detail = "never audited"
         elif c.reason == "stale":
-            detail = f"{c.commits_since_audit} commit(s) since audit at {c.last_audited_at}"
+            detail = (
+                f"stale; {c.commits_since_audit} commit(s) since audit at {c.last_audited_at}"
+                + (" (count may be unavailable)" if c.commits_since_audit == 0 else "")
+            )
         else:
             detail = f"last audited {c.last_audited_at}"
         shown = c.path if c.repository == SELF_REPOSITORY else f"{c.repository}:{c.path}"
@@ -364,7 +367,8 @@ def _cmd_done(
             declared=cfg.repositories if cfg is not None else None,
         )
         sha = queries.done(
-            conn, validated.path, audit_type, commit=commit, note=note, repository=context
+            conn, validated.path, audit_type, commit=commit, note=note, repository=context,
+            subject_paths=_subject_paths(cfg)
         )
     except ValueError as e:
         print(str(e), file=sys.stderr)
