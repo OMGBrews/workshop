@@ -20,6 +20,10 @@ Outside contributors use the public channels in [SUPPORT.md](SUPPORT.md).
 - Link Workshop's shared skill roster into a project's `.agents/skills/`;
   `bash workshop/Tools/sync-skill-symlinks.sh .` maintains both the canonical
   surface and the Claude bridge while preserving project-local collisions.
+  Run `bash workshop/Tools/sync-rules-symlinks.sh .` alongside it to maintain
+  the three standing-rule links in `.claude/rules/`. Re-run both after a
+  Workshop pointer bump and commit their output with the pointer; see
+  [the harness-agnostic setup guide](docs/harness-agnostic-repos.md).
 - Read [docs/signal-hygiene.md](docs/signal-hygiene.md) and
   [docs/definition-of-done.md](docs/definition-of-done.md) before claiming a
   check or task complete. Read
