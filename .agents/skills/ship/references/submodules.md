@@ -112,7 +112,10 @@ children's bumps before it merges in its own turn.
 3. **Record the pointer**: `git -C <sm> checkout <merge-sha>`, then
    `git add <sm>` and commit (`Bump <name> pointer: <what the child PR did>`).
    Run any post-bump step the superproject documents (for a Workshop bump,
-   `<mount>/Tools/sync-skill-symlinks.sh .`) in the same commit.
+   `bash <mount>/Tools/sync-skill-symlinks.sh .` and
+   `bash <mount>/Tools/sync-rules-symlinks.sh .`). Commit both generated
+   surfaces with the pointer; see the
+   [standing-rule setup guidance](../../../../docs/harness-agnostic-repos.md).
 4. Resolve the parent's own environment, route, and authorization before
    choosing how to land its pointer. Restore all child checkouts to the
    gitlinks the parent now records, then rerun the parent's applicable checks.

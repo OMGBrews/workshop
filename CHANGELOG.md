@@ -3,6 +3,11 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **Workshop setup and pointer-bump guidance names both link generators.**
+  Refresh shared skills and standing-rule links together, and commit both
+  generated surfaces with the pointer. The new-adopter instructions also
+  state the agent-directory and `AGENTS.md` prerequisites.
+
 - **The `never/` problem bucket is renamed `parked/`.** Problem creation,
   discovery, planning, ranking, audit, status, and retirement use `parked/`.
   Existing acceptance decisions and parking reasons retain their meaning;
