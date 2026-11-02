@@ -3,6 +3,13 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **Task moves repair links before reporting success.** `task-reprioritize`
+  and `task-move` share a procedure that prefers repository-local repair tools,
+  preserves inbound and outbound targets across a complete move map, stages
+  repairs with renames, and runs the existing link check. Repositories without
+  optional tooling use manual verification; repair/check failures stop the move
+  workflow. Consumers receive the instructions by advancing their Workshop pin.
+
 - **Audit freshness survives squash merges and rebases.** New records store
   a versioned content fingerprint and resolved provenance SHA. Equal content
   stays fresh even when the original commit disappears, including after an

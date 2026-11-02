@@ -30,16 +30,30 @@ If the task is already in the target bucket, print "Task is already in `{bucket}
 
 ## Phase 3 — Move
 
-Move the file. `git add` the source first so this works whether the task is untracked (newly created), tracked-clean, or tracked-modified — `git mv` alone errors on untracked sources:
+Read [repair-moved-task-links.md](repair-moved-task-links.md) relative to this
+skill file's **physical** directory, following symlinks first. Perform its
+pre-move steps: inspect existing staging, discover local tooling, record the
+old/new pair, and capture original link targets and inbound references.
+
+Move the file. `git add` the source first so this works whether the task is untracked (newly created), tracked-clean, or tracked-modified — `git mv` alone errors on untracked sources. If the source contains unrelated edits, preserve those hunks separately rather than staging them with the move:
 
 ```bash
 git add <tasks>/{source-bucket}/{task-name}.md \
   && git mv <tasks>/{source-bucket}/{task-name}.md <tasks>/{target-bucket}/{task-name}.md
 ```
 
+Then perform the shared procedure's repair phase: prefer an existing mechanical
+repair, restore outbound links from their original targets, and stage the move
+and associated repairs together. Run the existing repository link check, or
+inspect affected references manually if none exists. A failed repair/check or
+an unresolved reference stops here with changes available for inspection;
+do not proceed to confirmation or shipping.
+
 ## Phase 4 — Confirm
 
 Print: "Moved `{task-name}.md` from `{source-bucket}/` to `{target-bucket}/`."
+Name the repaired files and the link-check result, or the manual verification
+performed when no check exists.
 
 ## Phase 5 — Ship it (docs-only fast path)
 
@@ -57,8 +71,10 @@ ask its predicate, and apply the convention's local-versus-PR rule.
    TREE_ROOT="$(dirname "$(readlink -f .agents/skills/task-move/SKILL.md)")/../../.."
    ```
 
-2. Confirm `git status --short` shows only this move staged, and commit it on
-   the default branch.
+2. After the user accepts the shipping offer, confirm the staged diff contains
+   only this move and its associated link repairs, with unrelated staging
+   preserved and excluded from the commit. Commit those paths/hunks on the
+   default branch only where the repository permits that route.
 3. Run the predicate from the repo root against the remote default branch:
 
    ```bash
