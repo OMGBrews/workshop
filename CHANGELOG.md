@@ -3,6 +3,10 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **The devcontainer kit installs an `update-harnesses` alias** in Bash and
+  Zsh. It runs the updater from the mounted Workshop checkout, using
+  `WORKSPACE_DIR` or `/workspace`, when requested interactively.
+
 - **The `never/` problem bucket is renamed `parked/`.** Problem creation,
   discovery, planning, ranking, audit, status, and retirement use `parked/`.
   Existing acceptance decisions and parking reasons retain their meaning;

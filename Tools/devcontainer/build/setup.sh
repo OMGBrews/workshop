@@ -177,6 +177,10 @@ while IFS= read -r rcfile; do
 done < <(harness_rcfiles)
 echo "  workspace auto-populate shell hook installed"
 
+# Human-invoked maintenance shortcut. Keep the workspace expansion inside the
+# alias body so it resolves the mounted checkout when invoked.
+harness_alias update-harnesses "alias update-harnesses='bash \"\${WORKSPACE_DIR:-/workspace}/workshop/Tools/devcontainer/update-harnesses.sh\"'"
+
 # 5. Coding harnesses.
 #
 # The manifest is truncated here and appended to by each harness script, so it always
