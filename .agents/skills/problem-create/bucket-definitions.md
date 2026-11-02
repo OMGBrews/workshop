@@ -11,7 +11,7 @@ and discovery; local READMEs provide courtesy summaries and preserve local guida
 | `now/` | Flaws requiring attention now |
 | `soon/` | Flaws to address after current priorities |
 | `later/` | Known flaws with tolerable current impact and no near-term commitment |
-| `never/` | Explicitly parked flaws whose continued existence is understood and accepted |
+| `parked/` | Explicitly parked flaws whose continued existence is understood and accepted |
 
 These are attention horizons, not severity or implementation status. A blocked
 fix can leave a problem urgent. Problems have no `finalized/`, `queued/`, or
@@ -19,10 +19,10 @@ fix can leave a problem urgent. Problems have no `finalized/`, `queued/`, or
 once the flaw is verified gone. A completed task is not proof of resolution.
 
 `problem-reprioritize` moves records among now, soon, and later. Explicit user
-direction owns entry to or exit from never; automatic ranking neither parks nor
+direction owns entry to or exit from parked; automatic ranking neither parks nor
 unparks records. Record the user's parking reason in Background when parking,
 or as the record's `**Disposition**: Accepted` line when `problem-plan` parks
-it; do not invent acceptance of a risk. Status and audit sweeps include never.
+it; do not invent acceptance of a risk. Status and audit sweeps include parked.
 
 Aim for roughly three now and three soon problems, with later holding the rest.
 These are soft attention budgets, not quotas or severity caps. Never demote an

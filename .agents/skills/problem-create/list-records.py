@@ -4,7 +4,7 @@ import json
 import sys
 from pathlib import Path
 
-BUCKETS = {"now", "soon", "later", "never"}
+BUCKETS = {"now", "soon", "later", "parked"}
 GUIDES = {"README.md", "_TEMPLATE.md"}
 
 
@@ -16,6 +16,8 @@ def inventory(repo):
         return {"state": "absent", "records": []}
     if not root.is_dir():
         raise ValueError(f"collection is not a directory: {root}")
+    if (root / "never").exists():
+        raise ValueError("renamed problem bucket: move docs/work/problems/never to docs/work/problems/parked")
     records = []
     slugs = {}
     for path in sorted(root.rglob("*")):

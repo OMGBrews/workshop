@@ -24,7 +24,7 @@ Do not create a problem document for:
 ## Priority buckets
 
 Problems are grouped by attention horizon: `now/` needs attention now, `soon/`
-is next, `later/` tolerates deferral, and `never/` is explicitly parked.
+is next, `later/` tolerates deferral, and `parked/` is explicitly parked.
 The authority for placement, discovery, and moves is
 `.agents/skills/problem-create/bucket-definitions.md` (resolved from the repository
 root). These are courtesy summaries, not separate bucket definitions.
@@ -69,7 +69,7 @@ A record the user has decided to live with carries one line recording that decis
 **Disposition**: Deferred YYYY-MM-DD until <condition>. <One sentence.>
 ```
 
-`problem-plan` writes it, replaces it on a revisit, and stops on a record that already carries one. An Accepted record is parked in `never/`, and the line is its parking reason. A record planned into a task carries no Disposition line: the task citing the record is the mark. A record with neither has not been decided yet.
+`problem-plan` writes it, replaces it on a revisit, and stops on a record that already carries one. An Accepted record is parked in `parked/`, and the line is its parking reason. A record planned into a task carries no Disposition line: the task citing the record is the mark. A record with neither has not been decided yet.
 
 Skills: `problem-create` files a record from the canonical template, `problem-status` reports current signals, `problem-audit` re-verifies the record in depth, `problem-plan` decides what to do about it, and `kaizen-resolve` retires it only after the flaw is verified gone.
 

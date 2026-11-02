@@ -31,7 +31,7 @@ picks one; `problem-status` with no argument is the sweep that picks.
 ## Repo conventions (resolve first)
 
 - **Problems root**: `docs/work/problems/`, with records directly under it
-  (legacy, unbucketed) or in its `now/`, `soon/`, `later/`, and `never/`
+  (legacy, unbucketed) or in its `now/`, `soon/`, `later/`, and `parked/`
   buckets. Its `README.md` is the local rule source: read it before Phase 2.
   The `**Disposition**:` line this skill writes is defined in the shared
   problem template and the problems README seed; a repository that also links
@@ -66,7 +66,7 @@ check its exit status: a failed inventory is a layout error to report, not an
 empty collection. Resolve the argument to exactly one record in that
 inventory, in any bucket. Accept an exact path, a filename, or an H1 title.
 More than one match: list them and ask which. No match: say so and stop. Print
-the resolved path and its bucket before continuing. A record in `never/` is
+the resolved path and its bucket before continuing. A record in `parked/` is
 parked by the user's explicit direction: say so, and plan it only if the user
 wants it re-opened.
 
@@ -417,7 +417,7 @@ It goes directly after the `**In brief**:` paragraph, or after the record's
 adding a second. The record stays in the collection because the flaw still
 exists; the line records only the decision.
 
-An **Accepted** record belongs in `never/`: the user's acceptance is the
+An **Accepted** record belongs in `parked/`: the user's acceptance is the
 explicit direction the problem bucket definitions require for parking, and the
 Disposition line is the parking reason they ask to be recorded. Move it there
 under those definitions' move rules — the record's own relative links and
@@ -433,7 +433,7 @@ Read `git status --short` first. Stage and commit only what this run wrote, by
 explicit path: the task file(s) and any tasks-root scaffolding `task-create`
 created; the record, when Phase 2 repaired it or Phase 7 wrote a Disposition
 line, with both of its paths and the repaired inbound references when an
-Accepted record moved to `never/`; the handoff, design, or idea document and
+Accepted record moved to `parked/`; the handoff, design, or idea document and
 any README row that goes with it. Never `git add -A`, `-u`, `.`, or `commit
 -a`: other work in the tree is not this skill's to sweep up. When Phase 1's
 snapshot showed the record already modified, stage only this run's hunks:

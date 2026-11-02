@@ -38,13 +38,13 @@ class InventoryTests(unittest.TestCase):
 
     def test_mixed_untracked_and_parked(self):
         for p in ['legacy.md', 'now/urgent.md', 'soon/next.md',
-                  'later/deferred.md', 'never/parked.md', 'README.md',
+                  'later/deferred.md', 'parked/parked.md', 'README.md',
                   'now/README.md', '_TEMPLATE.md', 'soon/_TEMPLATE.md']:
             self.put(p)
         result = module.inventory(self.repo)
         self.assertEqual(len(result['records']), 5)
         self.assertEqual({r['bucket'] for r in result['records']},
-                         {'unbucketed', 'now', 'soon', 'later', 'never'})
+                         {'unbucketed', 'now', 'soon', 'later', 'parked'})
         self.assertTrue(all((self.repo / r['path']).is_file() for r in result['records']))
         process = subprocess.run([sys.executable, str(helper), str(self.repo)],
                                  capture_output=True, text=True)
@@ -63,7 +63,7 @@ class InventoryTests(unittest.TestCase):
         self.assertEqual(module.inventory(self.repo), after)
 
     def test_duplicate_fails_cli_without_partial_inventory(self):
-        self.put('legacy.md'); self.put('never/legacy.md')
+        self.put('legacy.md'); self.put('parked/legacy.md')
         process = subprocess.run([sys.executable, str(helper), str(self.repo)],
                                  capture_output=True, text=True)
         self.assertNotEqual(process.returncode, 0)
@@ -77,6 +77,14 @@ class InventoryTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'unsupported record location'):
                     module.inventory(self.repo)
                 p.unlink()
+
+    def test_old_bucket_refused_even_when_empty(self):
+        (self.root / "never").mkdir(parents=True)
+        with self.assertRaisesRegex(ValueError, "renamed problem bucket"):
+            module.inventory(self.repo)
+        self.put("never/flaw.md")
+        with self.assertRaisesRegex(ValueError, "renamed problem bucket"):
+            module.inventory(self.repo)
 
     def test_symlink_refused(self):
         self.root.mkdir(parents=True)

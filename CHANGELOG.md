@@ -3,6 +3,15 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **The `never/` problem bucket is renamed `parked/`.** Problem creation,
+  discovery, planning, ranking, audit, status, and retirement use `parked/`.
+  Existing acceptance decisions and parking reasons retain their meaning;
+  automatic ranking still neither parks nor unparks records. Consumers move
+  `docs/work/problems/never/` to `parked/` and repair live references in the
+  same commit as their Workshop pin advance. The inventory and conformance
+  clause 18 reject a leftover old bucket, including an empty one. Historical
+  journal entries remain unchanged.
+
 - **The `never/` task bucket is renamed `parked/`.** The bucket held deferred
   work, not rejected work, and its old name led readers to treat its briefs as
   retired. `parked/` holds deferred work nobody is watching; every brief in it

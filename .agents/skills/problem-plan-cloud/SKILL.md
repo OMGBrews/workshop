@@ -28,7 +28,7 @@ steps below say which of its sections to apply.
 
 All optional, in any order, besides the shared slug filter and `dry-run`:
 
-- a bucket name: `now`, the default, `soon`, or `later`. `never` is not dispatched,
+- a bucket name: `now`, the default, `soon`, or `later`. `parked` is not dispatched,
   because those records are parked by the owner's explicit direction, and planning
   one is a deliberate single run of `problem-plan`;
 - `include-planned`, which also dispatches the records step 3's first two gates
@@ -37,7 +37,7 @@ All optional, in any order, besides the shared slug filter and `dry-run`:
 ## Repo conventions (resolve first)
 
 - **Problems root**: `docs/work/problems/`, with records in `now/`, `soon/`,
-  `later/`, and `never/`, or directly under it as legacy unbucketed records. The
+  `later/`, and `parked/`, or directly under it as legacy unbucketed records. The
   shared [bucket definitions](../problem-create/bucket-definitions.md) and the
   `list-records.py` inventory beside them are read from the `problem-create`
   skill's **physical** directory, following every symlink first, per
