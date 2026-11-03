@@ -598,7 +598,7 @@ and handles the read-heavy workload efficiently.
 
 Explicitly document what NOT to do:
 
-```markdown
+````markdown
 ## Common pitfalls
 
 ### Scene loading
@@ -614,7 +614,7 @@ SceneManager.LoadScene("GameScene");
 // Correct — non-blocking
 await SceneManager.LoadSceneAsync("GameScene");
 ```
-```
+````
 
 ---
 

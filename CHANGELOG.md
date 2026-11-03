@@ -3,6 +3,12 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **Markdown section links are checked by default.** Relative and same-file
+  fragments must resolve to GitHub-style headings or explicit HTML anchors.
+  Python 3 and a bundled, licensed Mistune parser support offline checking.
+  URI and non-Markdown fragment skips are named; fence extraction respects
+  opening delimiter and length.
+
 - **Task finalization builds understanding before decisions.** Orientations
   explain the necessary system context before the problem, scale length to
   the reader's needs, and check concept ordering before presenting the decision

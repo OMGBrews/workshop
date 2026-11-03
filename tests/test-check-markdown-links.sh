@@ -12,12 +12,12 @@ mkdir -p "$work/good/docs" "$work/good/assets"
 printf 'ok\n' > "$work/good/docs/guide.md"
 printf 'image\n' > "$work/good/assets/logo.png"
 # shellcheck disable=SC2016 # Markdown backticks and parentheses are literal fixture bytes.
-printf '[guide](docs/guide.md) ![logo](assets/logo.png) [ref]: docs/guide.md\n`[ignored](missing.md)`\n```text\n[ignored](missing.md)\n```\n[web](https://example.com) [part](#here)\n' > "$work/good/README.md"
+printf '[guide](docs/guide.md) ![logo](assets/logo.png) [ref]: docs/guide.md\n`[ignored](missing.md)`\n```text\n[ignored](missing.md)\n```\n[web](https://example.com) [part](#here)\n# Here\n' > "$work/good/README.md"
 git -C "$work/good" init -q
 git -C "$work/good" add -A
 git -C "$work/good" -c user.name=test -c user.email=test@example.com commit -qm fixture
 bash "$check" "$work/good" > "$work/good.log" 2>&1 || { cat "$work/good.log"; fail "valid links failed"; }
-echo "ok 1 - relative links pass; code, URIs, and fragments are ignored"
+echo "ok 1 - relative and same-file links pass; code ignored and URIs named"
 
 printf '[gone](docs/missing.md)\n' > "$work/good/broken.md"
 git -C "$work/good" add broken.md
@@ -33,12 +33,12 @@ echo "ok 2 - broken relative links fail by source and target"
 # skips instead of probing arbitrary parent paths.
 mkdir -p "$work/module"
 git -C "$work/module" init -q
-printf 'present\n' > "$work/module/target.md"
+printf '# Present\n' > "$work/module/target.md"
 git -C "$work/module" add target.md
 git -C "$work/module" -c user.name=test -c user.email=test@example.com commit -qm module
 module_sha="$(git -C "$work/module" rev-parse HEAD)"
 mkdir -p "$work/boundary/docs"
-printf '[escape](../../outside.md)\n[valid](../vendor/populated/target.md)\n[broken](../vendor/populated/missing.md)\n' \
+printf '[escape](../../outside.md)\n[valid](../vendor/populated/target.md#present)\n[missing-anchor](../vendor/populated/target.md#absent)\n[broken](../vendor/populated/missing.md)\n' \
   > "$work/boundary/docs/guide.md"
 git -C "$work/boundary" init -q
 git -C "$work/boundary" -c protocol.file.allow=always submodule add -q "$work/module" vendor/populated
@@ -53,6 +53,7 @@ grep -q 'skipped Markdown link escaping repository: docs/guide.md -> ../../outsi
   || { cat "$work/boundary.log"; fail "repo escape was not named"; }
 grep -q 'broken Markdown link: docs/guide.md -> ../vendor/populated/missing.md' "$work/boundary.log" \
   || { cat "$work/boundary.log"; fail "populated submodule broken target was not checked"; }
+grep -q 'missing Markdown anchor: docs/guide.md -> ../vendor/populated/target.md#absent' "$work/boundary.log" || fail 'populated anchor not checked'
 echo "ok 3 - escaping targets skip; populated submodule targets are checked"
 
 # Build an unpopulated submodule entry without using `git -C vendor/...`: that
@@ -84,7 +85,7 @@ run_check() { # <repo> <log> -> sets rc
 
 # Targets are percent-decoded before the existence test; the extractor is not.
 mkdir -p "$work/encoded/my docs"
-printf 'ok\n' > "$work/encoded/my docs/guide é.md"
+printf '# X\n' > "$work/encoded/my docs/guide é.md"
 printf '[ok](my%%20docs/guide%%20%%C3%%A9.md) [frag](my%%20docs/guide%%20%%C3%%A9.md#x)\n' > "$work/encoded/README.md"
 git -C "$work/encoded" init -q
 commit_all "$work/encoded" encoded
@@ -157,5 +158,73 @@ grep -q 'a.md:1: unsupported Markdown link syntax' "$work/unparsed.log" \
 grep -q 'broken Markdown link: z.md -> missing.md' "$work/unparsed.log" \
   || { cat "$work/unparsed.log"; fail "sources after an unparseable one were not checked"; }
 echo "ok 9 - an unparseable source exits 2 without hiding the rest of the repository"
+
+
+mkdir -p "$work/anchors"
+cat > "$work/anchors/target.md" <<'EOF'
+# Foo
+# Foo
+# Foo-1
+# Foo
+# *Hello* `Code` [link](somewhere) &amp; Café!
+Setext heading
+--------------
+# Under_score
+<a id="Exact.ID"></a><a name="Named"></a>
+````markdown
+# Fenced
+<a id="fake"></a>
+```
+~~~
+[ignored](missing.md)
+````
+    # Indented
+    <a id="indented"></a>
+<!-- <a id="comment"></a> -->
+`<a id="inline"></a>`
+<pre><a id="html-code"></a></pre>
+EOF
+# Keep unsupported example links out of extraction while exercising target parsing.
+cat > "$work/anchors/.markdown-links-skip" <<'EOF'
+target.md
+EOF
+printf '# Hash\n' > "$work/anchors/hash#question?.md"
+printf 'asset\n' > "$work/anchors/asset.txt"
+cat > "$work/anchors/README.md" <<'EOF'
+# Local
+[local](#local)
+[duplicate](target.md#foo-1-1) [collision](target.md#foo-2)
+[rendered](target.md#hello-code-link--caf%C3%A9)
+[setext](target.md#setext-heading) [underscore](target.md#under_score)
+[explicit](target.md#Exact.ID) [named](target.md#Named)
+[encoded](hash%23question%3F.md?view=1#hash)
+[top](target.md#) [asset](asset.txt#anything) [uri](urn:example:anything)
+EOF
+git -C "$work/anchors" init -q
+commit_all "$work/anchors" anchors
+run_check "$work/anchors" "$work/anchors.log"
+[[ "$rc" -eq 0 ]] || { cat "$work/anchors.log"; fail 'rendered heading and explicit anchors failed'; }
+grep -q 'skipped non-Markdown fragment: README.md -> asset.txt#anything' "$work/anchors.log" || fail 'asset skip unnamed'
+grep -q 'skipped URI Markdown link: README.md -> urn:example:anything' "$work/anchors.log" || fail 'URI skip unnamed'
+echo 'ok 10 - rendered headings, collisions, explicit anchors, encoded delimiters and named skips'
+
+for destination in 'target.md#absent' '#absent' 'target.md#fenced' 'target.md#fake' 'target.md#indented' 'target.md#comment' 'target.md#inline' 'target.md#html-code' 'target.md#foo%0Amissing' 'target.md#foo%0A'; do
+  printf '[broken](%s)\n' "$destination" > "$work/anchors/broken.md"
+  git -C "$work/anchors" add broken.md
+  run_check "$work/anchors" "$work/missing-anchor.log"
+  [[ "$rc" -eq 1 ]] || { cat "$work/missing-anchor.log"; fail "missing anchor $destination exited $rc"; }
+  grep -Fq "missing Markdown anchor: broken.md -> $destination" "$work/missing-anchor.log" || fail 'missing fragment diagnostic lost destination'
+done
+printf '[broken](absent.txt#anything)\n' > "$work/anchors/broken.md"
+run_check "$work/anchors" "$work/missing-asset.log"
+[[ "$rc" -eq 1 ]] || fail 'non-Markdown existence bypassed'
+echo 'ok 11 - absent same/cross-file and code anchors fail; non-Markdown existence remains checked'
+
+printf '\377' > "$work/anchors/target.md"
+printf '[broken](target.md#foo)\n' > "$work/anchors/broken.md"
+run_check "$work/anchors" "$work/parser-error.log"
+[[ "$rc" -eq 2 ]] || fail "parser error exited $rc"
+grep -q 'anchor parsing failed:.*target.md' "$work/parser-error.log" || fail 'parser error unnamed'
+echo 'ok 12 - parser errors exit 2'
 
 echo "all markdown-link tests passed"

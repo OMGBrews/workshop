@@ -72,3 +72,54 @@ grep -Fxq '[^2]: See [guide](../../../../operations/guide.md).' "$footnote" \
 echo "ok 4 - footnote definitions are text, not reference definitions"
 
 echo "all moved-link rewrite tests passed"
+
+cat > "$work/fences.md" <<'EOF'
+````markdown
+```
+[example](missing.md)
+~~~
+[example](missing.md)
+```` trailing text
+[example](missing.md)
+````
+~~~
+```
+[example](missing.md)
+~~~
+[real](target.md#heading?literal)
+EOF
+bash "$root/Tools/rewrite-moved-markdown-links.sh" --extract "$work/fences.md" > "$work/fences.out"
+printf '13\ttarget.md#heading?literal\n' > "$work/fences.expected"
+cmp "$work/fences.expected" "$work/fences.out" || fail 'nested fence extraction leaked links'
+echo 'ok - fence delimiter, length and trailing text respected'
+
+cat > "$work/container-fences.md" <<'EOF'
+> ```markdown
+> [ignored](missing.md)
+> ```
+
+- ```markdown
+  [ignored](missing.md)
+  ```
+[real](target.md)
+EOF
+bash "$rewrite" --extract "$work/container-fences.md" > "$work/container-fences.out"
+printf '8\ttarget.md\n' > "$work/container-fences.expected"
+cmp "$work/container-fences.expected" "$work/container-fences.out" || fail 'container fence extraction leaked links'
+echo 'ok - blockquote and list fences exclude example links'
+
+cat > "$work/container-end.md" <<'EOF'
+> ```
+> example
+
+[broken](missing.md)
+
+- ```
+  example
+
+[broken](missing.md)
+EOF
+bash "$rewrite" --extract "$work/container-end.md" > "$work/container-end.out"
+printf '4\tmissing.md\n9\tmissing.md\n' > "$work/container-end.expected"
+cmp "$work/container-end.expected" "$work/container-end.out" || fail 'container end hid real links'
+echo 'ok - leaving a container ends an unclosed fence'

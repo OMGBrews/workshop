@@ -37,6 +37,15 @@ for the image-build path, the live-apply command, and the host-terminal prerequi
 Run `make check` from a standalone clone to execute Workshop's complete public
 verification suite. It requires Bash, Git, Python 3.11+, jq, ShellCheck, and
 Zsh; the launcher tests exercise real Bash and Zsh startup behavior.
+The Markdown link check validates section fragments by default using the
+[bundled parser](Tools/vendor/README.md); no Python package installation or
+network access is needed. After adopting a new Workshop pin, run
+`bash workshop/Tools/check-markdown-links.sh .` in the consumer. A
+`missing Markdown anchor: source -> target#fragment` diagnostic means the
+heading or explicit anchor is absent: repair the link or restore the intended
+anchor and rerun the check. Exit 1 means broken links; exit 2 means incomplete
+checking or a parser/runtime error. Named skips identify unchecked targets.
+
 GitHub Actions runs that same command for pushes, pull requests, and
 tags. Maintainers create milestone tags and GitHub Releases manually after the
 check passes; tags are immutable and identify the exact release commit. There

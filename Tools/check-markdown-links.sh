@@ -4,7 +4,7 @@
 # The grammar is shared with rewrite-moved-markdown-links.sh: single-line inline
 # links, images, and reference definitions have an angle-bracketed destination,
 # or a whitespace-free destination without parentheses. Optional titles are
-# retained but not interpreted. URI, absolute, and fragment-only targets, plus
+# retained but not interpreted. Absolute targets, plus
 # links in fenced or inline code, are deliberately outside this small check.
 # Footnote definitions (`[^1]: ...`) are not link definitions. Targets are
 # percent-decoded before the existence test, so `my%20file.md` finds
@@ -21,8 +21,13 @@
 # Each skipped source is named; an entry matching no tracked Markdown file is a
 # stale entry and fails the check, so the list cannot quietly outlive its reason.
 #
+# Nonempty fragments on Markdown files (including same-file links) are checked
+# against GitHub-style rendered headings and explicit HTML a id/name anchors.
+# Heading text is lowercased, punctuation removed, spaces changed to hyphens;
+# duplicate IDs receive -1, -2, etc. Explicit identifiers are matched exactly.
+# Python 3.11+ and the bundled Mistune parser are required; no installation is needed.
 # Exit 0: valid. Exit 1: broken links or stale skip entries. Exit 2: usage, an
-# invalid skip file, or a source outside the shared grammar; every other source
+# invalid skip file, an anchor parsing error, or a source outside the shared grammar; every other source
 # is still checked and reported before exit 2.
 set -euo pipefail
 
@@ -39,6 +44,7 @@ skip_file_name=.markdown-links-skip
 skip_file="$root/$skip_file_name"
 declare -a skip_entries=()
 declare -A skip_used=()
+declare -A anchor_cache=()
 
 if [[ -f "$skip_file" ]]; then
   while IFS= read -r entry || [[ -n "$entry" ]]; do
@@ -126,26 +132,63 @@ submodule_state() { # <repo-relative resolved path> -> populated|unavailable|non
 }
 
 check_target() { # <source absolute> <source repo-relative> <target>
-  local source="$1" source_rel="$2" target="$3" resolved state
+  local source="$1" source_rel="$2" target="$3" resolved state original="$3" fragment="" collected invalid_fragment=0
+  if [[ "$target" =~ ^[A-Za-z][A-Za-z0-9+.-]*: ]]; then
+    printf 'skipped URI Markdown link: %s -> %s\n' "$source_rel" "$original"
+    skipped=$((skipped + 1))
+    return
+  fi
+  if [[ "$target" == *#* ]]; then
+    fragment="${target#*#}"
+    [[ ! "$fragment" =~ %([01][0-9a-fA-F]|7[fF]) && ! "$fragment" =~ [[:cntrl:]] ]] || invalid_fragment=1
+    fragment="$(percent_decode "$fragment")"
+  fi
   target="${target%%#*}"
   target="${target%%\?*}"
   case "$target" in
-    ''|/*|*://*|mailto:*|tel:*) return 0 ;;
+    /*) return 0 ;;
   esac
-  resolved="$(normalize_repo_path "$source_rel" "$(percent_decode "$target")")"
+  if [[ -z "$target" ]]; then
+    resolved="$source_rel"
+  else
+    resolved="$(normalize_repo_path "$source_rel" "$(percent_decode "$target")")"
+  fi
   if [[ "$resolved" == .. || "$resolved" == ../* ]]; then
-    printf 'skipped Markdown link escaping repository: %s -> %s\n' "$source_rel" "$target"
+    printf 'skipped Markdown link escaping repository: %s -> %s\n' "$source_rel" "$original"
     skipped=$((skipped + 1))
     return
   fi
   state="$(submodule_state "$resolved")"
   if [[ "$state" == unavailable ]]; then
-    printf 'skipped Markdown link into unavailable submodule: %s -> %s\n' "$source_rel" "$target"
+    printf 'skipped Markdown link into unavailable submodule: %s -> %s\n' "$source_rel" "$original"
     skipped=$((skipped + 1))
     return
   fi
   if [[ ! -e "$root/$resolved" ]]; then
-    printf 'broken Markdown link: %s -> %s\n' "$source_rel" "$target" >&2
+    printf 'broken Markdown link: %s -> %s\n' "$source_rel" "$original" >&2
+    failures=$((failures + 1))
+    return
+  fi
+  [[ -n "$fragment" || "$invalid_fragment" -eq 1 ]] || return 0
+  case "$resolved" in
+    *.md|*.markdown|*.MD) ;;
+    *) printf 'skipped non-Markdown fragment: %s -> %s\n' "$source_rel" "$original"
+       skipped=$((skipped + 1)); return ;;
+  esac
+  if [[ "$invalid_fragment" -eq 1 ]]; then
+    printf 'missing Markdown anchor: %s -> %s (control character in fragment)\n' "$source_rel" "$original" >&2
+    failures=$((failures + 1))
+    return
+  fi
+  if [[ ! -v 'anchor_cache[$resolved]' ]]; then
+    if ! collected="$(python3 "$script_dir/markdown-anchors.py" "$root/$resolved")"; then
+      unparsed=$((unparsed + 1))
+      return
+    fi
+    anchor_cache["$resolved"]="$collected"
+  fi
+  if ! grep -Fxq -- "$fragment" <<< "${anchor_cache[$resolved]}"; then
+    printf 'missing Markdown anchor: %s -> %s (fragment #%s)\n' "$source_rel" "$original" "$fragment" >&2
     failures=$((failures + 1))
   fi
 }
@@ -182,7 +225,7 @@ for entry in "${skip_entries[@]}"; do
 done
 
 if [ "$unparsed" -gt 0 ]; then
-  echo "$unparsed Markdown source(s) outside the supported link grammar; links not fully checked" >&2
+  echo "$unparsed Markdown source(s) could not be fully checked (link grammar or anchor parsing)" >&2
   exit 2
 fi
 [ "$failures" -eq 0 ] || exit 1
