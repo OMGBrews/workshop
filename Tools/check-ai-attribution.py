@@ -107,6 +107,12 @@ def check_command(command, cwd):
         segments = shell_segments(command)
     except ValueError:
         return 2
+    # An unknown command may be shell control flow or change the environment.
+    # Inspect only a complete sequence of supported literal commands.
+    for args in segments:
+        if args and not ((args[0] == 'cd' and len(args) == 2) or
+                         args[:3] in (['gh', 'pr', 'create'], ['gh', 'pr', 'edit'])):
+            return 2
     inspected = False
     for args in segments:
         if not args:

@@ -41,7 +41,8 @@ with tempfile.TemporaryDirectory() as tmp:
         assert m.check_command(command,repo)==1, command
     for command in ['gh pr create --body "$BODY"', 'gh pr create --body-file missing',
                     'gh pr create --body-file -', 'gh pr create -Rowner/repo --body ok', 'curl example.com',
-                    'gh pr create --body ok | cat']:
+                    'gh pr create --body ok | cat',
+                    "if false; then\ngh pr create --body 'Generated with Claude'\nfi"]:
         assert m.check_command(command,repo)==2, command
     assert m.check_command("gh pr create --body 'Discuss Claude'",repo)==0
     os.mkfifo(repo/'pipe')
