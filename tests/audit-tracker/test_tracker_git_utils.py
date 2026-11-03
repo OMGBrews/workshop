@@ -303,3 +303,39 @@ class NulSafePathsTest(support.RepoTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ContentFingerprintTest(support.RepoTestCase):
+    def commit(self):
+        support.run_git(self.repo, "add", "-A")
+        support.run_git(self.repo, "-c", "user.name=Test", "-c", "user.email=test@example.com",
+                        "commit", "-qm", "snapshot")
+        return git_utils.head_sha()
+
+    def test_committed_modes_names_and_kinds_are_covered(self):
+        support.write_file(self.repo / "folder/a\t\nb.py", "same\n")
+        first = self.commit()
+        original = git_utils.content_fingerprints(first, [".", "folder", "folder/a\t\nb.py"])
+        # Neither unstaged nor indexed bytes affect the committed snapshot.
+        support.write_file(self.repo / "folder/a\t\nb.py", "different\n")
+        support.run_git(self.repo, "add", "-A")
+        self.assertEqual(original, git_utils.content_fingerprints(first, list(original)))
+        support.run_git(self.repo, "reset", "--hard", first)
+        os.chmod(self.repo / "folder/a\t\nb.py", 0o755)
+        second = self.commit()
+        changed = git_utils.content_fingerprints(second, list(original))
+        self.assertTrue(all(original[p] != changed[p] for p in original))
+        support.run_git(self.repo, "mv", "folder/a\t\nb.py", "folder/renamed.py")
+        third = self.commit()
+        self.assertNotEqual(changed["folder"], git_utils.content_fingerprints(third, ["folder"])["folder"])
+        (self.repo / "folder/renamed.py").unlink()
+        (self.repo / "folder/renamed.py").symlink_to("target")
+        fourth = self.commit()
+        self.assertNotEqual(git_utils.content_fingerprints(third, ["folder"]),
+                            git_utils.content_fingerprints(fourth, ["folder"]))
+
+    def test_invalid_revision_or_missing_path_has_no_evidence(self):
+        support.write_file(self.repo / "a.py")
+        self.commit()
+        self.assertEqual({}, git_utils.content_fingerprints("missing", ["a.py"]))
+        self.assertEqual({}, git_utils.content_fingerprints("HEAD", ["missing"]))

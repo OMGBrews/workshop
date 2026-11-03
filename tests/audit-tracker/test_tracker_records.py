@@ -17,7 +17,7 @@ import unittest
 from concurrent.futures import ThreadPoolExecutor
 from unittest import mock
 
-from audit_tracker import queries, records
+from audit_tracker import db, queries, records
 
 
 def seed_applicability(conn, paths: list[tuple[str, str]]) -> None:
@@ -35,6 +35,50 @@ def seed_applicability(conn, paths: list[tuple[str, str]]) -> None:
 
 class RoundTripTest(support.RepoTestCase):
     """write_record + load_into_db reproduce what was written."""
+
+    def test_content_evidence_survives_json_and_cache_rebuilding(self) -> None:
+        conn = self.conn()
+        records.write_record(
+            "code-quality", "app/foo.py", last_audited_at="reviewed",
+            last_audit_commit="commit", content_fingerprint="snapshot-v1:proof",
+            notes="keep this note",
+        )
+        record_file = self.records_dir / "code-quality.json"
+        before = record_file.read_bytes()
+        entry = json.loads(before)["audits"]["app/foo.py"]
+        self.assertEqual(entry["content_fingerprint"], "snapshot-v1:proof")
+
+        # Rebuild the derived schema as an upgrade would, then reload the
+        # committed evidence without rewriting it or losing provenance.
+        conn.execute("PRAGMA user_version = 3")
+        conn.commit()
+        db.init_schema(conn)
+        seed_applicability(conn, [("app/foo.py", "code-quality")])
+        records.load_into_db(conn)
+        row = conn.execute("SELECT * FROM audits").fetchone()
+        self.assertEqual(row["last_audited_at"], "reviewed")
+        self.assertEqual(row["last_audit_commit"], "commit")
+        self.assertEqual(row["content_fingerprint"], "snapshot-v1:proof")
+        self.assertEqual(row["notes"], "keep this note")
+        self.assertEqual(record_file.read_bytes(), before)
+
+    def test_legacy_write_does_not_reuse_previous_content_evidence(self) -> None:
+        records.write_record(
+            "code-quality", "app/foo.py", last_audited_at="first",
+            last_audit_commit="first", content_fingerprint="snapshot-v1:old",
+            notes="retained",
+        )
+        records.write_record(
+            "code-quality", "app/foo.py", last_audited_at="second",
+            last_audit_commit="second", notes=None,
+        )
+        entry = json.loads((self.records_dir / "code-quality.json").read_text())["audits"]["app/foo.py"]
+        self.assertNotIn("content_fingerprint", entry)
+        self.assertEqual(entry["notes"], "retained")
+        conn = self.conn()
+        seed_applicability(conn, [("app/foo.py", "code-quality")])
+        records.load_into_db(conn)
+        self.assertIsNone(conn.execute("SELECT content_fingerprint FROM audits").fetchone()[0])
 
     # 1. two written records load back with their fields intact --------------
     def test_round_trip_preserves_audit_rows(self) -> None:
@@ -312,6 +356,10 @@ class RefreshStateTest(support.RepoTestCase):
 
 class DoneWritesJsonTest(support.RepoTestCase):
     """``queries.done()`` writes through to the JSON source of truth."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.fake_git()
 
     # 11. done persists the record without merge-prone global state ----------
     def test_done_persists_record_in_json(self) -> None:

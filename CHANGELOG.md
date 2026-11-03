@@ -3,6 +3,41 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **The work-directory contract lists the handoff outbox and parent declaration.**
+  `docs/work/handoffs/` and `docs/work/consumed-by.md` now have explicit
+  purposes and owners; directory rows cover their documented descendants.
+
+- **Markdown section links are checked by default.** Relative and same-file
+  fragments must resolve to GitHub-style headings or explicit HTML anchors.
+  Python 3 and a bundled, licensed Mistune parser support offline checking.
+  URI and non-Markdown fragment skips are named; fence extraction respects
+  opening delimiter and length.
+
+- **Task finalization builds understanding before decisions.** Orientations
+  explain the necessary system context before the problem, scale length to
+  the reader's needs, and check concept ordering before presenting the decision
+  agenda. The interview pause and one-question flow are preserved.
+
+- **Task moves repair links before reporting success.** `task-reprioritize`
+  and `task-move` share a procedure that prefers repository-local repair tools,
+  preserves inbound and outbound targets across a complete move map, stages
+  repairs with renames, and runs the existing link check. Repositories without
+  optional tooling use manual verification; repair/check failures stop the move
+  workflow. Consumers receive the instructions by advancing their Workshop pin.
+
+- **Audit freshness survives squash merges and rebases.** New records store
+  a versioned content fingerprint and resolved provenance SHA. Equal content
+  stays fresh even when the original commit disappears, including after an
+  exact revert. Explicit revisions must resolve locally and contain the
+  audited path; nonancestor commits are accepted for every repository. Legacy
+  records derive evidence when readable and otherwise remain stale until
+  re-audit, without a manual migration. Directory coverage and bookkeeping
+  exclusions are preserved; derived caches rebuild automatically.
+
+- **The devcontainer kit installs an `update-harnesses` alias** in Bash and
+  Zsh. It runs the updater from the mounted Workshop checkout, using
+  `WORKSPACE_DIR` or `/workspace`, when requested interactively.
+
 - **Workshop setup and pointer-bump guidance names both link generators.**
   Refresh shared skills and standing-rule links together, and commit both
   generated surfaces with the pointer. The new-adopter instructions also

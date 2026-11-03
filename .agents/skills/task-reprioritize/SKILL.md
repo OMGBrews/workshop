@@ -7,7 +7,7 @@ description: Rebalance the task queue toward a healthy shape in a single decide-
 
 Rebalance the task queue toward the healthy shape defined in [`../task-create/bucket-definitions.md`](../task-create/bucket-definitions.md) § Queue shape, in a single pass. Decide-then-apply instead of asking the user move-by-move: the plan is printed before any move, and staged changes are cheap to revert.
 
-This command owns **planning-bucket moves and deletions** — `task-finalize` owns admission to `finalized/`, `task-move` owns explicit lifecycle moves, and `task-audit` verifies what documents say without moving them. This skill is lightweight: it uses **task-file metadata and bucket state** — no codebase analysis, no test execution. When a `task-audit` run earlier in this conversation produced reprioritization signals, consume them as evidence (see Phase 2); if the documents themselves look stale, run `task-audit` first.
+This command owns **planning-bucket moves and deletions** — `task-finalize` owns admission to `finalized/`, `task-move` owns explicit lifecycle moves, and `task-audit` verifies what documents say without moving them. Ranking uses **task-file metadata and bucket state**, without codebase analysis; applying moves also repairs links and runs the repository's applicable checks. When a `task-audit` run earlier in this conversation produced reprioritization signals, consume them as evidence (see Phase 2); if the documents themselves look stale, run `task-audit` first.
 
 This skill **stages** changes via `git mv` / `git rm` but does **NOT** auto-commit.
 
@@ -266,6 +266,13 @@ The **`Focus` column is what makes a focus-driven move legible without re-derivi
 
 A quoted fragment in this column is a claim that focus *contributed* to the move. Where focus was read but changed nothing about a particular move, the citation still belongs there — it says the task is in focus and the mechanics agreed anyway — but the Rationale must not credit focus for a decision the mechanics made on their own. After the table, state in one line how many moves focus actually decided, and name them.
 
+Before any move, read and perform the pre-move steps in
+[`../task-move/repair-moved-task-links.md`](../task-move/repair-moved-task-links.md),
+resolved relative to this skill file's **physical** directory (follow symlinks
+before taking `..`). Capture the complete old/new path map and each moved
+brief's original link targets before changing paths. This procedure governs
+move-related repairs; task deletion remains under the existing deletion rules.
+
 For each move, run:
 
 ```bash
@@ -282,12 +289,21 @@ Apply all moves directly. **Do not call a question prompt.** If the user disagre
 
 If the plan is empty (shape is at-target and no overrides apply), print "Queue is at-target — no moves applied." and stop.
 
-After applying, print:
+After all moves, follow that shared procedure's repair phase for every path
+pair: prefer existing mechanical repair, restore moved briefs' outbound links
+from their original targets using the full map, stage all associated repairs
+alongside the renames, and run the existing repository link check (or inspect
+affected references manually when none exists). A failed repair/check or an
+unresolved reference stops the pass with changes available for inspection;
+do not print the success block or offer a commit.
+
+After repairs and verification succeed, print:
 
 ```
 Done. Final shape: now=N, soon=N, later=N.
 Focus: <how it was read, and how many of the N moves it decided | "ABSENT — ranked on mechanics alone">
-Review the staged moves: `git status` then `git diff --staged --stat`.
+Links: <repaired files and check result, or manual verification result>.
+Review the staged moves and repairs: `git status` then `git diff --staged --stat`.
 Do **NOT** auto-commit. Commit when satisfied.
 ```
 

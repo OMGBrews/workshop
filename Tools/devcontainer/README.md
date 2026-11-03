@@ -27,6 +27,24 @@ their own project-local lifecycle wrapper. The public kit receives paths and
 environment values from that consumer; it does not read HQ records or assume a
 particular workspace checkout layout.
 
+## Updating coding assistants
+
+Setup installs an `update-harnesses` alias in both Bash and Zsh startup files.
+Run it interactively to update each installed assistant and see its result.
+It runs the updater from the mounted Workshop checkout, resolving
+`WORKSPACE_DIR` when invoked and falling back to `/workspace`. Re-running
+setup preserves an existing alias with that name.
+
+For non-interactive callers, invoke the script explicitly:
+
+```bash
+bash "${WORKSPACE_DIR:-/workspace}/workshop/Tools/devcontainer/update-harnesses.sh"
+```
+
+The updater runs only on request; shell startup installs the alias without
+running updates. A failed or unavailable assistant produces a non-zero exit
+after all assistants have been reported.
+
 ## Claude ancestor-rule exclusions
 
 The Claude harness installs `build/claude-launcher.py` as

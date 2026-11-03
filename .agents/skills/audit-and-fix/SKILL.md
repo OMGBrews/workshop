@@ -168,7 +168,7 @@ When Step 1 returned `configured: false`, say that this explicit-path audit cann
 python3 .agents/skills/audit-and-fix/tracker.py done <path> <audit-type> [--repository <repository>]
 ```
 
-Use the canonical `<path>`, exact `<audit-type>`, and — when it is not `self` — the `<repository>` from Step 1. This writes the record to `docs/work/audits/records/<audit-type>.json`, or to `docs/work/audits/records/<repository>/<audit-type>.json` for a nested repository (the SQLite cache under `.git/` is derived, never committed). For a nested repository, `done` records the subject's current `HEAD` and refuses a commit that is not in that `HEAD`'s history; it never fetches.
+Use the canonical `<path>`, exact `<audit-type>`, and — when it is not `self` — the `<repository>` from Step 1. This writes the record to `docs/work/audits/records/<audit-type>.json`, or to `docs/work/audits/records/<repository>/<audit-type>.json` for a nested repository (the SQLite cache under `.git/` is derived, never committed). `done` validates the audited repository's current `HEAD` and path, then records the content fingerprint and full commit SHA; it never fetches.
 
 If the tracker reports "not applicable", run:
 
@@ -194,4 +194,4 @@ This two-commit ordering is intentional: `done` stores the current `HEAD`, so ru
 - Honor agents that say "fewer than five real issues" — do not pressure them into padding.
 - Do not fix anything until the user explicitly directs it in Step 4.
 - Never record a pre-fix `HEAD`: commit fixes first, then run `done`, then commit the record alone.
-- A nested-repository record names a local subject commit. If that commit later leaves the subject's history — a squash merge or a rebase before it lands — the tracker reports the path as stale rather than silently current. Once the landed commit is checked out in the subject, `audit-done <path> <audit-type> --repository <name>` re-records it without a new review.
+- Audit freshness follows committed content equality, including after a squash merge, rebase, or exact revert. The commit SHA identifies provenance. Legacy records derive evidence from locally available commits without rewriting JSON; if the old content is unavailable, a new review is required.

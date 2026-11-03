@@ -3,15 +3,15 @@
 # update-harnesses.sh — update every coding harness this kit installs, and report
 # what happened to each one.
 #
-#   bash devtools/Tools/devcontainer/update-harnesses.sh      # from the project root
+#   bash workshop/Tools/devcontainer/update-harnesses.sh      # from the project root
 #
 # Deliberately OUTSIDE build/. Everything in build/ is COPYed into images and runs at
-# image-build time; this runs at RUNTIME, from the mounted devtools clone, so it reaches
+# image-build time; this runs at RUNTIME, from the mounted Workshop checkout, so it reaches
 # a container the moment a pointer moves rather than at the next rebuild. Baking it would
 # freeze the update tool into the image whose contents it exists to update.
 #
-# Not wired into any startup hook, and not aliased. It is a thing a human runs, which is
-# what makes the exit-code contract below safe.
+# Human-invoked, directly or through the update-harnesses alias installed by setup.sh.
+# Never run by a startup hook, which keeps the exit-code contract below safe.
 #
 # ── Exit code ───────────────────────────────────────────────────────────────────────
 # 0 only when every harness ended `updated` or `already-current`. Non-zero when any
@@ -76,7 +76,7 @@ for entry in "${HARNESSES[@]}"; do
 
     if ! locate_harness "$binary" >/dev/null; then
         detail="not installed — re-run the build-time setup live:"
-        detail="$detail bash devtools/Tools/devcontainer/build/setup.sh"
+        detail="$detail bash workshop/Tools/devcontainer/build/setup.sh"
         results+=("unavailable|$label|$detail")
         printf '%-14s %s\n' "$label" "UNAVAILABLE ($binary is not installed)"
         continue

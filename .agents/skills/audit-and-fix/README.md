@@ -77,9 +77,9 @@ Rules:
 - The repository root is the directory `.`, and only the literal pattern
   `"."` selects it — no wildcard does. It is how a repository's top-level
   `README.md` enters the `readme-quality` pool:
-  `include = [".", "docs"]`. A root audit is stale after any commit that
-  changes content, so it resurfaces often by design; a commit that only
-  changes audit records never stales it.
+  `include = [".", "docs"]`. A root audit is stale when its covered content
+  differs from the reviewed snapshot; a commit that only changes audit
+  records never stales it, and an exact revert is fresh.
 - The shipped prompt set under [`prompts/`](./prompts/README.md) is the closed
   vocabulary of types — a config naming a `<type>-<kind>` combination with no
   prompt file is rejected. New combinations are Workshop contributions
@@ -130,9 +130,9 @@ include = ["."]              # library/'s own root, so library/README.md
   needs `--repository`. A control-relative path into a subject
   (`library/src/x.py`) is refused with the subject-relative spelling to use
   instead; the subject's root is `--repository library --path .`.
-- **Staleness** follows the subject's own history: `done --repository
-  library` records `library/`'s `HEAD` after checking it is in that
-  repository's history, and later `library/` commits make the record stale.
+- **Staleness** follows the subject's own committed content: `done --repository
+  library` records `library/`'s `HEAD` and a content fingerprint, and content
+  differing from that reviewed snapshot makes the record stale.
   Changes confined to the wrapper never stale a `library/` audit, and the
   reverse holds too.
 - **Failures are loud.** A missing, uninitialized, moved, plain, symlinked,
@@ -151,10 +151,12 @@ in the wrapper, by explicit pathspec. The wrapper's now-modified gitlink is
 left alone. Pushing `library/`, opening or merging pull requests, moving the
 submodule pointer, and releasing are separate, separately authorized steps.
 
-If subject work lands through a squash-merged or rebased pull request, the
-recorded commit leaves the subject's history and the path resurfaces as
-stale. Once the landed commit is checked out in the subject, `audit-done
-<path> <type> --repository <name>` re-records it without a new review.
+Subject work that lands through a squash-merged or rebased pull request stays
+fresh when its audited content is unchanged. The SHA remains provenance;
+the saved fingerprint supplies evidence even when that commit disappears.
+Older records without fingerprints derive evidence from locally readable
+commits, without rewriting JSON. If that content is unavailable, re-audit
+before recording new evidence.
 
 ## Where state lives
 

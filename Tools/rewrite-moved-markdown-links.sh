@@ -139,7 +139,41 @@ awk -v mode="$mode" -v old_path="$old_path" -v new_path="$new_path" '
     after = substr(inside, target_end + 1)
     return substr(line, 1, pos) before newtarget after
   }
-  /^[[:space:]]*(```|~~~)/ { fence = !fence; if (mode == "rewrite") print; next }
+  {
+    # Portable awk: interval expressions are not available on every consumer.
+    marker = $0
+    match(marker, /^ */); indent = RLENGTH
+    if (indent <= 3) marker = substr(marker, indent + 1)
+    quote_depth = 0
+    while (marker ~ /^ ? ? ?> ?/) {
+      sub(/^ ? ? ?> ?/, "", marker); quote_depth++
+    }
+    list_indent = 0
+    if (match(marker, /^[-+*] +|^[0-9]+[.)] +/)) {
+      list_indent = indent + RLENGTH
+      marker = substr(marker, RLENGTH + 1)
+    }
+    # A fenced block ends with its blockquote/list container, even without a
+    # closing fence. Do not hide real links after leaving that container.
+    if (fence && (quote_depth < fence_quote ||
+        (fence_list_indent && indent < fence_list_indent && $0 !~ /^[[:space:]]*$/))) fence = 0
+    if (marker ~ /^```|^~~~/) {
+      delimiter = substr(marker, 1, 1); count = 0
+      while (substr(marker, count + 1, 1) == delimiter) count++
+      tail = substr(marker, count + 1)
+      if (!fence && (delimiter != "`" || tail !~ /`/)) {
+        fence = 1; fence_delimiter = delimiter; fence_length = count
+        fence_quote = quote_depth; fence_list_indent = list_indent
+        if (mode == "rewrite") print
+        next
+      }
+      if (fence && delimiter == fence_delimiter && count >= fence_length && tail ~ /^[[:space:]]*$/) {
+        fence = 0
+        if (mode == "rewrite") print
+        next
+      }
+    }
+  }
   fence { if (mode == "rewrite") print; next }
   {
     line = $0

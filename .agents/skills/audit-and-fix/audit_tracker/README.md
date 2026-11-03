@@ -46,7 +46,8 @@ config.
   directory derivation, so a directory whose only tracked file is an empty
   marker still appears in the directory-kind pools.
 - **Audits** are one row per `(path, audit_type)` — the last time you audited
-  that path for that type, at which commit, with an optional note.
+  that path for that type, a resolved commit SHA for provenance, a versioned
+  content fingerprint, and an optional note.
 - **Repositories.** Every path, applicability row, audit, and cached
   staleness result also carries the repository it belongs to: `self`, the
   control repository the process runs in, or a subject declared under
@@ -61,17 +62,32 @@ config.
   repository into an error rather than an empty pool. The README one level
   up has the consumer-facing example.
 
-Staleness is computed on the fly from Git. Paths sharing an audit commit are
-classified by one `git log --name-only` history walk rather than two Git
-processes per path. Exact results are cached under the current HEAD in the
-derived SQLite database, so repeated `status` and `next --stale` calls do not
-walk history again. A directory audit is stale if any file below it changed;
-a root (`.`) audit is stale after any commit that changed a file. In the
-control repository, a change under `docs/work/audits/records/` never stales a
-directory above that folder, the root included: the record commit that
-follows every audit is bookkeeping, and counting it would make an audit of
-the root stale the moment it was recorded. A path at or inside the records
-folder still sees those changes.
+Freshness compares the reviewed content's fingerprint with the path at its
+repository's current HEAD. Matching content is fresh even after a squash
+merge, rebase, or fresh clone loses the provenance commit. An edit followed
+by an exact revert is fresh too. Fingerprints read committed Git entries,
+including path kind and executable mode, rather than the worktree or index.
+
+A directory fingerprint covers every Git entry below it, regardless of the
+audit type's file eligibility. In the control repository, declared subjects'
+gitlink entries are excluded, as are entries under
+`docs/work/audits/records/` for a directory strictly above that folder,
+including root `.`. A path at or inside the records folder still sees those
+changes. The fingerprint carries its version and exclusion policy; evidence
+from an incompatible policy cannot prove freshness.
+
+Legacy records without fingerprints load automatically. When their recorded
+commit and path remain readable locally, the tracker derives content evidence
+even if the commit is outside HEAD's ancestry. Queries do not rewrite the
+committed JSON, so that fallback does not become durable until a new audit
+write persists a fingerprint. Unrecoverable evidence means stale until
+re-audit; no manual migration is needed.
+
+History counts remain useful for ordering stale candidates and are computed
+in a batched walk per repository, with derived results cached. Freshness is
+independent of those counts: a clean exact revert may have a positive count,
+and `commits_since_audit = 0` also represents an unavailable count when the
+provenance commit is outside HEAD's reachable history.
 
 ## CLI
 
@@ -119,14 +135,14 @@ python3 .agents/skills/audit-and-fix/tracker.py done src/core.py code-quality --
 | Code | Meaning |
 |------|---------|
 | 0 | success (including `empty` and JSON `not-configured` outcomes) |
-| 1 | `done` refused: path not applicable for that type, or a nested repository's commit is unknown there or outside its HEAD's history |
+| 1 | `done` refused: path not applicable for that type, revision cannot resolve to a commit in the audited repository, or audited path is absent at that commit |
 | 2 | bad arguments, or config missing on disk but explicitly passed / invalid, an unknown repository, `--under` without `--repository` when repositories are declared, or a declared repository that cannot be read (missing, uninitialized, moved, plain, symlinked, no commits) |
 | 4 | **not opted in** in legacy text mode. JSON `next` reports `{"outcome":"not-configured"}` with exit 0; `validate-path` remains available without config. |
 
 ### Filters on `next`
 
 - `--never` — only never-audited paths. Mutually exclusive with `--stale`.
-- `--stale` — only paths with commits since their last audit (matches the
+- `--stale` — only paths whose content differs or whose evidence is unusable (matches the
   `stale=N` column in `status` output). Mutually exclusive with `--never`.
 - `--kind file|directory` — restrict to one kind.
 - `--under <path>` — restrict to a subtree. Must be repo-relative; leading
@@ -164,6 +180,13 @@ is refused with an error naming `--repository <name>` and the
 subject-relative spelling (`.` for the subject's root). JSON results carry
 `repository`.
 
+`done --commit <revision>` accepts any locally resolvable commit containing
+the audited path, including a nonancestor commit, and stores its full SHA
+and content fingerprint. This validation applies equally to the control and
+declared repositories and happens before changing records. Omitting
+`--commit` selects the audited repository's HEAD. The tracker never fetches;
+the SHA identifies reviewed provenance and does not certify that work landed.
+
 ### Global options
 
 Both come before the subcommand:
@@ -187,7 +210,7 @@ Both come before the subcommand:
   type, committed. A declared nested repository's records sit in
   `records/<repository>/<audit-type>.json`, still in the control repository,
   with paths relative to that repository's root and `last_audit_commit` a
-  full SHA from its history. Trackers that predate repository support read
+  full SHA from that repository, alongside `content_fingerprint`. Trackers that predate repository support read
   only the top-level files, so they ignore those folders.
 - **Refresh state:** `<git-dir>/audit-tracker/refresh-state.json` —
   timestamp/commit plus config-content and Git-index fingerprints, written
@@ -252,10 +275,10 @@ file. Pick whichever audit reflects the deeper review — usually the **later
 timestamp** (or the one whose commit actually fixed findings rather than just
 recorded a no-op pass).
 
-After accepting either side, the path will probably show up as stale on
-`next --stale` — that's correct. Both branches' commits are now in main's
-history, so the recorded `last_audit_commit` is necessarily older than HEAD on
-the audited path. A re-audit pass will resolve it cleanly.
+Keep the selected review's timestamp, commit, fingerprint, and note together.
+After resolving, the path is fresh only if its current content matches that
+review's fingerprint. If the merge combines additional changes to the audited
+path, a re-audit is needed.
 
 **2. Same path appears in different sorted positions (shouldn't happen).**
 
@@ -284,12 +307,9 @@ git diff main..feature-branch -- docs/work/audits/records/
 
 - Renames drop audit history (cascade delete when a path disappears from
   `git ls-files`). Re-audit after a rename.
-- A nested repository's record names a commit in that repository. `done`
-  checks it exists there and is in the history of its checked-out HEAD; it
-  never fetches and never asks whether the commit has landed. If the commit
-  later leaves that history (a squash merge, a rebase before pushing), the
-  path reads as stale, the same rule the control repository follows for a
-  vanished audit commit.
+- A nested repository's snapshots and provenance are read in that repository;
+  its records remain owned by the control repository. Identical path names in
+  different repositories or audit types never share reviewed evidence.
 - A control commit that only moves a declared subject's gitlink does not stale
   a control directory audit that contains it: the subject's change belongs to
   the subject's own records. (An undeclared submodule's gitlink still counts,
