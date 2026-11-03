@@ -17,12 +17,12 @@ full path. If omitted, Phase 1 helps pick one.
 
 - **Tasks root**: `docs/work/tasks/` — written as `<tasks>/` below. If none exists, print "No tasks directory found — invoke the `task-create` skill to scaffold one." and stop.
 - **Legacy queue**: autonomous execution is retired. Recover any old queued brief into a planning bucket after checking for surviving work; never launch a runner.
-- **Definition of done**: `docs/work/definition-of-done.md` where it exists — the project-wide requirements that no individual brief restates.
+- **Definition of done**: `docs/work/definition-of-done.md` — read `Landing requirements` and its `Docs-only surface` for applicable evidence, and `Repository profile` for the declared route and enforcement. Follow the shared [convention](../../../docs/definition-of-done.md) and [schema](../../../docs/definition-of-done-schema.md), including its [transitional reading](../../../docs/definition-of-done-schema.md#migration) for older declarations. Report a missing declaration. Individual briefs do not restate these requirements.
 - **The brief's vintage** is a commit, not a date: the commit that created the task file is `git log --diff-filter=A --format=%H --follow -- <task-file> | tail -1`. Window history with `<that-sha>..HEAD`, never with `--since=<date>` — commit dates aren't topology, so a branch merged after the brief was written carries commits dated before it, and a date window silently excludes exactly those.
 
 ## The shared execution discipline
 
-**Read the `task-queue` skill's `execution-discipline.md` (`../task-queue/execution-discipline.md`) before Phase 3.**
+**Read [execution-discipline.md](execution-discipline.md) before Phase 3.**
 Its five blocks are the discipline this skill runs on:
 
 | Block | What it governs | Used in |
@@ -136,7 +136,7 @@ While building:
 - **The acceptance criteria are the contract**; the `## Recommended solution` is advisory. Follow the recommended design unless the code at HEAD contradicts it, and when you deviate, say what you changed and why in the body of the relevant commit — never silently.
 - **Tick each criterion as it is met**, editing strictly inside the `AC:BEGIN` / `AC:END` sentinels. Tick on evidence, not on intent: the change is made and you ran the thing that shows it works. An unticked criterion at the end of the run is information; a criterion ticked because it was attempted is a lie the next reader has no way to catch.
 - **`- [~]` is a real state, and it is not done.** Live task files use three markers, not two: `- [ ]` not started, `- [x]` met, `- [~]` partially met — a hand-written signal that someone got part-way and stopped. Never promote a `[~]` to `[x]` on the strength of the earlier work; treat it as unmet and finish it, or leave it `[~]` and go to Phase 5. Whatever unusual marker a brief arrives with, preserve it rather than normalizing it away.
-- **Satisfy `<tasks>/definition-of-done.md`** where it exists. The brief does not restate those requirements; they apply anyway.
+- **Satisfy the applicable `Landing requirements` in `docs/work/definition-of-done.md`**. The brief does not restate those requirements; they apply anyway.
 - Commit in well-scoped commits as you go, following the repo's commit conventions.
 - Fan out subagents for independent work, but keep `git` and the test runs to yourself — concurrent edits to disjoint files are safe, concurrent `git` in one tree is not.
 - Ask when you need to, with the briefing the `ask-with-briefing` block requires. In a session where the human is at the keyboard, a plain-text question ending your turn is usually the right shape; the push-notification form is for when they have walked away.

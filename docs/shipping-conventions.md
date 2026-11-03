@@ -12,18 +12,24 @@ a fleet accumulates hand-written variants of the same convention.
 ## Gather the required evidence first
 
 A change is ready to land only after every applicable requirement in the
-repository's `docs/work/definition-of-done.md` is satisfied, scoped by the
-surface the change touches. A repository with no automated checks has no
+`Landing requirements` section of the repository's
+`docs/work/definition-of-done.md` is satisfied, scoped by the surface the change
+touches. A repository with no automated checks has no
 automated command to run; that truthful answer changes nothing else about how
 work lands.
 
 A passing check is evidence. It does not authorize the next action and does not
 prove that GitHub or another platform enforces the requirement.
 
+The [definition-of-done convention](definition-of-done.md) and
+[schema](definition-of-done-schema.md) define this declaration. Use the
+schema's [transitional reading](definition-of-done-schema.md#migration) for
+older pages; report a missing declaration.
+
 ## How work lands
 
-Two routes are standard, chosen by the session and repository rather than by
-the diff category:
+Read `Repository profile` for the declared route and enforcement. Two routes
+are standard, chosen by the session and repository rather than by the diff category:
 
 - **From an authorized local session**, where the default branch permits it:
   commit and push directly to the default branch. The landing requirements are
@@ -54,8 +60,8 @@ root against the diff from `<base>` to `HEAD`:
 
 The classifier selects applicability. It does not provide the evidence that
 the selected checks would produce, and it never authorizes an action. A repo
-declares its prose surface between `DOCS-ONLY` sentinels in
-`docs/work/definition-of-done.md`; no declaration produces exit 2 rather than a
+declares its prose surface under `Landing requirements` → `Docs-only surface`
+in `docs/work/definition-of-done.md`, as the [schema](definition-of-done-schema.md#docs-only-surface) defines; no declaration produces exit 2 rather than a
 guess.
 
 ## Releases and deployments

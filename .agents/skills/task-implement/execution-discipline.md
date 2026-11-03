@@ -1,7 +1,7 @@
 # Execution discipline
 
 The rules for implementing a task in the current session. The `task-implement`
-skill reads this compatibility path directly; no autonomous worker consumes it.
+skill reads this document directly.
 
 ### Staleness check
 
@@ -47,10 +47,15 @@ the relevant commit message — don't silently diverge.
 
 ### Definition of done
 
-Read `docs/work/definition-of-done.md`; where it exists,
-satisfy every applicable requirement in it — the project-wide definition of
-done. Your task brief does not restate those requirements; they apply
-anyway.
+Read `docs/work/definition-of-done.md`, especially `Landing requirements`
+and its `Docs-only surface` for applicability, and `Repository profile` for
+the declared route and enforcement. Satisfy every applicable requirement;
+the task brief does not restate them. Follow the shared
+[definition-of-done convention](../../../docs/definition-of-done.md) and
+[schema](../../../docs/definition-of-done-schema.md), including its
+[transitional reading](../../../docs/definition-of-done-schema.md#migration)
+for older declarations. Report a missing declaration rather than inventing
+requirements. Evidence does not authorize landing.
 
 ### Acceptance-criteria sentinels
 

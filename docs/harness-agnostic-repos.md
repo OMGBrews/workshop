@@ -170,7 +170,7 @@ those callers must stay identical rather than merely similar:
 |------|------------|--------------|
 | `task-create/_TEMPLATE.md` | `task-create` | task creation — read from inside the skill; no repo-side copy |
 | `problem-create/_TEMPLATE.md` | `problem-create` | problem creation and kaizen routing — read from inside the skill; no repo-side copy |
-| `task-queue/execution-discipline.md` (compatibility path) | `task-implement` | interactive implementing sessions |
+| `task-implement/execution-discipline.md` | `task-implement` | interactive implementing sessions |
 | `task-finalize/check-task-readiness.sh` | `task-finalize` | `task-move` and `Tools/check-docs-work-conformance.sh` |
 | `docs/focus-document.md` | `focus-update` and repository owners | `task-next`, `task-reprioritize`, `session-land`, and repository task guides |
 
@@ -299,15 +299,11 @@ The most portable surface, and it needs no bridge: a command is a command.
 
 - Every repo states its required evidence in `docs/work/definition-of-done.md` (see
   [`definition-of-done.md`](definition-of-done.md)).
-- That file's scope is the current evidence contract, nothing more: the six sections
-  [`definition-of-done-schema.md`](definition-of-done-schema.md) defines — repository
-  profile, pre-commit feedback, landing requirements (with the `DOCS-ONLY` block where
-  the repo declares one, the paths no check there reads), release requirements,
-  deployment requirements, known gaps — and the minimum prose needed to run each check
-  correctly: the invocation, the pass condition, any caveat that changes how you run
-  it. A check's rationale, its policy history, and the standing constraints behind it
-  are repo description: link them, never restate them. The file is read at the moment
-  someone needs a command, and unrelated prose moves that command further away.
+- That file's scope is the current evidence contract defined by the
+  [schema](definition-of-done-schema.md), with the minimum prose needed to run
+  its checks correctly. A check's rationale, policy history, and standing
+  constraints belong in linked repository documentation rather than repeated
+  in the declaration.
 - Checks are invoked as plain commands (`make check`), never through a harness feature.
 - The standing `definition-of-done.md` rule is linked from `AGENTS.md` as well as
   through `.claude/rules/`.
