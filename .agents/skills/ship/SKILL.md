@@ -108,8 +108,8 @@ evidence, not approval; review approval may satisfy a landing requirement
 without authorizing the merge. Keep the three apart in the report
 ([`verification-terminology.md`](../../../docs/verification-terminology.md)).
 
-**Required evidence.** Satisfy the repository's `docs/work/definition-of-done.md`
-for the surface the change touches. Do not ship red and do not substitute a
+**Required evidence.** Satisfy `Landing requirements` in the repository's
+`docs/work/definition-of-done.md` for the surface the change touches. Do not ship red and do not substitute a
 weaker check for a documented one. Name every check skipped and why; afterwards
 a silent skip and satisfied evidence look identical.
 
@@ -209,7 +209,8 @@ the compare URL, and report "branch pushed, PR not opened", never "shipped".
 
 ## Step 3 — Required checks
 
-Run the applicable `Landing requirements` in `docs/work/definition-of-done.md`, minus what the policy file's `## Environment-limited checks` names as
+Run the applicable `Landing requirements` in `docs/work/definition-of-done.md`,
+minus what the policy file's `## Environment-limited checks` names as
 unavailable here, which the PR body or report then states.
 
 **Run a parent's checks against the gitlinks its candidate commit records.**

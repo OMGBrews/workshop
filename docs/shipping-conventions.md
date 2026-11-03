@@ -12,9 +12,9 @@ a fleet accumulates hand-written variants of the same convention.
 ## Gather the required evidence first
 
 A change is ready to land only after every applicable requirement in the
-repository's `docs/work/definition-of-done.md` `Landing requirements` is
-satisfied, scoped by the
-surface the change touches. A repository with no automated checks has no
+`Landing requirements` section of the repository's
+`docs/work/definition-of-done.md` is satisfied, scoped by the surface the change
+touches. A repository with no automated checks has no
 automated command to run; that truthful answer changes nothing else about how
 work lands.
 
