@@ -13,6 +13,8 @@ policy beside them rather than baking it into a shared tool.
 
 | Path | Purpose | Owner |
 |------|---------|-------|
+| `docs/work/handoffs/` | Outbox for undelivered cross-repo briefs; see [Cross-repo handoffs](cross-repo-handoffs.md) | Repository maintainer |
+| `docs/work/consumed-by.md` | Parent repositories whose tracked pointers the [ship skill](../.agents/skills/ship/SKILL.md) follows, declared between `CONSUMED-BY:BEGIN` / `CONSUMED-BY:END` sentinels | Repository maintainer |
 | `docs/work/tasks/` | Task briefs and their lifecycle buckets | Task skills and the repository maintainer |
 | `docs/work/ship/<environment>.md` | Per-environment landing policy read by the ship skill | Repository maintainer |
 | `docs/work/definition-of-done.md` | Repository-required verification evidence | Repository maintainer |
@@ -21,6 +23,10 @@ policy beside them rather than baking it into a shared tool.
 | `docs/work/thoughts/` | Unjudged one- or two-sentence notes waiting to be finalized | Thought skills and the repository maintainer |
 | `docs/work/audits/` | Audit tracker state when audit skills are used | Audit skills |
 | `docs/work/claude-code-web.md` | Desired cloud-session declaration when configured | Repository maintainer |
+
+Directory rows cover their documented descendants, including lifecycle buckets,
+READMEs, templates, and record files. Examples and retired paths in migration
+guidance do not add consumer requirements.
 
 Each capability is optional unless another documented repository contract
 requires it. Shared code receives the relevant work-directory and registry

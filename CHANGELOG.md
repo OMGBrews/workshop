@@ -3,6 +3,10 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **The work-directory contract lists the handoff outbox and parent declaration.**
+  `docs/work/handoffs/` and `docs/work/consumed-by.md` now have explicit
+  purposes and owners; directory rows cover their documented descendants.
+
 - **Markdown section links are checked by default.** Relative and same-file
   fragments must resolve to GitHub-style headings or explicit HTML anchors.
   Python 3 and a bundled, licensed Mistune parser support offline checking.
