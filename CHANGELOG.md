@@ -3,6 +3,10 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **Implementation and shipping guidance use the definition-of-done schema.**
+  Readers name the declaration sections they consume, and interactive execution
+  discipline now lives under `task-implement` rather than the retired queue.
+
 - **The work-directory contract lists the handoff outbox and parent declaration.**
   `docs/work/handoffs/` and `docs/work/consumed-by.md` now have explicit
   purposes and owners; directory rows cover their documented descendants.

@@ -209,8 +209,7 @@ the compare URL, and report "branch pushed, PR not opened", never "shipped".
 
 ## Step 3 — Required checks
 
-Run the rows of `docs/work/definition-of-done.md` whose surface the change
-touches, minus what the policy file's `## Environment-limited checks` names as
+Run the applicable `Landing requirements` in `docs/work/definition-of-done.md`, minus what the policy file's `## Environment-limited checks` names as
 unavailable here, which the PR body or report then states.
 
 **Run a parent's checks against the gitlinks its candidate commit records.**
@@ -225,7 +224,15 @@ the parent's own defect and must be fixed.
 Report that parent as deferred until the child merges. This applies recursively
 to intermediate repositories as well as the top-level parent.
 
-**Docs-only lane.** Run the repository's predicate from the Workshop mount.
+Read `Repository profile` for the declared landing route and enforcement.
+The shared [convention](../../../docs/definition-of-done.md) and
+[schema](../../../docs/definition-of-done-schema.md) define the declaration;
+use the schema's [transitional reading](../../../docs/definition-of-done-schema.md#migration)
+for older pages without inferring undeclared route or enforcement. Report a
+missing declaration.
+
+**Docs-only lane.** Read `Docs-only surface` under `Landing requirements`.
+Run the repository's predicate from the Workshop mount.
 Resolve `<mount>` from this skill's physical directory: follow the skill path
 with `readlink -f`, then take the root above `.agents/skills/ship/`. Do not
 resolve relative paths lexically from the consumer's symlink; see

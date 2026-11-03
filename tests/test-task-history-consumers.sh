@@ -19,7 +19,7 @@ for skill in task-finalize task-implement task-audit; do
     require_text ".agents/skills/$skill/SKILL.md" "STATUS=reverify" \
         "$skill carries an explicit full-verification branch"
 done
-require_text ".agents/skills/task-queue/execution-discipline.md" \
+require_text ".agents/skills/task-implement/execution-discipline.md" \
     "task-history-baseline.sh" "interactive discipline invokes the shared history helper"
 
 if [ "$failures" -ne 0 ]; then
