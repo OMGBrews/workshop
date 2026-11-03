@@ -234,7 +234,7 @@ if git remote get-url origin >/dev/null 2>&1; then
             echo "[session-start] fast-forwarded $head_branch $old_head -> $(git rev-parse --short HEAD): $head_behind commit(s) from $remote_head (ephemeral session, clean tree, no local commits — loss-free by construction)"
             # Best-effort: carry the local default branch along so register
             # reads at either ref agree. Failure is handled by design — the
-            # report below then states the divergence, and $remote_head
+            # report below still checks HEAD, and $remote_head
             # stays the authoritative fresh ref either way.
             [ "$head_branch" != "$branch" ] && git fetch . "$remote_head:refs/heads/$branch" >/dev/null 2>&1
             resync_submodules
@@ -243,17 +243,23 @@ if git remote get-url origin >/dev/null 2>&1; then
           fi
         fi
       fi
-      if git show-ref --verify --quiet "refs/heads/$branch"; then
-        behind="$(git rev-list --count "refs/heads/$branch..refs/remotes/$remote_head" 2>/dev/null || echo '?')"
-        ahead="$(git rev-list --count "refs/remotes/$remote_head..refs/heads/$branch" 2>/dev/null || echo '?')"
-        if [ "$behind" = "0" ]; then
-          echo "[session-start] fetched origin: local $branch is up to date with $remote_head"
-        else
-          extra=""; [ "$ahead" != "0" ] && extra=" and $ahead ahead"
-          echo "[session-start] fetched origin: local $branch is $behind commit(s) behind $remote_head$extra — a cached-environment clone is as old as its snapshot; read shared state (registers, task docs) at $remote_head, or rebase/reset, before selecting work"
-        fi
+      # Report the checkout the session reads, even when cached local main
+      # is stale or absent. Resolve this after any guarded fast-forward.
+      if working_branch="$(git symbolic-ref --quiet --short HEAD)"; then
+        working_label="working branch $working_branch"
       else
-        echo "[session-start] fetched origin (no local $branch — no staleness comparison)"
+        working_label="working checkout detached HEAD"
+      fi
+      behind="$(git rev-list --count "HEAD..refs/remotes/$remote_head" 2>/dev/null || echo '?')"
+      ahead="$(git rev-list --count "refs/remotes/$remote_head..HEAD" 2>/dev/null || echo '?')"
+      if [ "$behind" = "?" ] || [ "$ahead" = "?" ]; then
+        echo "[session-start] fetched origin: $working_label — staleness comparison with $remote_head unavailable"
+      elif [ "$behind" = "0" ]; then
+        extra=""; [ "$ahead" != "0" ] && extra=" and $ahead ahead"
+        echo "[session-start] fetched origin: $working_label is up to date with $remote_head$extra"
+      else
+        extra=""; [ "$ahead" != "0" ] && extra=" and $ahead ahead"
+        echo "[session-start] fetched origin: $working_label is $behind commit(s) behind $remote_head$extra — a cached-environment clone is as old as its snapshot; read shared state (registers, task docs) at $remote_head, or rebase/reset, before selecting work"
       fi
     else
       echo "[session-start] fetched origin ($remote_head missing — no staleness comparison)"
