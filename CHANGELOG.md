@@ -3,6 +3,12 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **Task dependency graphs have a standalone strict check.**
+  `Tools/check-task-dependencies.sh <repo-root>` reports missing and ambiguous
+  prerequisites using the readiness parser. `task-audit` repairs only entries
+  whose completion is proven by acceptance and implementation history, preserving
+  dependent metadata and reporting unresolved and newly unblocked work.
+
 - Current guidance, tools, and fixtures now use Workshop's public source-of-truth
   terminology. Kaizen graduation guidance requires explicit adoption by pinned
   consumers, mount discovery remains independent of the checkout name, and

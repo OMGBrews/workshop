@@ -171,7 +171,7 @@ those callers must stay identical rather than merely similar:
 | `task-create/_TEMPLATE.md` | `task-create` | task creation — read from inside the skill; no repo-side copy |
 | `problem-create/_TEMPLATE.md` | `problem-create` | problem creation and kaizen routing — read from inside the skill; no repo-side copy |
 | `task-implement/execution-discipline.md` | `task-implement` | interactive implementing sessions |
-| `task-finalize/check-task-readiness.sh` | `task-finalize` | `task-move` and `Tools/check-docs-work-conformance.sh` |
+| `task-finalize/check-task-readiness.sh` | `task-finalize` | `task-move`, `Tools/check-docs-work-conformance.sh`, and `Tools/check-task-dependencies.sh` (dependency-only mode) |
 | `docs/focus-document.md` | `focus-update` and repository owners | `task-next`, `task-reprioritize`, `session-land`, and repository task guides |
 
 The task template established this pattern after copied templates diverged into

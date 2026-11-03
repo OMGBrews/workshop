@@ -79,8 +79,35 @@ For each task, the analysis agent must:
    - **Partially complete**: Some evidence exists but the criterion isn't fully met. Note what's done and what remains.
    - **No evidence**: Nothing found to suggest progress on this item.
 
-4. **Dependency verification** — Check the frontmatter `dependencies:` list and any in-prose references to other tasks: does each listed slug match an existing task file (or, in queue repos, the queue's git history)? Flag slugs that match nothing (typo or deleted dependency). Does the depended-on work actually exist in the codebase/git history as described? Note dependencies that have since landed — a fully-unblocked task is a reprioritization signal (step 6).
-
+4. **Dependency verification** — Run the read-only
+   [`check-task-dependencies.sh`](../../../Tools/check-task-dependencies.sh)
+   with the explicit repository root (see [usage](../../../docs/task-dependencies.md)).
+   It checks exact filename slugs across standard buckets and legacy `queued/`,
+   excluding administrative files. Classify each dependency and prose reference:
+   - **Existing prerequisite**: one exact task file exists. Inspect whether the
+     depended-on work is implemented; a live brief is not proof of completion.
+     Duplicate slugs are ambiguous and require review, never an arbitrary match.
+   - **Proven completed and deleted**: no live match exists, and local Git history
+     proves completion. Locate the removed brief across buckets with
+     `git log --all --name-status -- docs/work/tasks/`, inspect its last version
+     with `git show <deletion-commit>^:<old-path>`, and inspect the completing
+     change with `git show --find-renames <deletion-commit>`. Confirm the
+     completing commit is an ancestor of inspected `HEAD` with
+     `git merge-base --is-ancestor <deletion-commit> HEAD`; a deletion found only
+     on another branch is not completion in this tree. Read the recorded
+     acceptance evidence and verify the implementation in that change, earlier
+     implementation commits, and current files. Require evidence that all
+     acceptance criteria were met and the deletion closed completed work.
+     A deletion or a commit title alone is insufficient. Check the full change
+     for bucket moves, renames, rejection, or consolidation; these do not prove
+     completion. Record the completing commit, removed path, and implementation
+     and acceptance evidence supporting the conclusion.
+   - **Unresolved reference**: a suspected typo, move/rename, rejection,
+     consolidation, ambiguous history, or unavailable history. Leave the entry
+     unchanged, report the reason and uncertainty, and never guess a replacement
+     slug. Missing history is not evidence that the dependency was completed.
+   Legacy queued briefs may be reported but must not be repaired automatically;
+   recover them through the existing workflow first.
 5. **Context freshness** — Are file paths mentioned in the task still valid? Have referenced dependencies, tools, or features changed? Are open questions now answerable from the codebase? Does the **In brief** paragraph still match reality — flag it if the findings contradict its plain-language story.
 
 6. **Reprioritization signals** — Record (do **not** act on) evidence that bears
@@ -106,7 +133,15 @@ Using a text-editing tool, apply the following **safe, non-destructive** updates
   - [x] Widget supports dark mode *(verified: dark mode styles in widget.css lines 45-60)*
   ```
 - **Update stale file paths** in Context sections when the file has clearly moved or been renamed (and the new path is unambiguous).
-- **Add cross-task dependency notes** where a referenced task is now complete — add a brief note in the Context section or next to the reference.
+- **Remove proven completed dependency items** classified in Phase 2 step 4,
+  only from non-legacy briefs. Remove the exact item from `dependencies:`,
+  preserving every other dependency and all other metadata. Write
+  `dependencies: []` when the list empties. Preserve the dependent's status and
+  bucket, even if it is blocked solely on this dependency. Report newly unblocked
+  briefs for the existing separate status and bucket decision paths. For prose
+  references, add a completion note with evidence rather than inventing a live
+  link to a deleted brief. Run the graph checker again after repairs; remaining
+  unresolved edges must still fail and be reported, not hidden.
 - **Note answered open questions** with evidence from the codebase — add the answer inline, clearly marked.
 
 ### Do NOT auto-apply
@@ -192,7 +227,11 @@ its evidence. Do not propose or apply moves here — close by suggesting
 the `task-reprioritize` skill if any signals were found.
 
 ### Cross-Task Dependency Updates
-Notes on inter-task references that have changed.
+For each removed dependency: dependent path, exact removed slug, completing
+commit, and the acceptance and implementation evidence proving completion.
+Name newly unblocked briefs and confirm their status and bucket were preserved.
+List unresolved references and legacy findings left unchanged, with the reason
+and uncertainty, plus the graph check's before/after verdicts.
 
 ### Context Changes Noted
 Stale references, answered questions, shifted context.

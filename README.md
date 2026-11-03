@@ -64,6 +64,10 @@ local evidence contract. The shared meanings of checks, requirements, gates,
 release, and deployment are in
 [docs/verification-terminology.md](docs/verification-terminology.md).
 
+Task queues in consuming repositories can be checked with
+[`Tools/check-task-dependencies.sh`](Tools/check-task-dependencies.sh); see
+[usage and audit repair policy](docs/task-dependencies.md).
+
 ## Cutover record
 
 [docs/source-of-truth-cutover.md](docs/source-of-truth-cutover.md) records the
