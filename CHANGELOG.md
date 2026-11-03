@@ -3,6 +3,11 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **Attribution checks refuse explicit assistant credit.** Adopted Git hooks
+  check commit messages; an optional Claude adapter checks supported PR commands.
+  Both share a default-on repository opt-out. Container setup seeds missing
+  attribution settings while preserving existing preferences.
+
 - **Implementation and shipping guidance use the definition-of-done schema.**
   Readers name the declaration sections they consume, and interactive execution
   discipline now lives under `task-implement` rather than the retired queue.

@@ -273,7 +273,14 @@ roster_changed
 # wants, so no realpath is needed to produce it.
 if [ -f "$roster_check" ]; then
   hooks_rel="$TREE_REL/Tools/hooks"
-  [ -d "$REPO_ROOT/$hooks_rel" ] && git -C "$REPO_ROOT" config core.hooksPath "$hooks_rel"
+  if [ -d "$REPO_ROOT/$hooks_rel" ]; then
+    if [ -f "$SCRIPT_DIR/configure-workshop-hooks.sh" ]; then
+      bash "$SCRIPT_DIR/configure-workshop-hooks.sh" "$REPO_ROOT" "$hooks_rel" || true
+    else
+      # Compatibility with a tree whose pin predates the shared adopter.
+      git -C "$REPO_ROOT" config core.hooksPath "$hooks_rel"
+    fi
+  fi
 fi
 
 if [ "$dangling" -gt 0 ]; then

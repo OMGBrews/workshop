@@ -450,7 +450,12 @@ fi
 # shared-tools tree) — the seam appears when the pointer advances, like every
 # other shared-tools change.
 if [ -n "$KIT_MOUNT" ] && [ -f "$KIT_MOUNT/Tools/check-skill-roster-freshness.sh" ]; then
-  git config core.hooksPath "$KIT_MOUNT/Tools/hooks"
+  if [ -f "$KIT_MOUNT/Tools/configure-workshop-hooks.sh" ]; then
+    bash "$KIT_MOUNT/Tools/configure-workshop-hooks.sh" "$PWD" "$KIT_MOUNT/Tools/hooks" || true
+  else
+    # Compatibility with an older pin that has no shared adoption helper.
+    git config core.hooksPath "$KIT_MOUNT/Tools/hooks"
+  fi
   bash "$KIT_MOUNT/Tools/check-skill-roster-freshness.sh" baseline
 fi
 

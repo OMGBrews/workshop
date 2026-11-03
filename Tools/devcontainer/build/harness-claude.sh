@@ -48,6 +48,10 @@ SETTINGS="$CLAUDE_DIR/settings.json"
 # so a repository cannot set it for its readers. Cloud sessions do not get it;
 # check 1 of Tools/check-agent-surfaces.sh is the guard there.
 DESIRED_SETTINGS='{
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
   "permissions": {
     "allow": [
       "Bash(*)",
@@ -82,11 +86,16 @@ DESIRED_SETTINGS='{
 # Merge into any existing settings rather than overwriting. Two reasons: a
 # rebuild is not the only way to pick this up (the script must be safe to re-run
 # inside a live container), and a human's local tweaks — model, theme, tui — must
-# survive that re-run. `. * $d` deep-merges with our keys winning. jq comes from
-# install-packages.sh, which every Dockerfile runs before this script.
+# survive that re-run. `. * $d` deep-merges with our keys winning, except for
+# attribution: these are defaults for missing fields, so explicit preferences
+# (including a partially configured attribution object) win on every run.
+# jq comes from install-packages.sh, which every Dockerfile runs first.
 if [ -s "$SETTINGS" ] && jq -e . "$SETTINGS" >/dev/null 2>&1; then
     tmp=$(mktemp)
-    jq --argjson d "$DESIRED_SETTINGS" '. * $d' "$SETTINGS" > "$tmp" && mv -f "$tmp" "$SETTINGS"
+    jq --argjson d "$DESIRED_SETTINGS" '
+      . as $existing | . * $d
+      | .attribution = ($d.attribution + ($existing.attribution // {}))
+    ' "$SETTINGS" > "$tmp" && mv -f "$tmp" "$SETTINGS"
     echo "  Claude settings merged (existing keys preserved)"
 else
     printf '%s\n' "$DESIRED_SETTINGS" > "$SETTINGS"

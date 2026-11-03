@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Workshop commit-msg hook
+# Reject explicit assistant credit without editing the commit message.
+set -euo pipefail
+SELF="$(readlink -f "$0")"
+python3 "$(dirname "$SELF")/../check-ai-attribution.py" text "$1"
