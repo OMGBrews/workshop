@@ -60,6 +60,26 @@ Name the file `kebab-case.md` after the flaw (e.g. `export-drops-step-3-narrativ
 
 The canonical shape lives at `.agents/skills/problem-create/_TEMPLATE.md`: an In brief paragraph followed by Scope statement, The flaw, Evidence, Impact, Background, and See also. This is a courtesy summary; the template is the single source. Avoid prescribing solutions. If a fix approach is obvious, mention it briefly under See also or leave it for a task document.
 
+### Linking GitHub issues
+
+Optionally add an `**Issues**:` body line directly after the In brief paragraph
+(after the title in a legacy document without In brief), before any Disposition
+line.
+It is never a frontmatter field. Omit it when there are no linked issues.
+
+```markdown
+**Issues**: [#175](https://github.com/owner/repo/issues/175) Issue title · [#176](https://github.com/owner/repo/issues/176) Another issue title
+```
+
+Use full URLs, the issue number as link text, then the issue title. Separate
+issues with ` · `. A short parenthetical after a title may clarify the
+relationship, such as `(related symptom)`.
+
+Issues and documents have independent lifecycles. Deleting a document deletes
+its link; it never implies closing the issue. Closing an issue remains a
+separate human step. The shared Markdown link checker skips external URLs,
+so it does not verify these links or issue status.
+
 ### The Disposition line
 
 A record the user has decided to live with carries one line recording that decision, directly after the `**In brief**:` paragraph (after an `**Issues**:` line where this repository uses one). It is a body line, never a frontmatter field, and it starts with one of two fixed prefixes so a sweep can find it:

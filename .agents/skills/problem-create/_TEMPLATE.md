@@ -34,6 +34,9 @@
      identifiers, and file paths. Someone new to the repository should
      understand it without reading the sections below. -->
 
+<!-- OPTIONAL. Omit when there are no linked GitHub issues.
+     **Issues**: [#175](https://github.com/owner/repo/issues/175) Issue title · [#176](https://github.com/owner/repo/issues/176) Another issue title -->
+
 ## Scope statement
 
 <!-- One paragraph naming the flaw, the affected surface, and who should care. -->

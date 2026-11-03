@@ -44,6 +44,18 @@ dependencies: []
      `git log --diff-filter=A --follow --format=%cs -- <task-file>`.
      A recorded date goes stale on every edit; git's does not.
 
+     Linking GitHub issues: use an optional `**Issues**:` body line directly
+     after In brief (after the title in a document without In brief), never a
+     frontmatter field. Use full URLs, the issue number as link text, then
+     the issue title; separate issues with ` · `. A short parenthetical
+     after a title may clarify the relationship. Delete the optional example
+     when unused; do not leave an empty Issues line.
+
+     Issues and documents have independent lifecycles. Deleting a completed
+     task deletes its link, but never implies closing the issue; closing an
+     issue remains a separate human step. The shared Markdown link checker
+     skips external URLs, so it does not verify these links or issue status.
+
      Filename: kebab-case, action-verb-first, `.md` extension
      (e.g. `persist-draft-autosave-flag.md`, `restore-thumbnail-cache-on-startup.md`).
      Don't use `README.md` or `_TEMPLATE.md` — those are reserved.
@@ -72,6 +84,9 @@ dependencies: []
      README lists any). Someone who has never opened this repo, technical or
      not, should understand it. The Goal section below stays technical; this
      does not. -->
+
+<!-- OPTIONAL. Omit when there are no linked GitHub issues.
+     **Issues**: [#175](https://github.com/owner/repo/issues/175) Issue title · [#176](https://github.com/owner/repo/issues/176) Another issue title -->
 
 ## Goal
 

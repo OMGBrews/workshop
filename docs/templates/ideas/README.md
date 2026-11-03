@@ -45,6 +45,25 @@ statement, then problem statement, proposed direction, open questions, and see
 also. This README keeps no index: low-friction capture matters more here than
 indexing, and a hand-kept table drifts.
 
+### Linking GitHub issues
+
+Optionally add an `**Issues**:` body line directly after the title, or after
+the In brief paragraph when the document has one.
+It is never a frontmatter field. Omit it when there are no linked issues.
+
+```markdown
+**Issues**: [#175](https://github.com/owner/repo/issues/175) Issue title · [#176](https://github.com/owner/repo/issues/176) Another issue title
+```
+
+Use full URLs, the issue number as link text, then the issue title. Separate
+issues with ` · `. A short parenthetical after a title may clarify the
+relationship, such as `(related symptom)`.
+
+Issues and documents have independent lifecycles. Deleting a document deletes
+its link; it never implies closing the issue. Closing an issue remains a
+separate human step. The shared Markdown link checker skips external URLs,
+so it does not verify these links or issue status.
+
 ## When a document graduates
 
 An idea that is being actively pursued has outgrown this folder:
