@@ -13,19 +13,26 @@ issue.
 
 ## Use in another project
 
-Mount Workshop as a pinned submodule, usually at `workshop/`, then link its
-shared skill roster:
+From a project root with an `AGENTS.md`, mount Workshop as a pinned submodule,
+usually at `workshop/`, then link its shared skills and standing rules:
 
 ```bash
 git submodule add https://github.com/OMGBrewmaster/workshop.git workshop
+mkdir -p .agents
 bash workshop/Tools/sync-skill-symlinks.sh .
+bash workshop/Tools/sync-rules-symlinks.sh .
 ```
 
-The sync command creates one link per shared skill on `.agents/skills/` and
+The skill sync command creates one link per shared skill on `.agents/skills/` and
 the Claude-specific bridge beside it. Linking the complete roster preserves
 dependencies between skill families, including `audit-next` and `audit-done`'s
 dependency on the engine inside `audit-and-fix`. The tool discovers the actual
-mount name, so `workshop/` is a convention rather than a requirement.
+mount name, so `workshop/` is a convention rather than a requirement. The rules
+sync command creates the three standing-rule links in `.claude/rules/`. Also
+link those documents from the project's `AGENTS.md`, as described in
+[the harness-agnostic setup guide](docs/harness-agnostic-repos.md). Re-run both
+commands after a Workshop pointer bump and commit both generated surfaces with
+the pointer.
 
 Projects that consume Workshop's devcontainer build kit can give Claude Code,
 Codex, and Oh My Pi shared prompt-entry behavior. See
