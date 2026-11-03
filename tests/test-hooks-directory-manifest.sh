@@ -40,6 +40,7 @@ ignored() {
 }
 
 expected="Tools/hooks/.gitignore
+Tools/hooks/commit-msg
 Tools/hooks/post-checkout
 Tools/hooks/post-merge
 Tools/hooks/post-rewrite"

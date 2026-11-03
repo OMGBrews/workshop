@@ -30,3 +30,4 @@
 !post-checkout
 !post-merge
 !post-rewrite
+!commit-msg

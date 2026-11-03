@@ -72,3 +72,6 @@ transition from the final generated payload to the public source of truth.
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+[AI attribution checks](docs/ai-attribution.md) documents commit and Claude PR
+adoption, the repository opt-out, and coverage limits.
