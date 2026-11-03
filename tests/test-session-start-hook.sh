@@ -23,8 +23,8 @@
 #      silent case cannot false-pass via a guard that never ran;
 #   5. exits 0, silently, in a repo with no submodules;
 #   6. freshness: fetches origin (pruning tracking refs whose remote branch
-#      is gone, restoring a missing origin/HEAD) and reports where the local
-#      default branch stands — up to date, or N behind — without moving a
+#      is gone, restoring a missing origin/HEAD) and reports where the working
+#      checkout stands — up to date, or N behind — without moving a
 #      ref outside a cloud session (report only), loudly on a failed fetch,
 #      and silently when there is no origin (folded into 5, whose fixture
 #      has none);
@@ -286,7 +286,7 @@ git clone -q "$TMP/fresh-src" "$TMP/clone3"
 deploy_hook "$TMP/clone3"
 (cd "$TMP/clone3" && git remote set-head origin --delete)
 out="$(run_hook "$TMP/clone3")" || fail "hook exited non-zero on an up-to-date clone: $out"
-echo "$out" | grep -q "local main is up to date with origin/main" || fail "up-to-date not reported: $out"
+echo "$out" | grep -q "working branch main is up to date with origin/main" || fail "up-to-date not reported: $out"
 git -C "$TMP/clone3" symbolic-ref -q refs/remotes/origin/HEAD >/dev/null \
   || fail "origin/HEAD not restored by set-head (platform clones lack it)"
 # A branch deleted on the remote must be pruned from the tracking refs —
@@ -298,7 +298,7 @@ git -C "$TMP/clone3" rev-parse -q --verify refs/remotes/origin/doomed >/dev/null
 (cd "$TMP/fresh-src" && git commit -q --allow-empty -m ahead1 && git commit -q --allow-empty -m ahead2)
 before="$(git -C "$TMP/clone3" rev-parse main)"
 out="$(run_hook "$TMP/clone3")" || fail "hook exited non-zero on a stale clone: $out"
-echo "$out" | grep -q "local main is 2 commit(s) behind origin/main" || fail "staleness not reported: $out"
+echo "$out" | grep -q "working branch main is 2 commit(s) behind origin/main" || fail "staleness not reported: $out"
 [ "$(git -C "$TMP/clone3" rev-parse main)" = "$before" ] || fail "hook moved local main — the report must never mutate"
 git -C "$TMP/clone3" rev-parse -q --verify refs/remotes/origin/doomed >/dev/null \
   && fail "stale tracking ref origin/doomed not pruned by the hook's fetch"
@@ -354,6 +354,32 @@ echo "$out" | grep -q "fast-forwarded claude/task" || fail "fast-forward not per
 [ "$(git -C "$TMP/clone4" rev-parse main)" = "$new_tip" ] || fail "local main not carried along"
 [ "$(git -C "$TMP/clone4/sub" rev-parse HEAD)" = "$new_sub" ] || fail "submodule not re-synced to the moved pointer"
 echo "$out" | grep -q "synced submodule to the fast-forwarded pointer: sub" || fail "submodule re-sync not reported: $out"
+# Current working checkout with a stale cached default branch: the old report
+# warned about main even though HEAD already contained every remote commit.
+git clone -q "$TMP/sync-super" "$TMP/clone-current"
+git -C "$TMP/clone-current" submodule update --init -q
+git -C "$TMP/clone-current" checkout -qb claude/current
+git -C "$TMP/clone-current" branch -f main HEAD~1
+current_tip="$(git -C "$TMP/clone-current" rev-parse HEAD)"
+stale_main="$(git -C "$TMP/clone-current" rev-parse main)"
+echo "fixture: branch=$(git -C "$TMP/clone-current" branch --show-current) HEAD=$current_tip main=$stale_main origin/main=$(git -C "$TMP/clone-current" rev-parse origin/main)"
+out="$(run_hook_cloud "$TMP/clone-current")" || fail "current checkout hook failed: $out"
+echo "$out" | grep -q "working branch claude/current is up to date with origin/main" || fail "current working branch misreported: $out"
+echo "$out" | grep -q "rebase/reset" && fail "current checkout given reset advice: $out"
+[ "$(git -C "$TMP/clone-current" rev-parse HEAD)" = "$current_tip" ] || fail "current HEAD moved"
+[ "$(git -C "$TMP/clone-current" rev-parse main)" = "$stale_main" ] || fail "report moved stale main"
+git -C "$TMP/clone-current" checkout -q --detach
+git -C "$TMP/clone-current" branch -D main >/dev/null
+out="$(run_hook_cloud "$TMP/clone-current")" || fail "detached checkout hook failed: $out"
+echo "$out" | grep -q "working checkout detached HEAD is up to date with origin/main" || fail "detached checkout without local main misreported: $out"
+git -C "$TMP/clone-current" checkout -q claude/current
+out="$(run_hook_cloud "$TMP/clone-current")" || fail "missing local main hook failed: $out"
+echo "$out" | grep -q "working branch claude/current is up to date with origin/main" || fail "missing local main prevented comparison: $out"
+git -C "$TMP/clone-current" commit -q --allow-empty -m local-ahead
+out="$(run_hook_cloud "$TMP/clone-current")" || fail "ahead checkout hook failed: $out"
+echo "$out" | grep -q "working branch claude/current is up to date with origin/main and 1 ahead" || fail "ahead checkout misreported: $out"
+echo "$out" | grep -q "rebase/reset" && fail "ahead checkout given reset advice: $out"
+
 # Guard: a local commit withholds the fast-forward.
 (cd "$TMP/sync-super" && git commit -q --allow-empty -m ahead-again)
 (cd "$TMP/clone4" && git commit -q --allow-empty -m local-work)
@@ -361,7 +387,7 @@ before="$(git -C "$TMP/clone4" rev-parse HEAD)"
 out="$(run_hook_cloud "$TMP/clone4")" || fail "hook exited non-zero on the ahead guard: $out"
 echo "$out" | grep -q "fast-forwarded" && fail "fast-forwarded a branch carrying local commits: $out"
 [ "$(git -C "$TMP/clone4" rev-parse HEAD)" = "$before" ] || fail "ahead guard failed — HEAD moved"
-echo "$out" | grep -q "behind origin/main" || fail "withheld sync must still report staleness: $out"
+echo "$out" | grep -q "working branch claude/task is 1 commit(s) behind origin/main and 1 ahead" || fail "withheld sync must still report staleness: $out"
 # Guard: a dirty tree withholds the fast-forward (fresh clean-history clone).
 git clone -q "$TMP/sync-super" "$TMP/clone5"
 git -C "$TMP/clone5" submodule update --init -q
@@ -451,7 +477,7 @@ raw="$(cd "$TMP/clone-retry" && PATH="$shimdir:$PATH" SHIM_STATE="$TMP/retry-cou
        ./.claude/hooks/session-start.sh)" \
   || fail "hook exited non-zero when the first fetch failed transiently: $raw"
 out="$(decode_report "$raw")"
-echo "$out" | grep -q "local main is 1 commit(s) behind origin/main" \
+echo "$out" | grep -q "working branch main is 1 commit(s) behind origin/main" \
   || fail "transient fetch failure not retried to the freshness report: $out"
 echo "$out" | grep -q "git fetch origin FAILED" \
   && fail "hook reported FAILED despite a successful retry: $out"
