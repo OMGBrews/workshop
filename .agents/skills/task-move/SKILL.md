@@ -28,6 +28,38 @@ If no target bucket was provided in the arguments, ask where to move it. Valid t
 
 If the task is already in the target bucket, print "Task is already in `{bucket}/`." and stop.
 
+### Parking and rejection checks — before staging
+
+Read the [canonical bucket definitions](../task-create/bucket-definitions.md)
+relative to this skill's physical directory. Apply these checks before any
+`git add` or move:
+
+- **Moving into `parked/`:** collect why the work is being set aside and the
+  condition that should bring it back. If the user already supplied substantive
+  answers, use them; otherwise ask for the missing answers. Confirm an existing
+  note still describes the intended deferral. Empty answers, HTML comments,
+  and placeholders such as `<reason>`, `TODO`, or `TBD` do not count.
+- When parking, write or update exactly one `## Parked` section immediately after the
+  `**In brief**:` paragraph, with substantive `**Why**:` and `**Unpark when**:`
+  entries. Preserve the rest of the brief; do not append a duplicate section.
+  When the condition includes a date, optionally record a matching
+  `unpark-after: YYYY-MM-DD` frontmatter value. A date field never replaces
+  the note. Resolve malformed dates or contradictions with the condition
+  before proceeding. The filename stays unchanged on park and unpark.
+- **Parking with `status: in-progress`:** refuse to park it until the user explicitly
+  chooses a truthful correction to `not-started` or `blocked`. Do not silently
+  change its status or infer that asking to park supplied that correction.
+  Apply the agreed correction before staging the move.
+- **Moving out of `parked/`:** inspect the brief for `## Rejection rationale`.
+  If present, stop and explain that this revives rejected work. Proceed only
+  after explicit confirmation naming this one task. A bulk or filter-driven
+  move must exclude it and report the exclusion, even when the user approved
+  the bulk move; offer a separate individual move for deliberate confirmation.
+
+Before parking, read back the resulting note and status. If a required answer
+or confirmation for either direction is missing, leave the move unstaged and
+wait for it.
+
 ## Phase 3 — Move
 
 Read [repair-moved-task-links.md](repair-moved-task-links.md) relative to this

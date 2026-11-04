@@ -42,6 +42,10 @@ Execute the following phases in order.
    - File paths, class names, and code references mentioned anywhere
    - Cross-task references (mentions of other task names or files)
    - Open questions
+   - For parked briefs, the canonical `## Parked` note (`**Why**:` and
+     `**Unpark when**:`) and optional `unpark-after:` frontmatter value;
+     read the [bucket definitions](../task-create/bucket-definitions.md)
+     relative to this skill's physical directory
 
 4. Capture recent git history for orientation:
    ```bash
@@ -118,6 +122,30 @@ For each task, the analysis agent must:
    - The task blocks, or is blocked by, other work (name it) — including a `dependencies:` entry that has now landed
    - A documented parking/deferral rationale no longer holds
 
+7. **Parking review** — For each parked brief, report a missing, misplaced,
+   duplicated, or incomplete `## Parked` section. It must immediately follow
+   `**In brief**:` and hold substantive `**Why**:` and `**Unpark when**:`
+   entries; empty text, HTML comments, and placeholders such as `<reason>`,
+   `TODO`, or `TBD` do not count. Flag `status: in-progress` as a contradiction.
+   Evaluate the actual unpark condition:
+   - Compare a valid `unpark-after: YYYY-MM-DD` calendar date with today's date,
+     stating that date in the report; flag dates on or before today as due for
+     review. Report malformed, repeated, or contradictory date metadata rather
+     than silently choosing a value. The optional date never replaces the note.
+   - Investigate dependency completion through delivered work and git history.
+     Missing briefs alone cannot prove completion: distinguish completed work
+     from renamed, rejected, or mistyped slugs, or report uncertainty.
+   - Investigate code-related conditions against the note's precise wording.
+     A symbol's existence satisfies only a condition asking for its existence;
+     it does not establish working behavior, adoption, or delivery. Read the
+     implementation and relevant checks, and name what the evidence does and
+     does not establish. Compound conditions require evidence for every part.
+   Return the condition, evidence, and verdict (`appears met`, `not met`, or
+   `unknown`), with suggested follow-up. Do not move the brief or rewrite its
+   parking intent; an apparent match is a review signal, never automatic
+   unparking. A `## Rejection rationale` still requires a deliberate individual
+   move through `task-move`.
+
 Each analysis agent returns structured per-task analysis with evidence for every finding.
 
 ---
@@ -149,6 +177,8 @@ Using a text-editing tool, apply the following **safe, non-destructive** updates
 - Task deletion (even if fully complete)
 - Bucket changes (moving files between folders)
 - Any change that requires judgment about intent or correctness
+- Parking notes or unpark dates (report missing or stale content for the owner
+  to resolve; do not invent why work was deferred)
 
 Print a summary of changes per file:
 ```
@@ -223,8 +253,10 @@ For each nearly-done task: file path, remaining items, and what's needed to fini
 ### Reprioritization Signals
 The Phase 2 signals that bear on bucket placement (complete, mostly solved,
 blocking/blocked, landed dependencies, invalidated parking rationale), each with
-its evidence. Do not propose or apply moves here — close by suggesting
-the `task-reprioritize` skill if any signals were found.
+its evidence. Include missing parking notes, parked/status contradictions,
+due dates, and unpark-condition verdicts. Do not apply moves here; route parked
+follow-ups to `task-move` (or owner clarification when the note is missing),
+and other planning signals to `task-reprioritize`, which excludes parked work.
 
 ### Cross-Task Dependency Updates
 For each removed dependency: dependent path, exact removed slug, completing

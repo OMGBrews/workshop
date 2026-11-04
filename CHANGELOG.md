@@ -3,6 +3,13 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **Parked tasks require a reason and a return condition.** Task moves collect
+  the canonical parking note and require a status correction for active work;
+  rejected briefs need an individual confirmed move out. Task reports flag
+  missing notes, contradictory status, and evidence that return conditions are
+  met. Readiness and document conformance reject incomplete notes, including
+  on unfinalized drafts. Consumers backfill existing notes when adopting.
+
 - **The retired task-queue skill directory is removed entirely.** Recovery
   guidance now lives in `docs/task-queue-retirement.md`. Consumers refresh
   both skill surfaces after adoption and remove any legacy audit-helper links
