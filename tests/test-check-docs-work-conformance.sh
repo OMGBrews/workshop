@@ -20,8 +20,8 @@
 #                              awk programs, not shell expansions.
 set -euo pipefail
 
-DEVTOOLS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SCRIPT="$DEVTOOLS_ROOT/Tools/check-docs-work-conformance.sh"
+WORKSHOP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT="$WORKSHOP_ROOT/Tools/check-docs-work-conformance.sh"
 
 failures=0
 fail() { echo "FAIL: $*"; failures=$((failures + 1)); }

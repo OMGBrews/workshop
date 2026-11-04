@@ -14,9 +14,9 @@
 #      the entry set emits the warning into the merge's own output.
 set -euo pipefail
 
-DEVTOOLS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CHECK="$DEVTOOLS_ROOT/Tools/check-skill-roster-freshness.sh"
-HOOKS="$DEVTOOLS_ROOT/Tools/hooks"
+WORKSHOP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CHECK="$WORKSHOP_ROOT/Tools/check-skill-roster-freshness.sh"
+HOOKS="$WORKSHOP_ROOT/Tools/hooks"
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -24,7 +24,7 @@ trap 'rm -rf "$TMP"' EXIT
 fail() { echo "FAIL: $1" >&2; exit 1; }
 
 # Fixture: a consumer repo whose skill entries are symlinks into a nested
-# devtools mount — the fleet shape, where the roster-relevant state is the
+# shared-tools mount, where the roster-relevant state is the
 # entry NAMES, not the content behind them.
 PROJ="$TMP/consumer"
 mkdir -p "$PROJ"
@@ -32,10 +32,10 @@ git -C "$PROJ" init -q -b main
 git -C "$PROJ" config user.email test@test
 git -C "$PROJ" config user.name test
 for s in alpha beta; do
-  mkdir -p "$PROJ/devtools/.agents/skills/$s"
-  echo "# $s" > "$PROJ/devtools/.agents/skills/$s/SKILL.md"
+  mkdir -p "$PROJ/shared-tools/.agents/skills/$s"
+  echo "# $s" > "$PROJ/shared-tools/.agents/skills/$s/SKILL.md"
   mkdir -p "$PROJ/.claude/skills"
-  ln -s "../../devtools/.agents/skills/$s" "$PROJ/.claude/skills/$s"
+  ln -s "../../shared-tools/.agents/skills/$s" "$PROJ/.claude/skills/$s"
 done
 git -C "$PROJ" add -A
 git -C "$PROJ" commit -qm base
@@ -52,7 +52,7 @@ out="$(check_in check)" || fail "check exited non-zero on an unchanged tree"
 echo "ok 1 - baseline records, unchanged tree is silent"
 
 # --- 2. addition warns, once ------------------------------------------------
-ln -s "../../devtools/.agents/skills/gamma" "$PROJ/.claude/skills/gamma"
+ln -s "../../shared-tools/.agents/skills/gamma" "$PROJ/.claude/skills/gamma"
 out="$(check_in check)" || fail "check exited non-zero on a change"
 echo "$out" | grep -q 'SKILL ROSTER CHANGED' || fail "no warning line: $out"
 echo "$out" | grep -q '^+ .claude/skills: gamma' || fail "addition not named: $out"
@@ -63,7 +63,7 @@ echo "ok 2 - addition warns once with the name and the instruction"
 
 # --- 3. rename produces both directions -------------------------------------
 rm "$PROJ/.claude/skills/beta"
-ln -s "../../devtools/.agents/skills/beta2" "$PROJ/.claude/skills/beta2"
+ln -s "../../shared-tools/.agents/skills/beta2" "$PROJ/.claude/skills/beta2"
 out="$(check_in check)" || fail "check exited non-zero on a rename"
 echo "$out" | grep -q '^+ .claude/skills: beta2' || fail "new name not named: $out"
 echo "$out" | grep -q '^- .claude/skills: beta' || fail "old name not named: $out"
@@ -74,7 +74,7 @@ rm "$PROJ/.git/skills-roster-baseline"
 rm "$PROJ/.git/skills-roster-last"
 out="$(check_in check)" || fail "first fallback check exited non-zero"
 [ -z "$out" ] || fail "first-ever check should record silently: $out"
-ln -s "../../devtools/.agents/skills/delta" "$PROJ/.claude/skills/delta"
+ln -s "../../shared-tools/.agents/skills/delta" "$PROJ/.claude/skills/delta"
 out="$(check_in check)" || fail "fallback check exited non-zero on a change"
 echo "$out" | grep -q 'since the last git operation' || fail "fallback wording missing: $out"
 echo "$out" | grep -q '^+ .claude/skills: delta' || fail "fallback change not named: $out"
@@ -85,15 +85,15 @@ echo "ok 4 - fallback compares against the previous git operation"
 # it, then land a skill addition through a real merge and expect the hook's
 # warning inside the merge's own output.
 rm -f "$PROJ/.claude/skills/gamma" "$PROJ/.claude/skills/beta2" "$PROJ/.claude/skills/delta"
-ln -s "../../devtools/.agents/skills/beta" "$PROJ/.claude/skills/beta"
+ln -s "../../shared-tools/.agents/skills/beta" "$PROJ/.claude/skills/beta"
 git -C "$PROJ" checkout -q main
 rm "$PROJ/.git/skills-roster-last" "$PROJ/.git/skills-roster-baseline" 2>/dev/null || true
 check_in baseline
 in_proj config core.hooksPath "$HOOKS"
 git -C "$PROJ" checkout -q -b roster-branch
-mkdir -p "$PROJ/devtools/.agents/skills/epsilon"
-echo "# epsilon" > "$PROJ/devtools/.agents/skills/epsilon/SKILL.md"
-ln -s "../../devtools/.agents/skills/epsilon" "$PROJ/.claude/skills/epsilon"
+mkdir -p "$PROJ/shared-tools/.agents/skills/epsilon"
+echo "# epsilon" > "$PROJ/shared-tools/.agents/skills/epsilon/SKILL.md"
+ln -s "../../shared-tools/.agents/skills/epsilon" "$PROJ/.claude/skills/epsilon"
 git -C "$PROJ" add -A
 git -C "$PROJ" commit -qm "add epsilon"
 git -C "$PROJ" checkout -q main
@@ -112,7 +112,7 @@ echo '# bridge' > "$PROJ/.claude/skills/README.md"
 out="$(check_in check)" || fail "check exited non-zero after a README landed"
 [ -z "$out" ] || fail "a generated README was reported as a roster change: $out"
 # The same surface must still speak up for an actual skill.
-ln -s "../../devtools/.agents/skills/zeta" "$PROJ/.claude/skills/zeta"
+ln -s "../../shared-tools/.agents/skills/zeta" "$PROJ/.claude/skills/zeta"
 out="$(check_in check)" || fail "check exited non-zero on a real change beside a README"
 echo "$out" | grep -q '^+ .claude/skills: zeta' || fail "real addition not named: $out"
 if echo "$out" | grep -q 'README'; then

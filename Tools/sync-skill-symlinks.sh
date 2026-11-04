@@ -2,7 +2,7 @@
 #
 # sync-skill-symlinks.sh — regenerate a project's per-skill shared-skill symlinks
 #
-# Each OMG Brews project consumes the shared skills in devtools by symlinking
+# A consumer project uses the shared skills in Workshop by symlinking
 # them in. Historically that was a single directory-level symlink
 # (.claude/skills -> ../devtools/.claude/skills), which makes it impossible to
 # add a project-specific skill alongside the shared ones.
@@ -14,7 +14,7 @@
 #
 # .agents/skills/ is the Agent Skills open standard's path, which every harness
 # scans; .claude/skills/ is Claude Code's, and it chains through the canonical
-# link rather than reaching into devtools a second time. Writing only the vendor
+# link rather than reaching into Workshop a second time. Writing only the vendor
 # surface is what left every non-Claude harness finding no shared skills at all,
 # so both are written, always, and the canonical one is written first — the
 # bridge points at it.
@@ -165,7 +165,7 @@ sync_surface() {
   # 4. Verify every shared link actually resolves to a real skill.
   #    A dangling symlink is created without error and looks fine under `ls` — it
   #    only fails at skill-invocation time as "Unknown skill". Check with test -e,
-  #    never a visual scan. (Catches an uninitialized devtools submodule or any
+  #    never a visual scan. (Catches an uninitialized Workshop submodule or any
   #    layout where the relative prefix would be wrong.)
   for src in "$SRC_DIR"/*/; do
     name="$(basename "$src")"

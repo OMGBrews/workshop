@@ -472,7 +472,7 @@ class PathPrefixTest(support.RepoTestCase):
         """Prefix ``audit_tracker`` must not match ``auditXtracker`` via the
         ``_`` LIKE wildcard."""
         fake = self.fake_git()
-        fake.files = ["devtools/audit_tracker/cli.py", "devtools/auditXtracker/cli.py"]
+        fake.files = ["shared-tools/audit_tracker/cli.py", "shared-tools/auditXtracker/cli.py"]
         config = support.make_config(
             {"audit_types": {"code": {"targets": [{"kind": "file", "include": ["**/*.py"]}]}}}
         )
@@ -482,10 +482,10 @@ class PathPrefixTest(support.RepoTestCase):
         paths = {
             c.path
             for c in queries.next_paths(
-                conn, "code", limit=99, path_prefix="devtools/audit_tracker"
+                conn, "code", limit=99, path_prefix="shared-tools/audit_tracker"
             )
         }
-        self.assertEqual(paths, {"devtools/audit_tracker/cli.py"})
+        self.assertEqual(paths, {"shared-tools/audit_tracker/cli.py"})
 
     # 28. status totals respect the prefix --------------------------------------
     def test_status_path_prefix_restricts_totals(self) -> None:

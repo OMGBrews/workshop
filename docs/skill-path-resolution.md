@@ -1,4 +1,4 @@
-# Resolving devtools-tree paths from skill bodies
+# Resolving Workshop paths from skill bodies
 
 A shared skill that reads a document from the tree it ships in must resolve it
 by one rule, so the same skill body works in the upstream tree, in a repo that
@@ -52,8 +52,8 @@ same treatment, not path arithmetic on a hardcoded name: resolve the tree root
 once from the skill's physical directory and invoke through it:
 
 ```bash
-DEVTREE_ROOT="$(dirname "$(readlink -f <this skill file as the repo reaches it>)")/../../.."
-"$DEVTREE_ROOT/Tools/<tool>.sh"
+WORKSHOP_ROOT="$(dirname "$(readlink -f <this skill file as the repo reaches it>)")/../../.."
+"$WORKSHOP_ROOT/Tools/<tool>.sh"
 ```
 
 ## Disclosure
@@ -64,6 +64,7 @@ report. A fallback that fires silently is how a class of miss stays unfound.
 
 ## Publishing
 
-This file ships with the skills that cite it: `devtools/mirror/manifest.txt`
-lists it under "support files the published skills read at runtime", so a
-mirror consumer resolves it beside the published skills.
+Workshop is the hand-authored source of truth. This document and the skills
+that cite it ship in the same tree, so a consumer resolves it beside the skills
+at its pinned Workshop commit. A merged change reaches that consumer only
+when it records a new pointer; see [`work/consumed-by.md`](work/consumed-by.md).

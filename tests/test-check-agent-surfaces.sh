@@ -22,8 +22,8 @@
 #                              not happen to them.
 set -euo pipefail
 
-DEVTOOLS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SCRIPT="$DEVTOOLS_ROOT/Tools/check-agent-surfaces.sh"
+WORKSHOP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT="$WORKSHOP_ROOT/Tools/check-agent-surfaces.sh"
 
 failures=0
 fail() {

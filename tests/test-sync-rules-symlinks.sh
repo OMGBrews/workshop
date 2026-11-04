@@ -62,7 +62,7 @@ echo "ok 2 - idempotent"
 mkdir -p "$PROJ/docs"
 echo '# Database hygiene' > "$PROJ/docs/database-hygiene.md"
 ln -s ../../docs/database-hygiene.md "$PROJ/.claude/rules/database-hygiene.md"   # repo-local, hand-made
-ln -s ../../devtools/docs/retired-rule.md "$PROJ/.claude/rules/retired-rule.md"  # owned shape, dangling
+ln -s ../../shared-tools/docs/retired-rule.md "$PROJ/.claude/rules/retired-rule.md"  # owned shape, dangling
 ln -s ../../elsewhere/notes.md "$PROJ/.claude/rules/foreign.md"                   # not owned, dangling
 echo '# Cloud sessions' > "$PROJ/.claude/rules/cloud-sessions.md"                 # real topic file
 out="$(bash "$PROJ/workshop/Tools/sync-rules-symlinks.sh" "$PROJ" 2>&1)" || fail "sync failed with extra entries present: $out"

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Populate an empty volume-mounted workspace, then hand off to the project's
-# in-repo lifecycle script. See docs/planning/volume-workspaces-plan.md (a
-# private-devtools-repo document, not carried by the public mirror).
+# in-repo lifecycle script. Maintainer context is in HQ's
+# docs/planning/volume-workspaces-plan.md; using this script needs no HQ checkout.
 #
 # Usage: workspace-bootstrap.sh <create|start> [repo-url]
 #

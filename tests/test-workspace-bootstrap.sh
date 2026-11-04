@@ -21,8 +21,8 @@
 # rebuild before anyone thought to run the clone by hand.
 set -euo pipefail
 
-DEVTOOLS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BOOTSTRAP="$DEVTOOLS_ROOT/Tools/devcontainer/workspace-bootstrap.sh"
+WORKSHOP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BOOTSTRAP="$WORKSHOP_ROOT/Tools/devcontainer/workspace-bootstrap.sh"
 URL="https://github.com/OMGBrews/example-repo.git"
 
 fail() { echo "FAIL: $1" >&2; echo "--- last run output ---" >&2; echo "$OUT" >&2; exit 1; }
@@ -62,19 +62,19 @@ case "${SHIM_MODE:-}" in
   slow)
     # A clone that has started but not finished: .git exists (which is what the
     # old populated-guard false-passed on), the post_install wrapper stub is in
-    # place, but devtools — the "submodule" — has not arrived yet. The clone
+    # place, but shared-tools — the "submodule" — has not arrived yet. The clone
     # blocks on a handshake file so the test can hold it mid-flight.
     echo "Cloning into '$dest'..."
     mkdir -p "$dest/.git"
     mkdir -p "$dest/.devcontainer/scripts"
     cat > "$dest/.devcontainer/scripts/post_install.sh" <<'STUB_EOF'
 #!/bin/bash
-# Stub wrapper: fails while devtools ("the submodule") is absent — the real
-# wrapper's `bash devtools/.../post_install.sh` would fail with "No such file
+# Stub wrapper: fails while shared-tools ("the submodule") is absent — the real
+# wrapper's `bash shared-tools/.../post_install.sh` would fail with "No such file
 # or directory" in exactly this state.
 WS="$(cd "$(dirname "$0")/../.." && pwd)"
-if [ ! -d "$WS/devtools/Tools" ]; then
-    echo "stub: devtools missing at $WS/devtools/Tools" >&2
+if [ ! -d "$WS/shared-tools/Tools" ]; then
+    echo "stub: shared-tools missing at $WS/shared-tools/Tools" >&2
     exit 1
 fi
 echo "stub: post-install ran against a complete tree"
@@ -84,7 +84,7 @@ STUB_EOF
     [ -n "${SHIM_STARTED_FILE:-}" ] && touch "$SHIM_STARTED_FILE"
     while [ ! -e "${SHIM_RELEASE_FILE:-/nonexistent}" ]; do /bin/sleep 0.05; done
     # The rest of the tree arrives: the submodule lands, so the stub succeeds.
-    mkdir -p "$dest/devtools/Tools"
+    mkdir -p "$dest/shared-tools/Tools"
     exit 0 ;;
   *)
     echo "shim: unknown SHIM_MODE '${SHIM_MODE:-}'" >&2
@@ -204,7 +204,7 @@ launch_bg() { # <shim-mode> <lifecycle> <ws> <started-file> <release-file> <out-
 # release file) while the loser starts; the loser must wait on the lock rather
 # than run post-install against the half-cloned tree. Pre-fix the loser sees
 # .git, treats the tree as populated, and runs the stub against it — the stub
-# exits non-zero (devtools absent), so the loser fails: the 127 reproduced.
+# exits non-zero (shared-tools absent), so the loser fails: the 127 reproduced.
 ws="$(fresh_ws ws-race)"
 started="$TMP/race.started"; release="$TMP/race.release"
 out1="$TMP/race.out1"; out2="$TMP/race.out2"
@@ -245,7 +245,7 @@ echo "ok 9 - concurrent invocations produce one populate and zero failures"
 # spinning). The flag survives the crash; the next invocation must clear the
 # debris and re-clone rather than treating the .git-present tree as populated.
 # Pre-fix there is no flag and the next invocation runs the stub against the
-# broken tree — it fails (devtools absent), and no populate marker is written.
+# broken tree — it fails (shared-tools absent), and no populate marker is written.
 ws="$(fresh_ws ws-int)"
 started="$TMP/int.started"; release="$TMP/int.release"
 out="$TMP/int.out"; out2="$TMP/int.out2"

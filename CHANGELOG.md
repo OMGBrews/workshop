@@ -3,6 +3,11 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- Current guidance, tools, and fixtures now use Workshop's public source-of-truth
+  terminology. Kaizen graduation guidance requires explicit adoption by pinned
+  consumers, mount discovery remains independent of the checkout name, and
+  legacy bootstrap and skill-link layouts remain supported.
+
 - **Attribution checks refuse explicit assistant credit.** Adopted Git hooks
   check commit messages; an optional Claude adapter checks supported PR commands.
   Both share a default-on repository opt-out. Container setup seeds missing

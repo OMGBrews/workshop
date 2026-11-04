@@ -8,7 +8,7 @@ matters.
 
 This is the fleet standard. The reference implementation — a private fleet repo, deliberately
 unnamed in this public document — records how it applies the pattern locally in its
-`docs/architecture/agents-md.md` (fleet-internal, like `devtools-propagation.md`: its layout,
+`docs/architecture/agents-md.md` (fleet-internal: its layout,
 its rules-link mechanics, and the harness-specific things it has deliberately declined).
 
 ## Why
@@ -200,13 +200,13 @@ rubric.
   written by `sync-skill-symlinks.sh` rather than by hand, and rewritten on every run: one
   text for the whole fleet, and an edited copy heals at the next sync instead of forking.
   It is a plain file, not a skill, so checks 7 and 8 skip it.
-- **Shared skills vendored from `devtools/` follow the same rule** — the real directory
-  belongs in `devtools/.agents/skills/`, and each consumer links to it.
+- **Shared skills vendored from `workshop/` follow the same rule** — the real directory
+  belongs in `workshop/.agents/skills/`, and each consumer links to it.
 - **Regenerate shared links with `Tools/sync-skill-symlinks.sh`.** It converts the
   legacy directory link, creates or refreshes both per-skill surfaces, preserves
   project-specific skill directories, removes stale links, and reports name
   collisions (the project-local skill wins). Re-run it after adding or renaming
-  a shared skill and bumping the devtools pointer.
+  a shared skill and bumping the Workshop pointer.
 - **Write the body harness-neutral:**
   - No slash-command syntax in `description` or body — invocation differs per harness
     (`/name` in Claude Code, `$name` in Codex). Say "when the user invokes the *name*
@@ -214,8 +214,8 @@ rubric.
   - Refer to another skill by its bare backticked name — `task-finalize` — in prose
     mentions. Reserve the "when the user invokes the *name* skill" phrasing for
     invocation moments, and relative links (`../task-finalize/SKILL.md`) for file
-    references; link only to skills guaranteed present alongside (the mirror publishes
-    12 of 18 — a link from a mirrored skill to a non-mirrored one dangles in the mirror).
+    references; link only to skills shipped alongside in the pinned Workshop tree.
+    A partial vendored copy must retain those dependencies or document its fallback.
   - No harness-only mechanics — `$ARGUMENTS`, subagents, hooks, and specific tool names
     behave differently or not at all elsewhere. If a skill genuinely depends on one
     harness, say so in `compatibility`.
@@ -341,12 +341,11 @@ that is the breakage check 8 exists to name.
 
 > **Status:** checks 1–9 and 13 are implemented as the shared check
 > [`Tools/check-agent-surfaces.sh`](../Tools/check-agent-surfaces.sh) — a harness-agnostic
-> script that any repo runs against its own root (`bash devtools/Tools/check-agent-surfaces.sh .`
-> in a consumer that mounts the tree at `devtools/`). The repo-root argument is **required**: a
+> script that any repo runs against its own root (`bash workshop/Tools/check-agent-surfaces.sh .`
+> in a consumer that mounts the tree at `workshop/`). The repo-root argument is **required**: a
 > default would silently audit the wrong tree. The reference implementation wires the check
-> as `make agent-surfaces` inside its `make check`; consumers without
-> fleet access run the same check from the public mirror at the same path (`OMGBrewmaster/workshop`,
-> `Tools/check-agent-surfaces.sh`). Checks 10–11 stay manual by design — both are judgments
+> as `make agent-surfaces` inside its `make check`. The same public Workshop check
+> (`OMGBrews/workshop`, `Tools/check-agent-surfaces.sh`) runs without fleet access. Checks 10–11 stay manual by design — both are judgments
 > about a script's *body*, and their mechanical forms ("a file named `session-start.sh` exists",
 > "the string `AGENTS.md` appears in a script") pass on a stub; the script header states the
 > rationale. Check 12 *is* mechanizable — word-match the vendor variables over tracked

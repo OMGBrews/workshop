@@ -11,7 +11,7 @@
 # read at container start by validate_setup.sh.
 #
 # It exists because installation and verification happen at different times. Installs land at
-# REBUILD; validate_setup.sh runs live off the mounted devtools clone at EVERY container
+# REBUILD; validate_setup.sh runs live off the mounted Workshop clone at EVERY container
 # start, so it updates the moment a pointer moves. A validator that simply asserted
 # "omp is present" would therefore fail in every consumer whose image predates this
 # change — the whole fleet, at its next container start, for a rebuild nobody has done

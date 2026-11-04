@@ -35,7 +35,7 @@ Kaizen exists to improve **how we build** — the collaboration loops between hu
 
 There is **no index file**. `ls` is the index, and `grep -h '^# ' docs/work/kaizen/journal/*/*.md` lists every title. An index that must be hand-updated on every entry is a drift liability, and nothing loads the journal wholesale, so it would buy nothing. The singleton watchlist introduced below is not an index and must not be allowed to become one: an index is **per-entry and exhaustive**, so every write to the journal is a write to it and it drifts by default; the watchlist is **per-review and curated** — it holds only the entries a review could not match, it is written by one skill at one moment, and it shrinks as entries cluster or age out. The distinction is what stops it inheriting the drift liability.
 
-A project's `docs/work/kaizen/README.md` is a short pointer back to this guide — the methodology is shared and lives here, so it improves in one place rather than drifting across repos. Repos still on the older single-file layout (`journal.md` + `patterns.md`) convert with `devtools/Tools/migrate-kaizen-journal.sh`; it is idempotent and refuses rather than dropping an entry it cannot file.
+A project's `docs/work/kaizen/README.md` is a short pointer back to this guide — the methodology is shared and lives here, so it improves in one place rather than drifting across repos. Repos still on the older single-file layout (`journal.md` + `patterns.md`) convert with `workshop/Tools/migrate-kaizen-journal.sh`; it is idempotent and refuses rather than dropping an entry it cannot file.
 
 ## The journal's lifecycle
 

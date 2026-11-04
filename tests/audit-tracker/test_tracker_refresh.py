@@ -112,15 +112,15 @@ class RefreshTest(support.RepoTestCase):
         """
         fake = self.fake_git()
         fake.files = [
-            "devtools/scripts/local.py",
-            "devtools/scripts/format_ci_failure.py",
+            "shared-tools/scripts/local.py",
+            "shared-tools/scripts/format_ci_failure.py",
             "workshop",
         ]
-        fake.submodule_owned = {"devtools/scripts/format_ci_failure.py", "workshop"}
+        fake.submodule_owned = {"shared-tools/scripts/format_ci_failure.py", "workshop"}
         config = support.make_config(
             {
                 "audit_types": {
-                    "code": {"targets": [{"kind": "file", "include": ["devtools/**/*.py"]}]}
+                    "code": {"targets": [{"kind": "file", "include": ["shared-tools/**/*.py"]}]}
                 }
             }
         )
@@ -129,15 +129,15 @@ class RefreshTest(support.RepoTestCase):
         refresh(conn, config)
 
         paths = all_paths(conn)
-        self.assertNotIn("devtools/scripts/format_ci_failure.py", paths)
+        self.assertNotIn("shared-tools/scripts/format_ci_failure.py", paths)
         self.assertNotIn("workshop", paths)
-        self.assertEqual(paths["devtools/scripts/local.py"], "file")
+        self.assertEqual(paths["shared-tools/scripts/local.py"], "file")
         # The parent survives, because a real local file still lives there.
-        self.assertEqual(paths["devtools/scripts"], "directory")
+        self.assertEqual(paths["shared-tools/scripts"], "directory")
 
         app = applicability(conn)
-        self.assertIn(("devtools/scripts/local.py", "code"), app)
-        self.assertNotIn(("devtools/scripts/format_ci_failure.py", "code"), app)
+        self.assertIn(("shared-tools/scripts/local.py", "code"), app)
+        self.assertNotIn(("shared-tools/scripts/format_ci_failure.py", "code"), app)
 
     def test_refresh_excludes_all_tracked_symlinks(self) -> None:
         fake = self.fake_git()

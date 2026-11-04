@@ -3,8 +3,8 @@
 #   row 1: repo, branch, uncommitted/unpushed counts | model, window, effort
 #   row 2: context-fill bar, rate limits (5h/7d), session cost
 #
-# Managed by omgbrews-devtools (Tools/devcontainer/statusline.sh). Local edits are
-# overwritten on the next container rebuild — change it upstream in devtools.
+# Managed by Workshop (Tools/devcontainer/build/statusline.sh). Local edits are
+# overwritten on the next container rebuild — change it upstream in Workshop.
 #
 # This is the source of truth. setup.sh installs a copy of it to
 # ~/.claude/statusline.sh from beside itself, so every Dockerfile that COPYs

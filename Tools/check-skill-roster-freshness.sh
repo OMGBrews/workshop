@@ -4,7 +4,7 @@
 #
 # Why this exists: a running agent session snapshots its skill roster at start
 # (Oh My Pi has no mid-session rescan at all; Claude Code's live-change
-# detection watches paths and event kinds that the devtools symlink transition
+# detection watches paths and event kinds that the shared-skill symlink transition
 # does not produce). A sync landing mid-session — a manual pull/rebase, or the
 # propagation tooling's fast-forwards — changes the skill entry set
 # (.claude/skills/* and .agents/skills/* names: additions, renames, removals)

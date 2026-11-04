@@ -79,9 +79,9 @@ docs/
 ├── setup/              # Initial setup, configuration
 ├── style-guides/       # Conventions (docs, code, READMEs)
 ├── testing/            # Test plans, testing guides
-└── work/               # THE MACHINE'S DIRECTORY — files the shared devtools
-                        # machine reads and writes; clause detail is in devtools'
-                        # private fleet contract (not mirrored)
+└── work/               # THE MACHINE'S DIRECTORY — files the shared Workshop
+                        # tooling reads and writes; clause detail is in
+                        # docs/work-directory.md
     ├── definition-of-done.md   [required; six sections per definition-of-done-schema.md]
     ├── claude-code-web.md      [required in fleet projects; Workshop host excepted]
     ├── consumed-by.md          [required where a parent mounts the repo]
@@ -107,7 +107,7 @@ docs/
 | `setup/` | Initial setup and configuration | `development-environment.md` |
 | `style-guides/` | Coding and documentation conventions | `csharp-style-guide.md` |
 | `testing/` | Test plans, coverage strategy | `test-coverage-plan.md` |
-| `work/` | The machine's directory — every file and directory the shared devtools machine reads and writes | `definition-of-done.md`, `claude-code-web.md`, `consumed-by.md`, `tasks/` (+`now/soon/later/finalized/parked`, opt-in `queued/`), `kaizen/`, `problems/`, `handoffs/`, `thoughts/` |
+| `work/` | The machine's directory — every file and directory the shared Workshop tooling reads and writes | `definition-of-done.md`, `claude-code-web.md`, `consumed-by.md`, `tasks/` (+`now/soon/later/finalized/parked`, opt-in `queued/`), `kaizen/`, `problems/`, `handoffs/`, `thoughts/` |
 
 ### File naming
 
@@ -909,7 +909,7 @@ Current third-party libraries used in the project. Maintained by `/update-librar
 
 - Documentation lives with code in the same repository
 - Major changes should be noted in commit messages
-- The shared style guide lives in `devtools/` and is available to all projects via the devtools submodule
+- The shared style guide lives in Workshop and is available to consumers through their Workshop mount
 
 ---
 

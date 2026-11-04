@@ -96,7 +96,7 @@ trusting an empty result, confirm this repo tracks the Scope paths with
 `git ls-files --error-unmatch -- "$path"`, because `git log` prints nothing and
 exits 0 for an untracked, gitignored, or foreign-repo path. This is routine, not
 exotic: a brief whose Scope names a sibling clone or a submodule (hq's tasks name
-`devtools/` paths, which hq gitignores) hits it every time. In this skill an
+`workshop/` paths, which hq gitignores) hits it every time. In this skill an
 untracked Scope path demotes the task to **Tier C** for that path — do the
 inline verification below rather than assuming the brief is current. That
 demotion is the one part the shared block does not state, because the worker has

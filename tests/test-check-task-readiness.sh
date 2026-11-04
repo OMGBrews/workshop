@@ -5,8 +5,8 @@
 
 set -euo pipefail
 
-DEVTOOLS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CHECKER="$DEVTOOLS_ROOT/.agents/skills/task-finalize/check-task-readiness.sh"
+WORKSHOP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CHECKER="$WORKSHOP_ROOT/.agents/skills/task-finalize/check-task-readiness.sh"
 TASK_REL="docs/work/tasks/now/good-task.md"
 
 failures=0
@@ -165,7 +165,7 @@ expect_readiness "unmatched-dependency-warning" 0 unmatched_dependency \
     "PASS 7" "WARN 7 dependency 'not-current' matches no current task file"
 
 # The default interface must not silently choose a task, and an on-disk brief
-# outside a repository must not borrow the devtools worktree that holds this
+# outside a repository must not borrow the Workshop worktree that holds this
 # bundled script.
 run_checker
 [ "$CHECK_RC" -eq 2 ] || fail "missing task argument: exit $CHECK_RC, wanted 2"
