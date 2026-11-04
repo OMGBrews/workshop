@@ -39,6 +39,9 @@ Codex, and Oh My Pi shared prompt-entry behavior. See
 [the devcontainer harness keybindings guide](docs/devcontainer-harness-keybindings.md)
 for the image-build path, the live-apply command, and the host-terminal prerequisite.
 
+For surviving work from the retired autonomous runner, follow the
+[task queue recovery guidance](docs/task-queue-retirement.md).
+
 ## Checks and releases
 
 Run `make check` from a standalone clone to execute Workshop's complete public

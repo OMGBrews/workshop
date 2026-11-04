@@ -5,7 +5,8 @@ workflow: `task-next` → `task-finalize <task>` → `task-implement <task>`.
 The ordinary Markdown task backlog and its dependency metadata remain supported.
 
 Do not create `queued/`, launch an older runner directly from a pinned checkout,
-or enable queue-driven CI repair. `run.sh` is a refusal stub for old entry points.
+or enable queue-driven CI repair. The retired skill, launch stub, and termination
+helper have been removed entirely.
 Separate audit runners are outside this retirement.
 
 ## Recovering old work
@@ -21,7 +22,10 @@ state may remain. Never delete branches or worktrees merely because the runner
 is retired.
 
 The interactive implementation rules live in
-[task-implement’s execution discipline](../task-implement/execution-discipline.md).
+[task-implement’s execution discipline](../.agents/skills/task-implement/execution-discipline.md).
 
-`self-terminate.sh` remains solely for the separate audit runner that links it.
-It does not dispatch work.
+Consumers advancing past this removal must first remove any legacy links to
+`task-queue/self-terminate.sh` and update their local checks and audit guidance.
+Existing pinned checkouts keep their own version until adoption. Refresh both
+skill surfaces with `Tools/sync-skill-symlinks.sh` after advancing the pin; the
+sync removes stale shared links while preserving project-local skills.

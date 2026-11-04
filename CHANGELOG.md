@@ -3,6 +3,11 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **The retired task-queue skill directory is removed entirely.** Recovery
+  guidance now lives in `docs/task-queue-retirement.md`. Consumers refresh
+  both skill surfaces after adoption and remove any legacy audit-helper links
+  and corresponding local checks before advancing their pin.
+
 - **Work documents share an optional Issues line.** Task, problem, and idea
   templates and authoring guidance link GitHub issues with full URLs, issue
   numbers and titles, and a ` · ` separator. The line stays in the document

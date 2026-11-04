@@ -100,7 +100,7 @@ contradiction, and `/task-status` reports it as one.
 ## Retired `queued/` bucket
 
 Autonomous task execution is retired. Do not create or promote work into
-`queued/`. Recover surviving briefs through the [retirement guidance](../task-queue/README.md).
+`queued/`. Recover surviving briefs through the [retirement guidance](../../../docs/task-queue-retirement.md).
 
 ## Queue shape
 

@@ -57,7 +57,7 @@ ${extra}---
 Exercise the document-format contract.
 
 ## Acceptance criteria
-<!-- AC:BEGIN — DO NOT REMOVE: /task-finalize, /task-move, and the task-queue worker parse the AC list between these sentinels. -->
+<!-- AC:BEGIN — DO NOT REMOVE: /task-finalize, /task-audit, and /task-status parse the AC list between these sentinels. -->
 
 - [ ] the fixture brief is valid
 

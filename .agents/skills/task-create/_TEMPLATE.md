@@ -102,7 +102,7 @@ dependencies: []
      Anchor code references durably: a symbol name plus a short greppable
      quote (`run_tools`'s `if isinstance(result, Exception)` branch) outlives
      a bare line number, which rots with every commit. Line numbers are a
-     secondary convenience at most — the worker that reads this brief may be
+     secondary convenience at most — the session that reads this brief may be
      weeks away. -->
 
 ## Recommended solution
@@ -111,10 +111,10 @@ dependencies: []
      At creation you often don't know the solution yet; that's what
      `## Open questions` is for. `/task-finalize` verifies the task against
      HEAD, resolves the questions, and writes the design here while the
-     analysis is fresh — the strongest model prepares what a later session
-     (or the autonomous worker) executes.
-     ADVISORY, NOT CONTRACT: the acceptance criteria remain what the worker
-     is graded on. The worker follows this design unless the code at HEAD
+     analysis is fresh — the preparing session records what a later
+     implementing session executes.
+     ADVISORY, NOT CONTRACT: the acceptance criteria remain what the implementing
+     session is graded on. The session follows this design unless the code at HEAD
      contradicts it, and notes any deviation. Ground each design point in
      verified code (durable anchors, per the Context note above); delete the
      section for tasks whose approach is obvious from Goal + acceptance

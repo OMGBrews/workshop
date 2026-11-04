@@ -62,7 +62,7 @@ for f in "$TASKS_DIR"/{now,soon,later,parked}/*.md; do
     fi
     if grep -q '^- \[[ x~]\]' "$f"; then
       tmp="$(mktemp)"
-      awk -v marker='<!-- AC:BEGIN — DO NOT REMOVE: /task-finalize, /task-move, and the task-queue worker parse the AC list between these sentinels. -->' '
+      awk -v marker='<!-- AC:BEGIN — DO NOT REMOVE: /task-finalize, /task-audit, and /task-status parse the AC list between these sentinels. -->' '
         # Wrap the checklist section in AC sentinels: BEGIN right after the
         # heading that precedes the first checklist item, END before the next
         # heading (or at EOF).
@@ -133,7 +133,7 @@ for f in "$TASKS_DIR"/{now,soon,later,parked}/*.md; do
       # Requirements -> Acceptance criteria, wrapped in AC sentinels.
       /^## Requirements$/ {
         print "## Acceptance criteria"
-        print "<!-- AC:BEGIN — DO NOT REMOVE: /task-finalize, /task-move, and the task-queue worker parse the AC list between these sentinels. -->"
+        print "<!-- AC:BEGIN — DO NOT REMOVE: /task-finalize, /task-audit, and /task-status parse the AC list between these sentinels. -->"
         in_ac = 1
         next
       }
