@@ -5,7 +5,7 @@ description: Scaffold the kaizen continuous-improvement system into this project
 
 # Kaizen Init
 
-Set up the kaizen continuous-improvement system in the current project. Kaizen is a continuous-improvement practice for improving **how we build** — see the canonical guide at `<devtools root>/docs/kaizen-guide.md` (`<devtools root>` is the tree root resolved from this skill's physical directory — Phase 1 step 1). This skill is idempotent: if the kaizen root already exists — `docs/work/kaizen/` — it reports what's present and only fills gaps, never overwriting existing journal or patterns content.
+Set up the kaizen continuous-improvement system in the current project. Kaizen is a continuous-improvement practice for improving **how we build** — see the canonical guide at `<Workshop root>/docs/kaizen-guide.md` (`<Workshop root>` is the tree root resolved from this skill's physical directory — Phase 1 step 1). This skill is idempotent: if the kaizen root already exists — `docs/work/kaizen/` — it reports what's present and only fills gaps, never overwriting existing journal or patterns content.
 
 **Arguments**: none. The skill operates on the current project.
 
@@ -15,7 +15,7 @@ Run the phases in order.
 
 ## Phase 1 — Preconditions
 
-1. Confirm the project mounts the devtools tree (the skills symlink already implies this). Resolve the tree root from this skill's physical directory — `<devtools root> = $(dirname "$(readlink -f <this skill file as the repo reaches it>)")/../../..` (the physical-directory rule, [`skill-path-resolution.md`](../../../docs/skill-path-resolution.md)) — and use it throughout. The shared guide lives at `<devtools root>/docs/kaizen-guide.md` and the templates at `<devtools root>/docs/templates/kaizen/`.
+1. Confirm the project mounts Workshop (the skills symlink already implies this). Resolve the tree root from this skill's physical directory — `<Workshop root> = $(dirname "$(readlink -f <this skill file as the repo reaches it>)")/../../..` (the physical-directory rule, [`skill-path-resolution.md`](../../../docs/skill-path-resolution.md)) — and use it throughout. The shared guide lives at `<Workshop root>/docs/kaizen-guide.md` and the templates at `<Workshop root>/docs/templates/kaizen/`.
 2. Confirm there is a `docs/` directory. If the project keeps docs elsewhere, target that location instead and note the difference in the final report.
 3. Check whether the kaizen root already exists — `docs/work/kaizen/`. If it does, list its contents and treat this as a top-up run (Phase 2 only creates missing files). A `journal.md` or `patterns.md` **file** there means the project predates the directory layout — Phase 2 converts it rather than scaffolding alongside it.
 
@@ -32,7 +32,7 @@ for f in README.md journal/README.md patterns/README.md; do
   if [ -e "$KAIZEN_ROOT/$f" ]; then
     echo "exists, skipping: $KAIZEN_ROOT/$f"
   else
-    cp "<devtools root>/docs/templates/kaizen/$f" "$KAIZEN_ROOT/$f"
+    cp "<Workshop root>/docs/templates/kaizen/$f" "$KAIZEN_ROOT/$f"
   fi
 done
 ```
@@ -44,10 +44,10 @@ Journal entries are one file per entry under `<kaizen root>/journal/YYYY-MM/`; t
 **If the project already has a single-file `<kaizen root>/journal.md`** (the pre-2026-07 layout), do not scaffold over it — convert it instead, then re-run this phase for anything still missing:
 
 ```bash
-bash "<devtools root>/Tools/migrate-kaizen-journal.sh"
+bash "<Workshop root>/Tools/migrate-kaizen-journal.sh"
 ```
 
-Then substitute the mount name into the copied `<kaizen root>/README.md`: the template's guide link carries the placeholder `<devtools-root>`, and this step replaces it with the name this project actually mounts the tree by — `MOUNT_NAME="$(basename "<devtools root>")"`, then `sed -i "s|<devtools-root>|$MOUNT_NAME|g" "$KAIZEN_ROOT/README.md"` (both the canonical-guide link and the quick-link carry it). Verify the link resolves from `<kaizen root>/README.md` before moving on.
+Then substitute the mount name into the copied `<kaizen root>/README.md`: the template's guide link carries the placeholder `<workshop-root>`, and this step replaces it with the name this project actually mounts the tree by — `MOUNT_NAME="$(basename "<Workshop root>")"`, then `sed -i "s|<workshop-root>|$MOUNT_NAME|g" "$KAIZEN_ROOT/README.md"` (both the canonical-guide link and the quick-link carry it). Verify the link resolves from `<kaizen root>/README.md` before moving on.
 
 ---
 
@@ -63,7 +63,7 @@ We practice continuous improvement. The [kaizen journal](./docs/work/kaizen/jour
 **Scope: kaizen is about the *way* we work, not the *thing* we build.** Process friction goes in the journal; feature ideas do not. When you hit friction (unexpected errors, multiple attempts, a misread instruction), add a journal entry. Run the session-end skill to capture a session's friction before it evaporates.
 ```
 
-(`<MOUNT_NAME>` is `basename "<devtools root>"` from Phase 1 — the name this project mounts the tree by; `devtools/` in the fleet layout, `workshop/` for a mirror consumer.)
+(`<MOUNT_NAME>` is `basename "<Workshop root>"` from Phase 1 — the name this project mounts the tree by; conventionally `workshop/`, but any mount name works.)
 
 If a kaizen section already exists, leave it and note that in the report.
 

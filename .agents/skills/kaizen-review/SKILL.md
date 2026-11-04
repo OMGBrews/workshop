@@ -181,7 +181,7 @@ A graduation's blast radius is not obvious from the file you edit:
 - **A destination inside the shared tools tree this repo imports** — a doc the repo's `AGENTS.md` links or its `.claude/rules/` links to in the mounted tree — loads in every session of this repo, whatever harness. Write it for a reader who has no idea which incident prompted it.
 - **A project-local destination** (this repo's `AGENTS.md`, a project skill, a gate script — or, Claude Code only, a `.claude/rules/` file or hook) is live the moment it is committed here.
 - **The pattern file reaches nobody either.** `docs/work/kaizen/patterns/` is loaded into no session in any repo, while an eagerly-imported destination is loaded into every one. "Keep the pattern until the propagation runs" therefore protects no reader anywhere; it only delays the rule. Report the reach gap; do not hold the deletion open for it.
-- **Private shared-tools mount only.** When this repo mounts the private shared-tools tree (conventionally `devtools/`), a graduation into it reaches no consumer by itself: the tree's edges are pinned, so a consumer keeps its recorded pointer until an explicit propagation runs, and outside the workspace index an uncommitted edit there does not survive the next sweep. Say that in the report — "graduated into devtools" means the rule is committed there and is *not yet* in any consumer — and follow the propagation playbook at `<mount>/docs/devtools-propagation.md` (a **new** skill or a renamed one needs its Trap 2c handling on top of the pointer bump). A public mount (`workshop/`) has no such step: the mirror republishes automatically and reach is the mirror's next publish.
+- **Shared Workshop changes require adoption.** Workshop is the public source of truth, conventionally mounted at `workshop/`. Landing a graduation there does not update pinned consumers: each keeps its recorded commit until it explicitly adopts a new pointer. Follow [`consumed-by.md`](../../../docs/work/consumed-by.md) for the declared maintainer-wrapper edge; other consumers follow their own adoption workflow. Report the committed destination, whether this project records that commit, and which readers still await adoption. When adding or renaming a skill, refresh the consumer's skill symlinks alongside its pointer so the new roster is discoverable.
 
 ---
 
@@ -196,7 +196,7 @@ Print a concise block:
 - **Counts and triggers** — any occurrence count updated, and any threshold crossed, with the task that owns the escalation.
 - **Watchlist** — lines **added** (how many, and their titles), lines **matched** into a pattern or problem and dropped, lines **aged out**, and any line dropped while its entry survived on a live citation. If this pass created `singletons.md`, say so and say it was seeded from the whole corpus.
 - **Journal deletions** — every entry removed, by cascade or by age-out, naming the artifact that consumed it; and every entry the citation check *kept*, naming what held it. Both halves: a cascade that reports only its deletions cannot be checked.
-- **Reach** — for each graduation, whether the destination is live here; on a private `devtools/` mount, whether it awaits a propagation.
+- **Reach** — for each graduation, whether the destination is live here; for a shared Workshop destination, whether this project and other intended consumers still await adoption.
 - **Uncommitted** — the files changed and the deletions staged, so the human can review and commit them.
 
 Do not commit and do not push. The changes are on disk and named; committing them is the human's.
@@ -224,7 +224,6 @@ Do not commit and do not push. The changes are on disk and named; committing the
 - [`kaizen-guide.md`](../../../docs/kaizen-guide.md) — the canonical practice: the PDCA cycle, the Act-stage procedure, the pattern format, and the graduation destinations. This skill is that section, run.
 - [`kaizen-init`](../kaizen-init/SKILL.md) — scaffolds `docs/work/kaizen/` into a project that has not adopted kaizen.
 - [`session-end`](../session-end/SKILL.md) — the per-session Check stage. Its Phase 2c is where the boundary between the two skills is written down.
-- Private-tree propagation is deliberately not linked from the public skill;
-  public Workshop consumers receive a new pinned version through their normal
-  submodule update.
+- [`consumed-by.md`](../../../docs/work/consumed-by.md) — the declared wrapper
+  edge and the explicit adoption required for pinned Workshop consumers.
 - [`signal-hygiene.md`](../../../docs/signal-hygiene.md) — the standing rule that the reader-side verification in Phase 5 is an instance of: a check whose pass state a no-op also satisfies reports success and ends the investigation.

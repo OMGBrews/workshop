@@ -87,8 +87,8 @@ _mark_reload() {
 _ephemeral() { [ "$AGENT_SESSION_ENVIRONMENT" = cloud ] && [ "$AGENT_SESSION_EPHEMERAL" = true ]; }
 
 # The shared-tools mount: the tree this kit ships in, found by discovery rather
-# than by name. The fleet mounts it as devtools/; a public consumer mounts the
-# Workshop mirror as workshop/; a repo may mount it under any name. The deployed
+# than by name. The conventional mount is workshop/; a repo may mount it
+# under any name. The deployed
 # copy of THIS script lives outside that tree (scripts/agent/), so self-location
 # cannot name the mount — check the conventional names first, then every
 # submodule path .gitmodules declares, for the kit marker. Absent means the
@@ -96,7 +96,8 @@ _ephemeral() { [ "$AGENT_SESSION_ENVIRONMENT" = cloud ] && [ "$AGENT_SESSION_EPH
 # drift guard below stay silent exactly as they did before, and the init loop
 # has already reported loudly why the tree is missing.
 KIT_MOUNT=""
-for candidate in devtools workshop; do
+# Retain the former private-tree name for legacy kit consumers.
+for candidate in workshop devtools; do
   if [ -f "$candidate/docs/templates/cloud-sessions/agent-session-start.sh" ]; then
     KIT_MOUNT="$candidate"; break
   fi

@@ -36,9 +36,9 @@ def build_submodule_fixture(repo) -> None:
 
         upstream-pin/                     [gitlink]
         .claude/skills/task-create        [symlink -> submodule]
-        devtools/scripts/formatter.py     [symlink, one hop]
+        shared-tools/scripts/formatter.py     [symlink, one hop]
         handbook/briefs/_TEMPLATE.md      [symlink, two hops]
-        devtools/scripts/local.py         [file]
+        shared-tools/scripts/local.py         [file]
         handbook/briefs/real.md           [file]
         handbook/shortcut.md              [symlink -> a local file]
     """
@@ -54,13 +54,13 @@ def build_submodule_fixture(repo) -> None:
         f"{git_utils.GITLINK_MODE},{FAKE_SUBMODULE_SHA},upstream-pin",
     )
     # Genuinely local files, which must survive the filter.
-    support.write_file(repo / "devtools/scripts/local.py")
+    support.write_file(repo / "shared-tools/scripts/local.py")
     support.write_file(repo / "handbook/briefs/real.md")
     (repo / ".claude/skills").mkdir(parents=True)
     (repo / ".claude/skills/task-create").symlink_to(
         "../../upstream-pin/.claude/skills/task-create"
     )
-    (repo / "devtools/scripts/formatter.py").symlink_to(
+    (repo / "shared-tools/scripts/formatter.py").symlink_to(
         "../../upstream-pin/scripts/formatter.py"
     )
     # Two hops: the first component of this target is itself the directory
@@ -72,8 +72,8 @@ def build_submodule_fixture(repo) -> None:
     )
     # A symlink that stays inside this repo — ownership is about the target,
     # so being a symlink must not be enough on its own.
-    (repo / "handbook/shortcut.md").symlink_to("../devtools/scripts/local.py")
-    support.run_git(repo, "add", ".claude", "devtools", "handbook")
+    (repo / "handbook/shortcut.md").symlink_to("../shared-tools/scripts/local.py")
+    support.run_git(repo, "add", ".claude", "shared-tools", "handbook")
 
 
 class SubmoduleOwnershipTest(support.RepoTestCase):
@@ -88,7 +88,7 @@ class SubmoduleOwnershipTest(support.RepoTestCase):
     # 2. one-hop symlinks landing inside the submodule are owned -------------
     def test_one_hop_symlink_into_submodule_is_owned(self) -> None:
         owned = git_utils.submodule_owned_paths()
-        self.assertIn("devtools/scripts/formatter.py", owned)
+        self.assertIn("shared-tools/scripts/formatter.py", owned)
         self.assertIn(".claude/skills/task-create", owned)
 
     # 3. the two-hop symlink resolves through the directory symlink ----------
@@ -104,7 +104,7 @@ class SubmoduleOwnershipTest(support.RepoTestCase):
     # 4. local paths — including a symlink to one — are not owned ------------
     def test_local_paths_are_not_owned(self) -> None:
         owned = git_utils.submodule_owned_paths()
-        self.assertNotIn("devtools/scripts/local.py", owned)
+        self.assertNotIn("shared-tools/scripts/local.py", owned)
         self.assertNotIn("handbook/briefs/real.md", owned)
         self.assertNotIn("handbook/shortcut.md", owned)
 
@@ -118,7 +118,7 @@ class SubmoduleOwnershipTest(support.RepoTestCase):
         """
         files = git_utils.ls_files()
         self.assertIn("handbook/briefs/_TEMPLATE.md", files)
-        self.assertIn("devtools/scripts/formatter.py", files)
+        self.assertIn("shared-tools/scripts/formatter.py", files)
 
 
 class EmptyBlobTest(support.RepoTestCase):

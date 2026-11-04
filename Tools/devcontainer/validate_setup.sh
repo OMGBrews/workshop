@@ -3,7 +3,7 @@
 # Called by postStartCommand. Fails loudly if any check fails — no silent repair.
 #
 # ── Why the harness checks are gated on a manifest ──────────────────────────────────
-# This script runs LIVE off the mounted devtools clone at every container start, so an
+# This script runs LIVE off the mounted Workshop clone at every container start, so an
 # edit here reaches every consumer the moment its pointer moves. Installs, by contrast,
 # land at image BUILD. Those two clocks are what make the obvious implementation wrong:
 # a plain `command -v omp` check would go red in every consumer at its next container

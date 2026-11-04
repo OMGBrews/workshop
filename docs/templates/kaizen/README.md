@@ -4,9 +4,9 @@ This project's continuous-improvement system: a log of friction in **how we buil
 
 The methodology — what kaizen is, when to write an entry, the PDCA cycle, the entry/pattern formats, and how patterns graduate into rules — is shared across every project that adopts this system and lives in one place:
 
-**→ `<devtools-root>/docs/kaizen-guide.md`** (canonical guide)
+**→ `<workshop-root>/docs/kaizen-guide.md`** (canonical guide)
 
-`<devtools-root>` is the name this project mounts the shared tools tree by (the `kaizen-init` skill substitutes the real name when it copies this template).
+`<workshop-root>` is the name this project mounts the shared tools tree by (the `kaizen-init` skill substitutes the real name when it copies this template).
 
 ## What's in this directory
 
@@ -25,4 +25,4 @@ Kaizen is about the **way** we work, not the **thing** we build. Process frictio
 
 - The `/session-end` skill captures this session's unrecorded friction into [journal/](./journal/) before context evaporates.
 - Run a [patterns/](./patterns/) review every ~2 weeks or after a sprint (see
-  the canonical guide at `<devtools-root>/docs/kaizen-guide.md`).
+  the canonical guide at `<workshop-root>/docs/kaizen-guide.md`).

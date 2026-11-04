@@ -76,10 +76,10 @@
 #      wrapper says so (signal-hygiene.md).
 set -euo pipefail
 
-DEVTOOLS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-HOOK_TEMPLATE="$DEVTOOLS_ROOT/docs/templates/cloud-sessions/session-start.sh"
-NEUTRAL_TEMPLATE="$DEVTOOLS_ROOT/docs/templates/cloud-sessions/agent-session-start.sh"
-DETECTOR_TEMPLATE="$DEVTOOLS_ROOT/docs/templates/cloud-sessions/harness-signals.sh"
+WORKSHOP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+HOOK_TEMPLATE="$WORKSHOP_ROOT/docs/templates/cloud-sessions/session-start.sh"
+NEUTRAL_TEMPLATE="$WORKSHOP_ROOT/docs/templates/cloud-sessions/agent-session-start.sh"
+DETECTOR_TEMPLATE="$WORKSHOP_ROOT/docs/templates/cloud-sessions/harness-signals.sh"
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -213,7 +213,7 @@ echo "ok 2 - never touches an initialized submodule"
 # that only ever compared itself would pass the pair check while the wrapper
 # rotted. Identical copies first: silence. The templates must be present in the
 # fixture for the guard to run at all — the drifted cases below prove they are.
-fixture_tpl="$TMP/clone1/devtools/docs/templates/cloud-sessions"
+fixture_tpl="$TMP/clone1/workshop/docs/templates/cloud-sessions"
 mkdir -p "$fixture_tpl"
 cp "$HOOK_TEMPLATE" "$fixture_tpl/session-start.sh"
 cp "$NEUTRAL_TEMPLATE" "$fixture_tpl/agent-session-start.sh"
@@ -762,7 +762,7 @@ echo "ok 12 - the neutral script works as a plain command, signals reloads via t
 
 # --- 13. a missing bootstrap is reported, never silently skipped ------------
 # The failure the split introduces: the hook fires, the neutral script is not
-# there (a devtools bump that landed the split without the matching redeploy),
+# there (a Workshop bump that landed the split without the matching redeploy),
 # and nothing bootstraps. Its symptom is a stale checkout with uninitialized
 # submodules, which is indistinguishable from a healthy session — so the
 # wrapper has to say so itself (signal-hygiene.md).
@@ -783,15 +783,13 @@ echo "$report" | grep -q "agent-session-start.sh" \
   || fail "fixture invalid: the submodule initialized, so no bootstrap was actually missing"
 echo "ok 13 - a missing neutral script is reported loudly, with the redeploy named"
 
-# --- 14. a workshop/-named mount is discovered, not just devtools/ ----------
-# The fleet mounts the shared tools as devtools/; a public consumer mounts the
-# Workshop mirror as workshop/. The bootstrap must find the kit under EITHER
-# name — the drift guard compares against the right template and the roster
-# seam wires the right hooksPath — and a discovery that only ever read the
-# devtools/ name would false-pass every case above, so this one mounts the kit
-# as workshop/ and asserts both seams resolve through it. (The super fixture's
-# sub-doomed source is gone by now; per-submodule tolerance keeps the hook at
-# exit 0, which the assertions below do not rely on either way.)
+# --- 14. a workshop/-named mount wires the roster hooks --------------------
+# The conventional workshop/ mount is also used by the drift fixture above.
+# Assert both seams together here: template comparison stays silent and
+# core.hooksPath points into that mount. Case 15 checks a distinct neutral
+# name discovered through .gitmodules. (The super fixture's sub-doomed source
+# is gone by now; per-submodule tolerance keeps the hook at exit 0, which the
+# assertions below do not rely on either way.)
 git clone -q "$TMP/super" "$TMP/clone-ws"
 deploy_hook "$TMP/clone-ws"
 ws="$TMP/clone-ws/workshop"
@@ -799,8 +797,8 @@ mkdir -p "$ws/docs/templates/cloud-sessions" "$ws/Tools/hooks"
 cp "$HOOK_TEMPLATE" "$ws/docs/templates/cloud-sessions/session-start.sh"
 cp "$NEUTRAL_TEMPLATE" "$ws/docs/templates/cloud-sessions/agent-session-start.sh"
 cp "$DETECTOR_TEMPLATE" "$ws/docs/templates/cloud-sessions/harness-signals.sh"
-cp "$DEVTOOLS_ROOT/Tools/check-skill-roster-freshness.sh" "$ws/Tools/"
-cp "$DEVTOOLS_ROOT"/Tools/hooks/post-checkout "$DEVTOOLS_ROOT"/Tools/hooks/post-merge "$DEVTOOLS_ROOT"/Tools/hooks/post-rewrite "$ws/Tools/hooks/"
+cp "$WORKSHOP_ROOT/Tools/check-skill-roster-freshness.sh" "$ws/Tools/"
+cp "$WORKSHOP_ROOT"/Tools/hooks/post-checkout "$WORKSHOP_ROOT"/Tools/hooks/post-merge "$WORKSHOP_ROOT"/Tools/hooks/post-rewrite "$ws/Tools/hooks/"
 out="$(run_hook "$TMP/clone-ws")" || fail "hook exited non-zero with a workshop/ mount: $out"
 echo "$out" | grep -q "DRIFT" \
   && fail "DRIFT reported for byte-identical copies under a workshop/ mount: $out"
@@ -821,8 +819,8 @@ mkdir -p "$generic/docs/templates/cloud-sessions" "$generic/Tools/hooks"
 cp "$HOOK_TEMPLATE" "$generic/docs/templates/cloud-sessions/session-start.sh"
 cp "$NEUTRAL_TEMPLATE" "$generic/docs/templates/cloud-sessions/agent-session-start.sh"
 cp "$DETECTOR_TEMPLATE" "$generic/docs/templates/cloud-sessions/harness-signals.sh"
-cp "$DEVTOOLS_ROOT/Tools/check-skill-roster-freshness.sh" "$generic/Tools/"
-cp "$DEVTOOLS_ROOT"/Tools/hooks/post-checkout "$DEVTOOLS_ROOT"/Tools/hooks/post-merge "$DEVTOOLS_ROOT"/Tools/hooks/post-rewrite "$generic/Tools/hooks/"
+cp "$WORKSHOP_ROOT/Tools/check-skill-roster-freshness.sh" "$generic/Tools/"
+cp "$WORKSHOP_ROOT"/Tools/hooks/post-checkout "$WORKSHOP_ROOT"/Tools/hooks/post-merge "$WORKSHOP_ROOT"/Tools/hooks/post-rewrite "$generic/Tools/hooks/"
 git -C "$TMP/clone-generic" config -f .gitmodules submodule.shared-kit.path shared-kit
 out="$(run_hook "$TMP/clone-generic")" || fail "hook exited non-zero with a generic kit mount: $out"
 echo "$out" | grep -q "DRIFT" \
@@ -831,3 +829,16 @@ hp="$(git -C "$TMP/clone-generic" config --get core.hooksPath)"
 [ "$hp" = "shared-kit/Tools/hooks" ] \
   || fail "roster seam did not use the generic .gitmodules mount (got '$hp')"
 echo "ok 15 - a generic .gitmodules mount is discovered: drift silent against its templates, hooksPath wired into it"
+
+# --- 16. the legacy devtools/ fast path remains compatible -----------------
+# Older consumers may still pin the historical mount name without declaring
+# it in .gitmodules. Reuse case 14's kit under that name and verify both seams
+# still find it; ordinary fixtures above use Workshop or neutral mount names.
+mv "$TMP/clone-ws/workshop" "$TMP/clone-ws/devtools"
+out="$(run_hook "$TMP/clone-ws")" || fail "hook exited non-zero with a legacy mount: $out"
+echo "$out" | grep -q "DRIFT" \
+  && fail "DRIFT reported for byte-identical copies under the legacy mount: $out"
+hp="$(git -C "$TMP/clone-ws" config --get core.hooksPath)"
+[ "$hp" = "devtools/Tools/hooks" ] \
+  || fail "roster seam did not retain the legacy mount (got '$hp')"
+echo "ok 16 - legacy mount discovery remains compatible"

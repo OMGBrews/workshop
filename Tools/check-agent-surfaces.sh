@@ -13,16 +13,16 @@
 #
 # Usage: bash Tools/check-agent-surfaces.sh <repo-root>
 # The repo-root argument is REQUIRED: from this location a default would resolve
-# to the devtools tree itself, silently auditing the wrong repo. A check that can
+# to the Workshop tree itself, silently auditing the wrong repo. A check that can
 # audit the wrong tree is a signal-hygiene violation — every caller passes its
-# own root explicitly (this repo: `bash devtools/Tools/check-agent-surfaces.sh .`).
+# own root explicitly (this repo: `bash Tools/check-agent-surfaces.sh .`).
 # Exit 0 -> every evaluated assertion holds.  Exit 1 -> at least one failed, and
 # every failure is named on stdout with the check number that owns it.  Exit 2 ->
 # usage error (repo-root omitted).
 #
 # Every assertion states a POSITIVE property of an artifact, per
-# devtools/docs/signal-hygiene.md: run it against a repo where none of this work
-# was done and it goes red, not green. devtools/tests/test-check-agent-surfaces.sh
+# docs/signal-hygiene.md: run it against a repo where none of this work
+# was done and it goes red, not green. tests/test-check-agent-surfaces.sh
 # pins that by building exactly such a repo and asserting the red.
 #
 # On the skipped band: the skill checks (8, 9 and 13) that must READ a SKILL.md
@@ -86,7 +86,7 @@ norm_path() {
 }
 
 # Where does .agents/skills/<name> actually live, as a repo-relative path? For a
-# shared skill that is a symlink into the devtools submodule; for a project-local
+# shared skill that is a symlink into the Workshop submodule; for a project-local
 # one it is the directory itself.
 canonical_skill_path() {
     local name=$1 target

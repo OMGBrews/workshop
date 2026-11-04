@@ -2,14 +2,10 @@
 # check-docs-work-conformance.sh — does this repo's docs/work/ directory conform
 # to the fleet docs work-directory contract?
 #
-# The fleet is consolidating the files the devtools machine reads and writes
-# into one machine-owned directory, docs/work/, inside every repository. The
-# contract that specifies the layout is private — deliberately not published to
-# the workshop mirror — so this script encodes the clause matrix directly
-# in the clearly labelled sections below and never reads the contract at
-# runtime; consumers receive the contract's decisions through their migration
-# briefs. Runtime output therefore never requires a private document to be
-# present in the consuming checkout.
+# The shared Workshop tooling reads and writes one machine-owned directory,
+# docs/work/, inside every repository. The public contract is documented in
+# docs/work-directory.md. This script encodes its clause matrix directly in
+# the clearly labelled sections below and never parses the contract at runtime.
 #
 # One line per registry clause, with four stable verdicts:
 #   ok     — the clause's enforceable assertions all hold
@@ -31,9 +27,9 @@
 # number, is the diagnostic interface.
 #
 # Every assertion states a POSITIVE property of an artifact, per
-# devtools/docs/signal-hygiene.md: run it against a repo where none of this
+# docs/signal-hygiene.md: run it against a repo where none of this
 # work was done and it goes red, not green.
-# devtools/tests/test-check-docs-work-conformance.sh builds a conforming repo
+# tests/test-check-docs-work-conformance.sh builds a conforming repo
 # and an unmigrated one and pins both outcomes.
 
 set -euo pipefail
@@ -46,7 +42,7 @@ fi
 root="$1"
 # Resolve the bundled siblings before entering the root: BASH_SOURCE may be
 # relative to the caller's directory.
-devtools_root="$(cd -P "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+workshop_root="$(cd -P "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root" || { echo "cannot enter '$root'" >&2; exit 2; }
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     echo "not a Git worktree: '$root' — the handoff clause depends on tracked-file identity" >&2
@@ -57,12 +53,12 @@ if [ "$(git rev-parse --show-toplevel)" != "$(pwd -P)" ]; then
     exit 2
 fi
 
-readiness_checker="$devtools_root/.agents/skills/task-finalize/check-task-readiness.sh"
+readiness_checker="$workshop_root/.agents/skills/task-finalize/check-task-readiness.sh"
 if [ ! -f "$readiness_checker" ]; then
     echo "missing bundled task readiness checker: '$readiness_checker'" >&2
     exit 2
 fi
-dod_checker="$devtools_root/Tools/check-definition-of-done.sh"
+dod_checker="$workshop_root/Tools/check-definition-of-done.sh"
 if [ ! -f "$dod_checker" ]; then
     echo "missing bundled definition-of-done checker: '$dod_checker'" >&2
     exit 2

@@ -31,7 +31,7 @@ brief in depth, `task-finalize` owns admission to `finalized/`, and
   dating a task's real activity.
 - **A rot check on an untracked path silently passes.** `git log <sha>..HEAD
   -- <path>` prints nothing and exits 0 for a gitignored or sibling-clone path
-  (hq tasks naming `devtools/` paths are the live case). Verify the path is
+  (hq tasks naming `workshop/` paths are the live case). Verify the path is
   tracked (`git ls-files --error-unmatch`) before calling its diff clean.
 - **`grep` may honor `.gitignore`** (it is ugrep in some environments), so a
   recursive search can return a silently incomplete result. Pass explicit

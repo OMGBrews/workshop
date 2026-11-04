@@ -2,7 +2,7 @@
 # Tests for Tools/sync-skill-symlinks.sh.
 #
 # The script's contract, asserted here:
-#   1. writes BOTH surfaces — .agents/skills/<n> -> ../../devtools/.agents/skills/<n>
+#   1. writes BOTH surfaces — .agents/skills/<n> -> ../../<mount>/.agents/skills/<n>
 #      (canonical) and .claude/skills/<n> -> ../../.agents/skills/<n> (bridge) —
 #      each resolving to a readable SKILL.md;
 #   2. is idempotent — a second run refreshes, creating nothing, on both;
@@ -13,19 +13,17 @@
 #   5. converts a legacy directory-level .claude/skills symlink;
 #   6. fails loudly when a link would not resolve to a readable skill, and on
 #      a repo with neither .claude/ nor .agents/ (the wrong-directory guard).
-#   7. discovers the devtools mount whatever it is named — the fixture above is
-#      named devtools/, so a mount under any other name (workshop/ for the
-#      mirror consumer, its pre-rename placeholder before 2026-08) must resolve
-#      the same way, with both link targets naming THAT directory. Fails against
-#      the pre-discovery script, whose SRC_DIR was the hardcoded devtools/ literal.
+#   7. discovers the Workshop mount whatever it is named, including a
+#      neutral shared-tools/ mount and the conventional workshop/ mount,
+#      with both link targets naming the discovered directory.
 #   8. names the MOUNT, not the tree, when the tree is nested inside a wrapper
 #      the consumer mounts. A consumer can only traverse the directory it
 #      mounted; a tree one level deeper is the wrapper's business.
 set -euo pipefail
 
-DEVTOOLS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SYNC="$DEVTOOLS_ROOT/Tools/sync-skill-symlinks.sh"
-MOUNT_NAME="$(basename "$DEVTOOLS_ROOT")"
+WORKSHOP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SYNC="$WORKSHOP_ROOT/Tools/sync-skill-symlinks.sh"
+MOUNT_NAME="$(basename "$WORKSHOP_ROOT")"
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -38,8 +36,8 @@ make_skill() { # <dir>
 }
 
 # Fixture: a project with two shared skills in the checkout that owns this test.
-# The public candidate's directory name is not necessarily `devtools`, so a
-# fixture that hard-codes that name tests the fixture rather than the tool.
+# Derive the fixture mount name from the checkout rather than assuming a
+# conventional directory name.
 PROJ="$TMP/proj"
 mkdir -p "$PROJ/.claude"
 make_skill "$PROJ/$MOUNT_NAME/.agents/skills/alpha"
@@ -135,26 +133,24 @@ echo "ok 6 - failure paths are loud"
 # --- 7. the mount is discovered, whatever it is named -----------------------
 # The script must be run FROM ITS OWN checkout inside the fixture's mount —
 # self-location is the discovery mechanism, and an alternate mount name is only
-# trustable when the script ships inside that mount (the pia-maker shape:
-# `bash workshop/Tools/sync-skill-symlinks.sh <repo-root>`; the mirror consumer
-# mounted the public mirror at that name after the 2026-08 rename from the
-# placeholder).
+# trustable when the script ships inside that mount. Use a neutral name
+# distinct from the conventional workshop/ mount.
 PROJ5="$TMP/proj5"
-mkdir -p "$PROJ5/.claude" "$PROJ5/workshop/Tools"
-make_skill "$PROJ5/workshop/.agents/skills/alpha"
-make_skill "$PROJ5/workshop/.agents/skills/beta"
-cp "$SYNC" "$PROJ5/workshop/Tools/sync-skill-symlinks.sh"
-out="$(bash "$PROJ5/workshop/Tools/sync-skill-symlinks.sh" "$PROJ5" 2>&1)" \
-  || fail "sync failed for a workshop mount: $out"
+mkdir -p "$PROJ5/.claude" "$PROJ5/shared-tools/Tools"
+make_skill "$PROJ5/shared-tools/.agents/skills/alpha"
+make_skill "$PROJ5/shared-tools/.agents/skills/beta"
+cp "$SYNC" "$PROJ5/shared-tools/Tools/sync-skill-symlinks.sh"
+out="$(bash "$PROJ5/shared-tools/Tools/sync-skill-symlinks.sh" "$PROJ5" 2>&1)" \
+  || fail "sync failed for a shared-tools mount: $out"
 [ "$(grep -c '2 linked' <<< "$out")" = 2 ] \
-  || fail "expected '2 linked' on both surfaces for workshop: $out"
-[ "$(readlink "$PROJ5/.agents/skills/alpha")" = "../../workshop/.agents/skills/alpha" ] \
+  || fail "expected '2 linked' on both surfaces for shared-tools: $out"
+[ "$(readlink "$PROJ5/.agents/skills/alpha")" = "../../shared-tools/.agents/skills/alpha" ] \
   || fail "canonical alpha does not name the discovered mount: $(readlink "$PROJ5/.agents/skills/alpha")"
 [ "$(readlink "$PROJ5/.claude/skills/alpha")" = "../../.agents/skills/alpha" ] \
   || fail "bridge alpha does not chain through the canonical surface: $(readlink "$PROJ5/.claude/skills/alpha")"
-[ -r "$PROJ5/.agents/skills/beta/SKILL.md" ] || fail "beta unreadable through the workshop canonical link"
-[ -r "$PROJ5/.claude/skills/beta/SKILL.md" ] || fail "beta unreadable through the workshop bridge"
-echo "ok 7 - alternate mount name (workshop) discovered; fixture mount derived from the checkout"
+[ -r "$PROJ5/.agents/skills/beta/SKILL.md" ] || fail "beta unreadable through the shared-tools canonical link"
+[ -r "$PROJ5/.claude/skills/beta/SKILL.md" ] || fail "beta unreadable through the shared-tools bridge"
+echo "ok 7 - alternate mount name (shared-tools) discovered; fixture mount derived from the checkout"
 
 # --- 8. a tree NESTED inside the mounted directory --------------------------
 # The consuming repo mounts `wrapper/`; this tree is a submodule one level
@@ -181,7 +177,7 @@ make_skill "$PROJ6/wrapper/.agents/skills/wrapper-owned"     # real, not from th
 ln -s "../../nested/.agents/skills/alpha" "$PROJ6/wrapper/.agents/skills/alpha"
 ln -s "../../nested/.agents/skills/beta" "$PROJ6/wrapper/.agents/skills/beta"
 cp "$SYNC" "$PROJ6/wrapper/nested/Tools/sync-skill-symlinks.sh"
-cp "$DEVTOOLS_ROOT/Tools/check-skill-roster-freshness.sh" "$PROJ6/wrapper/nested/Tools/"
+cp "$WORKSHOP_ROOT/Tools/check-skill-roster-freshness.sh" "$PROJ6/wrapper/nested/Tools/"
 : > "$PROJ6/wrapper/nested/Tools/hooks/post-merge"
 
 out="$(bash "$PROJ6/wrapper/nested/Tools/sync-skill-symlinks.sh" "$PROJ6" 2>&1)" \

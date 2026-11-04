@@ -174,7 +174,7 @@ fi
 STATUSLINE_SRC="$BUILD_DIR/statusline.sh"
 [ -r "$STATUSLINE_SRC" ] || {
     echo "ERROR: statusline.sh not found beside harness-claude.sh (looked for $STATUSLINE_SRC)." >&2
-    echo "       Every Dockerfile must COPY the whole devtools/Tools/devcontainer/build/" >&2
+    echo "       Every Dockerfile must COPY the whole workshop/Tools/devcontainer/build/" >&2
     echo "       directory, not individual files out of it." >&2
     exit 1
 }

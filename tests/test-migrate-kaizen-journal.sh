@@ -24,9 +24,9 @@
 #      shared link checker distinguishes the broken verbatim negative control.
 set -euo pipefail
 
-DEVTOOLS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-MIGRATE="$DEVTOOLS_ROOT/Tools/migrate-kaizen-journal.sh"
-CHECK_LINKS="$DEVTOOLS_ROOT/Tools/check-markdown-links.sh"
+WORKSHOP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+MIGRATE="$WORKSHOP_ROOT/Tools/migrate-kaizen-journal.sh"
+CHECK_LINKS="$WORKSHOP_ROOT/Tools/check-markdown-links.sh"
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT

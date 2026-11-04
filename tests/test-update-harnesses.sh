@@ -29,9 +29,9 @@
 # demand.
 set -euo pipefail
 
-DEVTOOLS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-UPDATER="$DEVTOOLS_ROOT/Tools/devcontainer/update-harnesses.sh"
-BUILD_DIR="$DEVTOOLS_ROOT/Tools/devcontainer/build"
+WORKSHOP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+UPDATER="$WORKSHOP_ROOT/Tools/devcontainer/update-harnesses.sh"
+BUILD_DIR="$WORKSHOP_ROOT/Tools/devcontainer/build"
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
