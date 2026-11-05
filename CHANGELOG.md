@@ -3,6 +3,11 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **Journal citations survive retirement.** New entries cite task briefs,
+  problem records, and kaizen patterns by slug. Consumers adopt existing entries
+  through a recorded one-time migration before moves or retirement, keeping
+  journal evidence links and strict whole-tree link checks intact.
+
 - **Parked tasks require a reason and a return condition.** Task moves collect
   the canonical parking note and require a status correction for active work;
   rejected briefs need an individual confirmed move out. Task reports flag

@@ -9,7 +9,7 @@ The **Act** stage of the kaizen PDCA loop, run interactively. The `session-end` 
 
 Two properties shape everything below:
 
-- **The journal is content-immutable.** It is a record of what happened, so this skill never *edits* an entry — not to renumber, not to cross-reference, not to correct. It does end an entry's life: the guide's *The journal's lifecycle* section gives every entry two exits — deleted with the artifact that consumed it, or aged off the watchlist — and both are this skill's to perform. There is no state in between: an entry is written once, and later deleted whole. `patterns/` is the present-tense synthesis; `singletons.md` is the watchlist of entries still waiting for a sibling, and this skill is its only writer.
+- **The journal is content-immutable.** It is a record of what happened, so this skill never *edits* an entry — not to renumber, not to cross-reference, not to correct. It does end an entry's life: the guide's *The journal's lifecycle* section gives every entry two exits — deleted with the artifact that consumed it, or aged off the watchlist — and both are this skill's to perform. The guide's one-time citation adoption is an explicit, separately recorded exception; routine review still leaves surviving entries unchanged and deletes consumed entries whole. `patterns/` is the present-tense synthesis; `singletons.md` is the watchlist of entries still waiting for a sibling, and this skill is its only writer.
 - **Graduation is the point, and graduation is destructive.** A pattern graduates by having its lesson written into a live standard, its own file deleted, and the entries it consumed deleted with it. Both halves are the human's call, and the delete half is only safe once the write half is verified from the reader's side — see Phase 5.
 
 Repo-agnostic: it works in any project that has adopted kaizen and stops cleanly in one that has not.
@@ -139,9 +139,13 @@ grep -rn "<pattern-slug>" --exclude-dir=.git .
 
 Sort the hits into three classes and report all three:
 
-- **Journal entries — expected to dangle; do NOT repair.** An entry linking a pattern that later graduated is a correct record of what was true when it was written, and an entry is never edited. Name them in the report and leave them. (This does *not* generalise to the reverse direction: an entry linked *from* another entry cannot be deleted at all, because the same immutability means you could never repair the link. See the cascade below.)
+- **Journal entries — slug citations survive unchanged.** Entries cite task briefs, problem records, and patterns by backticked slug, with type and repository where needed. Name surviving citations and leave their entries byte-for-byte unchanged. A legacy link to the pattern, including an already broken one, requires completing the guide's *Journal citations and one-time adoption* procedure before deleting the pattern or cascading into its evidence. Stop that retirement until adoption is recorded; if the guide is unavailable, obtain the lifecycle source rather than inventing a migration. Never routinely edit journal entries or accept dangling links as the graduation outcome. Links to journal evidence remain links and still veto deletion of the cited entry.
 - **Other patterns and tasks — repoint at the destination** in the same change, so the reader lands on the live rule rather than a dead link.
-- **Already wrong before you arrived** — fix either way.
+- **Already wrong before you arrived in editable artifacts** — fix either way. Journal links belong to the adoption rule above.
+
+Run the consumer's required whole-tree link check after retirement and editable
+repairs, and report its actual result. Do not weaken the check or add broad
+exclusions to accommodate historical links.
 
 ### Cascade the deletion into the journal
 
@@ -162,7 +166,7 @@ Then:
 Three things this order and this pair of greps are built against:
 
 - **Deleting entries before the pattern** leaves a live document whose Evidence links dangle. Same reason the destination is edited before the pattern is removed.
-- **The second grep is not decoration.** The first matches a filename, so an artifact citing an entry as `2026-07-14 — Perl mojibake` — bare date, no link — is invisible to it, and you will delete the entry a live pattern depends on. When you find a prose citation, repair it to a link and keep the entry; do not treat the absent filename as absence of a dependency.
+- **The second grep is not decoration.** The first matches a filename, so an artifact citing an entry as `2026-07-14 — Perl mojibake` — bare date, no link — is invisible to it, and you will delete the entry a live pattern depends on. When you find a prose citation in an editable artifact, repair it to a link and keep the entry; a prose citation from a journal entry keeps the target without editing the citer; do not treat the absent filename as absence of a dependency.
 - **A journal-to-journal link is a veto, not a dangle.** You may not edit an entry, so a link out of one can never be repaired — not deleting the target is the only move available.
 
 ### Age out the watchlist
@@ -205,7 +209,7 @@ Do not commit and do not push. The changes are on disk and named; committing the
 
 ## Hard "do NOT" list
 
-- **Do NOT edit, renumber, or cross-reference a journal entry.** The journal is content-immutable: an entry is written once and never revised. Everything this skill has to say goes in `patterns/`, in `singletons.md`, or in a destination artifact.
+- **Do NOT edit, renumber, or cross-reference a journal entry during review.** The journal is content-immutable; the guide's one-time citation adoption is a separate, recorded exception, not a review operation. Everything this skill has to say goes in `patterns/`, in `singletons.md`, or in a destination artifact.
 - **Do NOT delete a journal entry outside the two exits the guide defines** — the consumption cascade (the artifact that absorbed it is being deleted in the same commit) and watchlist age-out. Tidying, deduplicating, "it's obsolete", "it's covered elsewhere" are not exits; that is destroying the record.
 - **Do NOT delete an entry whose citation check found a live citer** — including another journal entry, whose link you could never repair. Keep it and report what held it.
 - **Do NOT leave a singleton as a report line only.** It goes on the watchlist, or the review after next cannot see its second instance arrive, which is the whole failure this lifecycle exists to close.

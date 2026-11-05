@@ -33,6 +33,16 @@ moved briefs, with or without repository-local repair tooling.
    Read matches: a longer slug, code example, or historical citation need not
    be a live link. Inspect relative destinations too; text searches alone can
    miss reference definitions, encoded paths, and differently spelled links.
+5. **Preflight journal citations before any move or mechanical repair.** Journal
+   entries cite task briefs, problem records, and patterns by backticked slug,
+   with type and repository where needed; these citations stay unchanged. A
+   legacy journal link to a moved brief requires the kaizen guide's *Journal
+   citations and one-time adoption* procedure as a separate recorded migration
+   before the move. Resolve the guide through the mounted Workshop distribution
+   or the project's kaizen README; unavailable or conflicting policy stops
+   adoption. Name the affected entries and defer the move until it is complete.
+   Do not use routine link repair to edit immutable entries or weaken the
+   whole-tree check with exclusions. Links to journal evidence remain protected.
 
 If an intended target or an overlapping pre-existing edit cannot be resolved
 confidently, stop and report it before moving. Do not guess from what happens
@@ -42,7 +52,8 @@ to exist at the destination.
 
 1. Complete the caller's planned moves, then repair inbound links for **each**
    old/new pair in one repair phase. Use the discovered mechanical repair with
-   its inspected interface; read its complete output and exit status. Without
+   its inspected interface, ensuring immutable journals are not rewritten; read
+   its complete output and exit status. Without
    one, repair the discovered live references manually. Preserve link style,
    titles, escaping, query strings, fragments, and documented exclusions.
    Inspect the diff and discovered references even when a script reports no

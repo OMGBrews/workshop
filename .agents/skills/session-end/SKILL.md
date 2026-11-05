@@ -85,6 +85,9 @@ Each piece of unrecorded friction becomes **its own file** at `docs/work/kaizen/
 ```
 
 The date lives in the filename, not in the heading, and entries take no frontmatter.
+Follow the guide's **Journal citations and one-time adoption** policy: cite task
+briefs, problem records, and patterns by backticked slug, with type and repository
+where needed to identify them. Keep links to journal evidence as relative links.
 
 Name the **root cause**, not the symptom. Be concrete (exact tool, specific flag, what was expected vs. what happened). Make the **Lesson** load-bearing — phraseable as a one-line rule.
 
@@ -92,9 +95,9 @@ Name the **root cause**, not the symptom. Be concrete (exact tool, specific flag
 
 Do **not** run a full `patterns/` review — the guide sets that cadence at "~2 weeks or after a sprint," not per-session, and the `kaizen-review` skill is the one that owns it. The only per-session matching action: if a new entry's root cause clearly matches a live kaizen artifact, note the match in the entry's **Action** field. Three sets to check, not one:
 
-- **`docs/work/kaizen/patterns/`** — the entry is another instance of a known tendency; name the pattern file.
+- **`docs/work/kaizen/patterns/`** — the entry is another instance of a known tendency; cite the pattern by backticked slug.
 - **`docs/work/kaizen/singletons.md`** (where it exists) — the entry is the second instance a watch line has been waiting for. Note the match and stop: the `kaizen-review` skill is the watchlist's only writer, so never add, drop, or edit a line there — the next review routes the pair.
-- **`docs/work/problems/`** (where it exists) — the entry is a fresh instance of a documented flaw. Link the problem document by relative path so the review can attach the entry as evidence.
+- **`docs/work/problems/`** (where it exists) — the entry is a fresh instance of a documented flaw. Cite the problem by backticked slug, adding the repository where needed, so the review can find it and attach a real evidence link back to this entry.
 
 Leave routing, clustering, and graduation for the periodic review.
 

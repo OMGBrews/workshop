@@ -212,8 +212,20 @@ grep -rn "<task-slug>" --exclude-dir=.git .
 Every hit outside the task file itself is an inbound reference. A README index
 entry and a "see also" in another brief are the usual two. A hit can also be a
 longer slug that merely contains this one; read each hit rather than counting
-them. Sort them into three classes before touching anything, because 6d treats
-them differently:
+them. First separate **journal citations**: journal entries cite task briefs,
+problem records, and patterns by backticked slug, with type and repository where
+needed. Those citations survive retirement byte-for-byte unchanged. If an entry
+still links to this brief (including an already broken link), stop close-out
+before deletion and complete the kaizen guide's *Journal citations and one-time
+adoption* procedure as a separate recorded migration. Resolve the guide from the
+mounted Workshop distribution or the project's kaizen README. Missing policy or
+conflicting local rules must be resolved before adoption; do not invent an
+exception. Do not routinely repair journal entries or exclude them from the
+required whole-tree link check. Links to journal evidence retain their existing
+retention protections.
+
+Sort the remaining editable references into three classes before touching
+anything, because 6d treats them differently:
 
 - **Broken by the deletion** — correct today, dangling once the brief is gone.
   Fix these *in the completing commit*, and only on a confirmed close-out. On a
@@ -234,8 +246,8 @@ them differently:
     decision for the human or the `task-move` skill, not a side effect of this
     close-out.
 
-List all three classes in the closing report, with which ones you actually
-changed.
+List all three editable classes and the unchanged journal slug citations in the
+closing report, with which references you actually changed.
 
 ### 6d — Ask before deleting
 

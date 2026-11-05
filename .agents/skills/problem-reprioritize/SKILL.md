@@ -73,12 +73,15 @@ changed sources, live references, and historical citations. Preserve pre-existin
 edits and staging: if a required edit overlaps unrelated changes, leave that
 record unmoved and explain the conflict. Create only missing bucket directories
 needed for adoption, preserving README content and adding a canonical-definition
-pointer if absent. Do not rewrite records except necessary links.
+pointer if absent. Do not rewrite records except necessary links. Apply the
+bucket contract's journal-citation preflight: leave slug citations unchanged and
+defer any move with legacy journal links until the guide's separate one-time
+adoption is complete. Do not feed immutable entries to a mechanical link rewriter.
 
 Follow the bucket contract's moving-record rules. Use `git mv` for tracked sources;
 move untracked sources without overwriting and stage their destinations explicitly.
 Repair incoming live links and outgoing relative links, including links between
-moved records. Leave immutable journal entries unchanged and report their paths.
+moved records. Leave immutable journal slug citations unchanged and report their paths.
 Stage only intended moves and repairs; never use blanket `git add .`.
 
 Run inventory again: require the same slug set and count, exactly the planned
@@ -88,7 +91,7 @@ Run the repository's applicable checks, including links after staging new paths.
 Re-evaluate ranking against the same evidence to ensure another pass proposes no
 churn; do not run a second mutation pass to force the result into shape.
 
-Report before/after counts, each move's reason, focus contribution, historical
+Report before/after counts, each move's reason, focus contribution, unchanged journal
 citations, deferred records, evidence limitations, check outcomes, and next owners
 (problem-audit for re-verification; kaizen-resolve for possible retirement).
 State that changes are staged and uncommitted. Failed or unavailable required

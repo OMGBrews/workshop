@@ -37,9 +37,40 @@ execution buckets; related tasks own implementation.
 
 ## Lifecycle
 
-A problem document persists while the flaw exists. Delete it once the flaw is verified gone — usually after a task fixes it, but **task completion alone is not the trigger**: verify the flaw is gone first, from the world's side, then delete. Git preserves the history. Surviving journal citations do not veto retirement: delete the verified-fixed problem, leave immutable entries unchanged, and report their historical links. Repair editable inbound references in the same change; do not keep fixed problems as evidence archives. The canonical distinction between problem retirement and journal retention is in the Workshop distribution's `docs/kaizen-guide.md`, under *Retiring a fixed problem is distinct from retaining journal evidence*.
+A problem document persists while the flaw exists. Delete it once the flaw is
+verified gone — usually after a task fixes it, but **task completion alone is not
+the trigger**: verify the flaw from the world's side first. Git preserves history.
+Surviving journal slug citations do not veto retirement: leave entries unchanged
+and report their citations. Repair editable inbound references in the same change;
+do not keep fixed problems as evidence archives.
 
-Run the consumer's required link check and report its actual result. If it rejects intentional historical journal links, report an adoption blocker; do not claim a link-clean tree, weaken the check, or add broad exclusions. These rules remain available in this seeded README when a vendored skill has no mounted guide. Initial seeding requires an available Workshop distribution; a lone skill copy cannot supply an absent template.
+Journal entries cite tasks, problems, and patterns by backticked slug, with type
+and repository where needed for identification. Links to journal evidence remain
+real links. The canonical policy is **Journal citations and one-time adoption**
+in the Workshop distribution's `docs/kaizen-guide.md`.
+
+For a previously seeded repository without a mounted guide, the adoption rules
+are available here: before moving or retiring records with legacy journal links,
+inventory the entire journal's links (including reference-style, missing, and
+cross-repository targets). Establish each task/problem/pattern target's slug,
+type, and repository from its contents or, for missing targets, its owning git
+history; record the historical revision. Do not guess ambiguous identities.
+Convert only those citations to descriptive text plus backticked slug, preserving
+surrounding historical wording and cross-repository identity. Remove unused
+reference definitions only; keep definitions still used elsewhere. Preserve
+meaningful section descriptions. Never convert journal evidence links or rewrite
+unrelated prose. Review the diff and record the migration, mappings, and history
+evidence in git as an **explicit one-time immutability exception**. Align local
+guidance without discarding deliberate local rules. Run the consumer's required
+whole-tree link check over the migrated files and report the actual result.
+Unresolved identities or a failed check leave adoption incomplete; finish it
+before retirement, without exclusions or weakened checks. Afterwards, surviving
+journal entries remain byte-for-byte unchanged. A later legacy link means
+incomplete adoption, not permission for routine journal edits.
+
+Initial seeding requires an available Workshop distribution; a lone skill copy
+cannot supply an absent template. Deliberate local policy conflicts must be
+resolved before adopting or retiring, not silently overridden.
 
 **Deleting the document deletes the journal entries it consumed.** A problem filed from a kaizen cluster cites `docs/work/kaizen/journal/` entries as evidence; those entries are *consumed* by it, and the same commit that deletes the document deletes them — provided nothing else live still cites them. Check each one before removing it:
 
