@@ -3,6 +3,13 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **Documentation checks evaluate one repository view.** The shared provider
+  exposes stable working-tree and exact-index snapshots to shell and Python
+  consumers. The Markdown checker now includes non-ignored new files, omits
+  unstaged deletions, and reads targets and skip configuration from the same
+  view. Submodule targets follow the selected view; unavailable index objects
+  are evaluation errors.
+
 - **Journal citations survive retirement.** New entries cite task briefs,
   problem records, and kaizen patterns by slug. Consumers adopt existing entries
   through a recorded one-time migration before moves or retirement, keeping

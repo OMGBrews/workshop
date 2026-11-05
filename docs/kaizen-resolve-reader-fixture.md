@@ -55,10 +55,11 @@ source's contents, not merely its existence:
 
 ## Adoption and retirement cases
 
-Initialize and commit each fixture before testing. Stage new Markdown files and
-stage deletions before running `Tools/check-markdown-links.sh <fixture-root>`:
-the checker discovers sources through Git's tracked-file inventory. Use no
-source or target exclusions.
+Initialize and commit each fixture before testing. Run
+`Tools/check-markdown-links.sh <fixture-root>` after edits without staging them:
+the checker captures visible tracked and non-ignored untracked files and omits
+unstaged deletions. Use no source or target exclusions. See the
+[repository-view contract](repository-views.md) for capture and failure semantics.
 
 For the problem case, file contents may be minimal but must express these claims
 and links:

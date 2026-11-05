@@ -898,6 +898,12 @@ Current third-party libraries used in the project. Maintained by `/update-librar
 - Delete obsolete documentation rather than leaving stale content
 - Use `/audit-and-fix doc-quality` to periodically verify accuracy across the project — with `--path docs` in repos without tracker opt-in, and `Tools/check-markdown-links.sh` for link integrity
 
+The link checker uses a [working-tree repository view](repository-views.md):
+new non-ignored Markdown sources are checked, unstaged deletions are omitted,
+and surviving links to deleted targets fail. Sources, skip configuration, and
+targets all come from the captured view; staging edits is unnecessary. Other
+checks can use the provider's exact-index view to evaluate a proposed commit.
+
 ### What to check during review
 
 1. **Accuracy**: Does it match current implementation?

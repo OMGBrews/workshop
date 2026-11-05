@@ -131,7 +131,7 @@ printf 'gone/\nfrozen\n' >> "$work/skip/.markdown-links-skip"
 run_check "$work/skip" "$work/stale.log"
 [[ "$rc" -eq 1 ]] || { cat "$work/stale.log"; fail "stale skip entries exited $rc, expected 1"; }
 for stale in gone/ frozen; do
-  grep -Fxq "stale .markdown-links-skip entry matches no tracked Markdown source: $stale" "$work/stale.log" \
+  grep -Fxq "stale .markdown-links-skip entry matches no visible Markdown source: $stale" "$work/stale.log" \
     || { cat "$work/stale.log"; fail "stale entry $stale was not named"; }
 done
 echo "ok 7 - listed files and directories skip by name; stale entries fail"
@@ -227,4 +227,72 @@ run_check "$work/anchors" "$work/parser-error.log"
 grep -q 'anchor parsing failed:.*target.md' "$work/parser-error.log" || fail 'parser error unnamed'
 echo 'ok 12 - parser errors exit 2'
 
-echo "all markdown-link tests passed"
+
+# Working-tree sources and targets share one view; every probe leaves the index
+# byte-for-byte unchanged, including staged entries unrelated to live content.
+mkdir -p "$work/dirty/docs"
+git -C "$work/dirty" init -q
+printf '# Gone\n' > "$work/dirty/docs/gone.md"
+printf '# Home\n' > "$work/dirty/README.md"
+commit_all "$work/dirty" dirty
+assert_dirty_check() { # <expected status>
+  git -C "$work/dirty" ls-files --stage -z > "$work/index.before"
+  run_check "$work/dirty" "$work/dirty.log"
+  [[ "$rc" -eq "$1" ]] || { cat "$work/dirty.log"; fail "dirty view exited $rc, expected $1"; }
+  git -C "$work/dirty" ls-files --stage -z > "$work/index.after"
+  cmp "$work/index.before" "$work/index.after" || fail 'checker modified index'
+}
+rm "$work/dirty/docs/gone.md"
+assert_dirty_check 0
+printf '[gone](docs/gone.md)\n' > "$work/dirty/README.md"
+assert_dirty_check 1
+grep -Fq 'broken Markdown link: README.md -> docs/gone.md' "$work/dirty.log" || fail 'deleted target not named'
+printf '# Home\n' > "$work/dirty/README.md"
+printf '[broken](absent.md)\n' > "$work/dirty/new.md"
+assert_dirty_check 1
+grep -Fq 'broken Markdown link: new.md -> absent.md' "$work/dirty.log" || fail 'untracked source not scanned'
+printf '# New\n' > "$work/dirty/new.md"
+printf '[new](new.md)\n' > "$work/dirty/README.md"
+assert_dirty_check 0
+mv "$work/dirty/new.md" "$work/dirty/renamed.md"
+assert_dirty_check 1
+printf '[new](renamed.md)\n' > "$work/dirty/README.md"
+assert_dirty_check 0
+printf 'ignored/\n' > "$work/dirty/.gitignore"
+mkdir "$work/dirty/ignored"
+printf '[broken](absent.md)\n' > "$work/dirty/ignored/source.md"
+assert_dirty_check 0
+printf '[ignored](ignored/source.md)\n' > "$work/dirty/README.md"
+assert_dirty_check 1
+grep -Fq 'README.md -> ignored/source.md' "$work/dirty.log" || fail 'ignored target leaked into view'
+echo 'ok 13 - unstaged deletion, inbound links, new sources and targets, rename and ignore handling preserve index'
+
+# NUL-safe Git discovery is only half the contract: relative normalization and
+# percent decoding must retain newline directory components and trailing bytes.
+printf '# Home\n' > "$work/dirty/README.md"
+newline_dir=$'space dir\nnext\n'
+mkdir -p "$work/dirty/$newline_dir"
+printf '# Target\n' > "$work/dirty/$newline_dir/target.md"
+printf 'asset\n' > "$work/dirty/$newline_dir/asset"$'\n'
+printf '[relative](target.md#target) [trailing](asset%%0A) [parent](../README.md#home)\n' > "$work/dirty/$newline_dir/source.md"
+printf '[dir](space%%20dir%%0Anext%%0A/target.md#target)\n' >> "$work/dirty/README.md"
+assert_dirty_check 0
+printf '[missing](missing.md)\n' > "$work/dirty/$newline_dir/source.md"
+assert_dirty_check 1
+grep -Fq 'source.md -> missing.md' "$work/dirty.log" || fail 'newline-bearing source missed'
+printf '[relative](target.md#target)\n' > "$work/dirty/$newline_dir/source.md"
+printf '[missing](absent.md)\n' > "$work/dirty/$newline_dir/symlink-target"
+ln -s symlink-target "$work/dirty/$newline_dir/link.md"
+assert_dirty_check 0
+grep -Fq 'skipped symlink Markdown source:' "$work/dirty.log" || fail 'source symlink skip lost'
+echo 'ok 14 - newline directories, trailing-newline targets and symlink source skips'
+
+# Child Markdown is target material, not an implicit extra source collection.
+printf '[bad](absent.md)\n' > "$work/boundary/vendor/populated/new.md"
+printf '# Edited child\n' > "$work/boundary/vendor/populated/target.md"
+printf '[child](../vendor/populated/target.md#edited-child)\n' > "$work/boundary/docs/guide.md"
+run_check "$work/boundary" "$work/child-dirty.log"
+[[ "$rc" -eq 0 ]] || { cat "$work/child-dirty.log"; fail 'visible child edits or parent-only source boundary lost'; }
+echo 'ok 15 - child edits supply targets without scanning child sources'
+
+echo 'all markdown-link tests passed'
