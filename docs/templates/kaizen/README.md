@@ -17,9 +17,14 @@ The methodology — what kaizen is, when to write an entry, the PDCA cycle, the 
 
 There is no index file. `ls` is the index, and `grep -h '^# ' journal/*/*.md` lists every entry title.
 
+Problem retirement preserves journal evidence. Receipts under
+`pending-problem-reviews/` (created only when needed) hand that evidence to
+`kaizen-review`, which reads them regardless of its review window and decides
+retention under the guide. Problem records have their own lifecycle.
+
 ## Scope reminder
 
-Kaizen is about the **way** we work, not the **thing** we build. Process friction (a worker raced a commit, a hook fired too late, an instruction was misread) goes in the journal. Feature ideas and product gaps do not — those belong wherever this project tracks future work.
+Kaizen is about the **way** we work, not the **thing** we build. Process friction (a worker raced a commit, a hook fired too late, an instruction was misread) goes in the journal. A journal records the incident; a specific, continuing flaw in that process or tooling belongs in a problem record. Feature ideas and product gaps belong wherever this project tracks future work.
 
 ## Quick links
 

@@ -94,32 +94,77 @@ redirects or evidence archives to avoid adoption.
 
 ## The journal's lifecycle
 
-A journal that only ever grows does not make the *review* slower — a review works from a window, so its read stays bounded however large the corpus gets. What it degrades is **matching**. An entry becomes a pattern when a second instance of it arrives, and if the first instance sits months outside the window, a windowed review cannot see it: the pair that would have revealed the theme is one entry in the window and one entry nobody will read again. So every entry has an end of life, and there are exactly two ways to reach it.
+A journal that only ever grows does not make the *review* slower — a review works from a window, so its read stays bounded however large the corpus gets. What it degrades is **matching**. An entry becomes a pattern when a second instance of it arrives, and if the first instance sits months outside the window, a windowed review cannot see it: the pair that would have revealed the theme is one entry in the window and one entry nobody will read again. So every entry has an end of life, and its exits are pattern graduation, review of a problem-retirement receipt, and watchlist age-out.
 
-### Consumed — deleted with the artifact that absorbed it
+### Consumed by a pattern — deleted on graduation
 
-An entry is **consumed** when a live artifact cites it as evidence: a `patterns/<slug>.md`, or a `docs/work/problems/<slug>.md`. Its lesson now lives somewhere present-tense, and the entry is the receipt. When that artifact dies — a pattern graduated and deleted, a problem verified gone and deleted — its evidence entries are deleted **in the same commit**, provided nothing else live still cites them.
+A pattern cites journal entries as evidence. When its lesson is incorporated
+into a verified standard and the pattern is deleted, remove its evidence entries
+in the same change only if the citation check below finds no surviving citer.
+Capture that evidence list before deleting the pattern. Earlier deletion breaks
+live evidence links; leaving cleanup to memory strands the evidence.
 
-Same commit, not later and not earlier, and both halves of that matter:
+A problem may also cite journal evidence, but fixing its flaw does not decide
+whether those incidents still teach something. Problem retirement follows the
+[problem lifecycle](problem-lifecycle.md), preserves entries, and supplies the
+receipt below. Kaizen review owns the subsequent retention decision.
 
-- **Earlier breaks a live evidence link.** While the pattern or problem is alive, its Evidence list is the thing a reader checks it against; deleting the entries out from under it leaves a document making claims whose sources are gone, and in repos with a required doc-link check (llmkit-dev) it turns CI red.
-- **Later never happens.** The pass that deletes the artifact is the only one holding its evidence list. Once the file is gone, nothing anywhere records which entries it had absorbed — recovering that means reading it out of git history, which nobody will think to do.
+### Problem retirement receipts
 
-### Retiring a fixed problem is distinct from retaining journal evidence
+`problem-resolve` writes one receipt only when the retiring problem cites journal
+evidence. Store it at `docs/work/kaizen/pending-problem-reviews/<problem-slug>.md`
+in the same staged change and eventual commit as the problem deletion. Create
+that directory on demand; do not initialize the rest of Kaizen just to retire a
+problem. A receipt is a pending handoff, not a journal entry, pattern, or archive.
 
-`docs/work/problems/` holds outstanding flaws only. Once every claimed observable
-is verified gone with appropriate evidence, delete the problem record. Surviving
-journal slug citations do not veto retirement: leave those entries unchanged,
-report the citations, and recover the record from git history when needed.
-Repair editable inbound references in the same change. Do not retain a fixed
-problem as an evidence archive.
+Each receipt opens with a scope sentence and records:
 
-Before staging retirement, identify any legacy journal links to the record and
-complete [one-time adoption](#journal-citations-and-one-time-adoption). The same
-rule applies to task completion and pattern graduation. Then run the consumer's
-required link check; report its actual result without weakening it or introducing
-broad exclusions. This does not relax the citation gate below: a consumed
-**journal entry** with a live citer must survive.
+- The problem slug and its repository-relative former path as code, not a dead
+  Markdown link; include repository identity for cross-repository evidence.
+- A full commit SHA whose tree contains the record before retirement, and
+  whether the retired working copy differed from that revision. For an untracked
+  record say that no historical revision exists; the evidence list still follows.
+- Every cited journal entry, with its title and a relative link resolving from
+  the receipt, including entries cited in prose. Resolve ambiguous identities
+  before retirement; never silently drop missing evidence.
+- A short factual retirement reason and `Pending Kaizen review`; do not decide
+  that the entries are disposable or invent process lessons.
+
+Do not overwrite an existing receipt. If it concerns the same still-live record,
+reconcile its provenance and evidence explicitly; if it is an earlier retirement
+of a reused slug, use `<problem-slug>-<source-short-sha>.md` and check that path
+for collision too. Keep the receipt in the retiring repository. For external
+evidence, retain it and record the owning repository and required handoff in the receipt rather
+than editing or deleting its journal. Discharge that part only after its owner
+accounts for retention; sending a message requires separate authorization.
+
+Every `kaizen-review` reads **all pending receipts**, independently of its date
+window, including when that window is empty. Read their linked entries and
+classify each one before removing a receipt. Deduplicate entries appearing in
+several receipts or in the normal window; one retention decision must account
+for all their live citers. A singleton newly retained from a receipt is not aged
+out in that same review merely because its incident is old.
+
+- A remaining lesson joins a pattern or becomes a singleton watch line. Apply
+  the normal multi-observation rule for patterns; the fixed defect alone is not
+  a reason to create another problem. Keep the entry.
+- Another live artifact cites the entry: retain it and name that owner. The
+  receipts being discharged in this same candidate are not vetoes; receipts
+  remaining pending are. Decide shared entries once against the final candidate,
+  so two receipts cannot each defer ownership to the other and then both vanish.
+- The incident has no remaining lesson to carry forward: explicitly explain that
+  judgment, run both citation searches, and delete only if no live citer remains.
+
+Only after every entry has a recorded outcome, remove the receipt in the same
+change as any new pattern/watchlist references or entry deletions. Unreadable
+entries, uncertain lessons, or unavailable external owners leave the receipt
+pending with the unresolved reason; they never disappear merely because a review
+ran. Surviving journal entries remain byte-for-byte unchanged. Report retained
+and deleted entries and the discharged or still-pending receipt paths.
+
+This bounded inbox replaces the former same-commit problem cascade. It keeps
+retirement independent from Kaizen review without losing the evidence list.
+Pattern graduation retains its existing same-change cascade.
 
 ### The citation gate uses a check, not a memory
 
@@ -154,7 +199,7 @@ Title, relative link, and the root cause in one line. The root cause is the part
 
 A review reads the watchlist alongside `patterns/` and matches its window against both. A windowed entry that matches a watch line **is** the second instance that line was waiting for: the pair becomes a pattern (or a problem document, if the cluster is flaw-shaped), both entries are consumed by it, and the watch line is dropped — a line duplicating a pattern's Evidence list is precisely the drift the watchlist is not.
 
-A watch line whose entry is roughly **a quarter** old — read the date off the filename, and judge it, rather than counting days — **ages out**: line and entry deleted together, behind the same citation check. If the check finds a live citation, the entry is consumed rather than unmatched, so drop the line, keep the entry, and say so in the review report; it will die with whatever cites it.
+A watch line whose entry is roughly **a quarter** old — read the date off the filename, and judge it, rather than counting days — **ages out**: line and entry deleted together, behind the same citation check. If the check finds a live citation, the entry is consumed rather than unmatched, so drop the line, keep the entry, and say so in the review report; its retention follows the lifecycle of the artifact citing it.
 
 Three months is a threshold, not a discovery. An entry that has waited a quarter for a sibling is not one a review is still likely to match, and keeping it charges every future review a line to read for a match that is not coming. Nothing is ever moved to an `archive/` directory on the way out: git is the archive (`git log --diff-filter=D`, `git log -S`), a second location is a second place to search, and this is how tasks and patterns already die.
 
@@ -162,9 +207,14 @@ The first review to write a watchlist has a one-time job the others do not: seed
 
 ### Who performs the deletion
 
-Whoever deletes the absorbing artifact deletes the entries it absorbed. `/kaizen-review` owns the pattern cascade and the age-out, because it owns pattern deletions and the watchlist. A **problem document's** cascade belongs to whichever session verifies the flaw gone and deletes the document — `/kaizen-resolve` is that session's ritual; run it rather than reconstructing the procedure from this paragraph.
+`kaizen-review` owns journal deletion: pattern cascades, pending problem-receipt
+review, and watchlist age-out, all behind the citation check. `problem-resolve`
+owns problem retirement and preserves the journal. These operations may happen
+in the same session when requested, but neither implies the other.
 
-There is no backstop sweep, deliberately. A missed cascade costs one stray entry that now matches nothing; a sweep that walks the whole corpus looking for strays is the unbounded read this lifecycle exists to remove.
+No full-corpus orphan sweep is needed: receipts preserve the exact evidence
+lists outside the normal review window. A review must account for its inbox
+before it claims no pending work.
 
 ## How it works — the PDCA cycle
 
@@ -235,7 +285,7 @@ Every ~2 weeks or after a sprint, review recent journal entries (the newest mont
 Graduation writes the lesson into its Plan-stage destination. Destinations are enforcement points, ranked by portability — pick the highest rung that can actually enforce the rule:
 
   - **A check script** — runs identically in every harness and in CI; when a landing gate requires its evidence, the friction becomes a failing check rather than advice a reader can skip. *Example: a `make check` stage that fails when the friction's signature reappears.*
-  - **A skill** under `.agents/skills/` — discovered by every spec-compliant harness; the home for a codified procedure invoked by name. *Example: the `kaizen-resolve` skill, which turns the problem-document close-out into a ritual.*
+  - **A skill** under `.agents/skills/` — discovered by every spec-compliant harness; the home for a codified procedure invoked by name. *Example: `kaizen-review`, which turns journal synthesis and pattern graduation into a repeatable procedure.*
   - **A rule in `AGENTS.md`**, or a doc it links — read at session start by every harness, so it is the default home for conventions and one-line rules. Style guides and procedures live at this rung. *Example: a bullet in `AGENTS.md` naming the convention, with the detail in a linked style guide.*
   - **A `.claude/rules/` file or a hook** — Claude Code only, acceptable in two shapes: as the *bridge* to neutral content (a universal rule in a linked doc gets a plain link in `AGENTS.md` and a symlink in `.claude/rules/`, per the placement table in [`harness-agnostic-repos.md`](harness-agnostic-repos.md)), or as a consciously Claude-only enforcement where only a hook can do the work — a `PreToolUse` block that fires without anyone having to remember is genuinely that. What it may never be is the only home of a fleet rule. *Example: a SessionStart hook wrapping a plain bootstrap script that any harness can also run.*
 
@@ -273,11 +323,11 @@ Link evidence as `[2026-07-12 — two log dirs](../journal/2026-07/2026-07-12-tw
 ## See also
 
 - [Kaizen reference](kaizen-reference.md) — the outside sources behind this practice and how their concepts map onto it
-- [Kaizen Resolve reader fixture](kaizen-resolve-reader-fixture.md) — controlled evidence, source-resolution, and retirement trials
+- [Problem resolve reader fixture](problem-resolve-reader-fixture.md) — controlled evidence, source-resolution, and retirement trials
 
 - `docs/templates/kaizen/` — the starter scaffold: a per-repo `README.md` plus `journal/` and `patterns/` directories
 - `Tools/migrate-kaizen-journal.sh` — converts a repo from the older single-file `journal.md` / `patterns.md` layout
 - The `/kaizen-init` skill — scaffolds `docs/work/kaizen/` into a project and adds the instruction-file pointer
 - The `/session-end` skill — the per-session Check-stage checkpoint that captures friction before it evaporates
 - The `/kaizen-review` skill — the periodic Act-stage pass: the *Analysis* section above, run. It clusters the entries written since the last review into `patterns/`, walks each graduation with you before applying it, and is the sole writer of the singleton watchlist and the sole executor of the pattern side of *The journal's lifecycle*
-- The `/kaizen-resolve` skill — the same lifecycle's problem side, run: verifying a `docs/work/problems/` document's flaw gone from the world's side — deleting it, and cascading into the entries it consumed, all behind the citation gate above
+- The `/problem-resolve` skill — verifies and retires a problem under the separate [problem lifecycle](problem-lifecycle.md), preserving journal evidence and writing a pending review receipt when needed

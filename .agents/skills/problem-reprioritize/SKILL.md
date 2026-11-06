@@ -59,7 +59,7 @@ Then print the complete proposed mapping:
 
 Include unchanged records in a concise explanation when their urgency, parking,
 or uncertainty matters. Name how many moves focus actually decided. Likely-fixed
-records stay at their existing location pending kaizen-resolve; for an unbucketed
+records stay at their existing location pending problem-resolve; for an unbucketed
 one, report migration deferred rather than inventing an urgency assessment. No
 record is deleted because a related task completed or an audit suspects a fix.
 
@@ -93,6 +93,6 @@ churn; do not run a second mutation pass to force the result into shape.
 
 Report before/after counts, each move's reason, focus contribution, unchanged journal
 citations, deferred records, evidence limitations, check outcomes, and next owners
-(problem-audit for re-verification; kaizen-resolve for possible retirement).
+(problem-audit for re-verification; problem-resolve for possible retirement).
 State that changes are staged and uncommitted. Failed or unavailable required
 checks leave adoption incomplete; name the blocker without weakening policy.

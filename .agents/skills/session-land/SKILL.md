@@ -247,10 +247,10 @@ in the report; do not invoke the `kaizen-init` skill during a landing.
 
 One more landing-specific check, this skill's counterpart to `session-end`'s flag-only
 version: if the repo keeps `docs/work/problems/` and the session's work fixed — or plausibly
-fixed — a flaw one of those documents describes, do **not** invoke the `kaizen-resolve` skill and do
+fixed — a flaw one of those documents describes, do **not** invoke the `problem-resolve` skill and do
 not delete anything. Record the close-out as its own task (Phase 2's routing), **quoting
 the evidence that the flaw looks gone** — paths, commits, what was observed. That evidence
-is what evaporates with the session, and it is exactly what the morning's `kaizen-resolve`
+is what evaporates with the session, and it is exactly what the morning's `problem-resolve`
 run will need at its evidence gate; a task that merely says "close out the problem doc"
 lands nothing.
 

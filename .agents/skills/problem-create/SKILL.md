@@ -40,7 +40,8 @@ Check the directory and its README independently:
 
 If scaffolding is declined, stop. Create missing now, soon, later, and parked
 directories (use .gitkeep for empty buckets); preserve existing records and local
-guidance. Copy only the seed README; the canonical template stays inside this skill.
+guidance. Rebase the seed README's problem-lifecycle link to the consumer's actual mounted
+guide and verify it resolves. Copy only the seed README; the canonical template stays inside this skill.
 
 ## Phase 2 — Name and understand the flaw
 

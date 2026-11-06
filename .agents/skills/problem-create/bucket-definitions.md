@@ -15,7 +15,7 @@ and discovery; local READMEs provide courtesy summaries and preserve local guida
 
 These are attention horizons, not severity or implementation status. A blocked
 fix can leave a problem urgent. Problems have no `finalized/`, `queued/`, or
-`done/` buckets: related tasks own execution, and `kaizen-resolve` owns retirement
+`done/` buckets: related tasks own execution, and `problem-resolve` owns retirement
 once the flaw is verified gone. A completed task is not proof of resolution.
 
 `problem-reprioritize` moves records among now, soon, and later. Explicit user

@@ -95,7 +95,7 @@ means, against the snapshot. Skip what they catch:
 
 Nothing else is a gate here. Whether the flaw is still present, likely fixed, or
 has drifted is `problem-plan`'s status gate to decide with the record open, and a
-record it routes to `kaizen-resolve` was still usefully dispatched.
+record it routes to `problem-resolve` was still usefully dispatched.
 
 ## Step 4 — Print the plan
 

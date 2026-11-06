@@ -13,7 +13,7 @@ investigation owned by `problem-audit`.
 **Strictly read-only.** Never edit a problem, stamp it, stage changes, scaffold a
 directory, or run a corrective command. Scope is the current repository only:
 do not inventory sibling clones. Route a supported indication that a flaw may be
-gone to `kaizen-resolve` for its separate evidence-gated retirement check, and
+gone to `problem-resolve` for its separate evidence-gated retirement check, and
 route a record needing historical re-verification to `problem-audit`.
 
 **Arguments**: an optional path to one problem document.
@@ -75,7 +75,7 @@ Use exactly one of these verdicts for every selected record:
 - **Still present** — current supporting evidence shows the documented flaw
   still exists.
 - **Likely fixed** — current evidence supports that the flaw may be gone, but
-  `kaizen-resolve` must independently verify it before retirement.
+  `problem-resolve` must independently verify it before retirement.
 - **Premise drifted** — assumptions underlying the record changed enough that
   its original framing no longer describes the current state.
 - **Evidence rotted** — cited support is missing, inaccessible, or no longer
@@ -105,7 +105,7 @@ For one record, report:
 - relevant citations to or from the record;
 - tracking, repository-boundary, or other evidence limitations;
 - the verdict and its evidence-based explanation;
-- the appropriate follow-up, if any: `kaizen-resolve` for **Likely fixed** or
+- the appropriate follow-up, if any: `problem-resolve` for **Likely fixed** or
   `problem-audit` when historical verification is needed.
 
 Never edit the record as part of reporting its status.
