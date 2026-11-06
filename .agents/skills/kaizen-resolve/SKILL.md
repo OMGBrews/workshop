@@ -1,6 +1,6 @@
 ---
 name: kaizen-resolve
-description: Close out a problem document once its flaw is actually fixed — verify the flaw gone from the world's side (evidence, not "the fix task merged"), then delete the document and the journal entries it consumed in one staged change, citation-gated, and account for repaired links and immutable historical journal links. The problem-side counterpart of the kaizen-review skill's pattern cascade in the journal lifecycle. Invoke when a fix for a documented problem has landed and the record should be retired, when docs/work/problems/ carries documents whose flaws may already be fixed, or when closing a task that references a problem document. A run that cannot produce the evidence stops at the evidence gate and reports a dry run rather than deleting anything; nothing is committed or pushed.
+description: Close out a problem document once its flaw is actually fixed — verify the flaw gone from the world's side (evidence, not "the fix task merged"), then delete the document and the journal entries it consumed in one staged change, citation-gated, and account for repaired links and immutable journal slug citations. The problem-side counterpart of the kaizen-review skill's pattern cascade in the journal lifecycle. Invoke when a fix for a documented problem has landed and the record should be retired, when docs/work/problems/ carries documents whose flaws may already be fixed, or when closing a task that references a problem document. A run that cannot produce the evidence stops at the evidence gate and reports a dry run rather than deleting anything; nothing is committed or pushed.
 ---
 
 # Kaizen Resolve
@@ -25,10 +25,10 @@ Repo-agnostic: it works in any project with a `docs/work/problems/` directory an
 
    1. **Beside this file first**: `<this skill's physical directory>/../../../docs/kaizen-guide.md`, resolved by the physical-directory rule — follow the symlink (`readlink -f`, or equivalent) before taking `..`, so the path lands in the tree the skill actually lives in rather than the consumer's own `docs/`. One rule covers every layout and mount name ([`skill-path-resolution.md`](../../../docs/skill-path-resolution.md)).
    2. **Then the repo-root paths**, kept for repos that mount the docs elsewhere: `<mount>/docs/kaizen-guide.md` from the repo root — where `<mount>` is the name *this* repo mounts the tree under — and the project's `docs/work/kaizen/README.md` where it links the guide.
-   3. **Then the no-mount fallback**: read the already seeded local `docs/work/problems/README.md`. It must carry the lifecycle rules: verified-fixed problem retirement despite journal citations, immutable historical links, the two citation searches, the keep-on-live-citation veto for consumed journal entries, and the same-commit cascade. Seeding is prior setup from an available Workshop distribution's `docs/templates/problems/README.md`; a lone vendored skill cannot assume that template or any surrounding docs exist. Do not invent an upstream tree from its directory or seed rules from memory. If the local README lacks these rules, stop and name the missing rules and the distribution needed for setup.
+   3. **Then the no-mount fallback**: read the already seeded local `docs/work/problems/README.md`. It must carry the lifecycle rules: verified-fixed problem retirement despite journal slug citations, the one-time adoption path for legacy journal links, the two citation searches, the keep-on-live-citation veto for consumed journal entries, and the same-commit cascade. Seeding is prior setup from an available Workshop distribution's `docs/templates/problems/README.md`; a lone vendored skill cannot assume that template or any surrounding docs exist. Do not invent an upstream tree from its directory or seed rules from memory. If the local README lacks these rules, stop and name the missing rules and the distribution needed for setup.
 
    If none of these sources carries the rules, stop and say so — running the cascade from memory is how the lifecycle drifts across repos. Say which source you read: the Phase 6 report names it, so a run that degraded to a thinner source is distinguishable from one that found the full guide.
-3. **Read the lifecycle source now** — the guide's "The journal's lifecycle" section where it resolves, and this repo's `docs/work/problems/README.md` when present (a seeded copy that may deliberately diverge). If local policy conflicts with the guide's retirement or citation rules, report an adoption blocker and stop before staging; do not silently override it. Not from memory, and not from this file — the two greps, the veto rules, and the same-commit reasoning are deliberately not restated here. One source per repo, so the skill and the rules cannot disagree.
+3. **Read the lifecycle source now** — the guide's "Journal citations and one-time adoption" and "The journal's lifecycle" sections where it resolves, and this repo's `docs/work/problems/README.md` when present (a seeded copy that may deliberately diverge). If local policy conflicts with the guide's retirement or citation rules, report an adoption blocker and stop before staging; do not silently override it. Not from memory, and not from this file — the two greps, the veto rules, and the same-commit reasoning are deliberately not restated here. One source per repo, so the skill and the rules cannot disagree.
 
 ---
 
@@ -69,7 +69,17 @@ Three outcomes:
 
 ## Phase 4 — The cascade, citation-gated
 
-Only reached with the evidence gate passed. For **each entry** on the consumed list from Phase 2, run the lifecycle source's two greps — the filename form and the prose form — naming the search directories explicitly (in a workspace of gitignored sibling clones, a recursive grep from the root silently searches one repo):
+Only reached with the evidence gate passed. **Before staging any deletion**, inspect
+inbound problem references as described in Phase 5. Journal entries cite task
+briefs, problem records, and patterns by backticked slug, with type and repository
+where needed to identify them. Adopted citations survive unchanged. If a journal
+entry still links to the selected problem, stop retirement before staging and
+complete the lifecycle source's *Journal citations and one-time adoption*
+procedure separately. This explicit, recorded exception to immutability is not a
+routine repair during retirement; do not invent it when the source is absent or
+local policy conflicts. A legacy link already broken also needs adoption.
+
+For **each entry** on the consumed list from Phase 2, run the lifecycle source's two greps — the filename form and the prose form — naming the search directories explicitly (in a workspace of gitignored sibling clones, a recursive grep from the root silently searches one repo):
 
 - **Any hit from something still live** — a pattern, another problem document, a task, an instruction file, a planning doc, **or another journal entry** — and the entry stays. The document consumed it, but something else still depends on it; say in the report which entry survived and what held it.
 - **A prose citation from a live, editable artifact** — repair it to a relative link in the same change and keep the entry. A citation the filename grep cannot see is a dependency the next deletion pass will break; repairing it is what keeps the gate honest. (A journal entry is never edited — a prose mention inside one is a keep, full stop.)
@@ -79,7 +89,7 @@ Then stage everything together — `git rm <actual-problem-path> <journal-root>/
 
 ---
 
-## Phase 5 — Repair editable links and account for historical links
+## Phase 5 — Repair editable links and account for journal citations
 
 Deleting a document breaks links in files the diff never touched. Before reporting:
 
@@ -87,8 +97,8 @@ Deleting a document breaks links in files the diff never touched. Before reporti
    - **Editable links broken by the deletion** — a task citing the problem for context, a README index row, a "see also". Fix each in the same staged change: indexes lose the row; a task that exists *only* to fix this flaw is likely moot — flag it for the human rather than deleting it yourself.
    - **Already wrong before you arrived in editable artifacts** — fix and report them. Never edit a journal entry, including an already broken link.
 2. **Re-run the filename grep for every entry you staged for deletion.** Zero hits outside the staged deletions themselves is the proof; a surviving hit means the citation gate missed a citer — unstage that entry and report it.
-3. **Surviving journal citations do not veto retirement of a verified-fixed problem.** Leave immutable entries byte-for-byte unchanged and name their historical links in the report; git history recovers the retired record. This is distinct from Phase 4's protection of consumed journal entries with live citers. Do not classify surviving journal links as editable repairs or claim that the remaining tree is link-clean.
-4. **Run the consumer's required link check.** Report its actual result alongside the intentional historical links. If it rejects those links, report an adoption blocker, leave the staged candidate reviewable, and do not claim the check passed or the change is ready to land. Do not weaken the check, add broad exclusions, restore the fixed problem as an evidence archive, or edit immutable entries to obtain a pass.
+3. **Surviving journal slug citations do not veto retirement of a verified-fixed problem.** Leave those entries byte-for-byte unchanged and name them in the report; git history recovers the retired record. This is distinct from Phase 4's protection of consumed journal entries with live citers. Legacy journal links must have completed adoption before retirement; they are not editable repairs in this pass.
+4. **Run the consumer's required whole-tree link check.** Report its actual result. A failure leaves the candidate unready to land; investigate it without weakening the check, adding broad exclusions, keeping fixed problems as evidence archives, or editing immutable entries during retirement.
 
 ---
 
@@ -100,7 +110,7 @@ Print a concise block:
 - **The lifecycle source** — the file Phase 1 step 2 resolved, by path, and which branch found it (beside this file, a repo-root path, or the `docs/work/problems/README.md` fallback). Always present, so a run that degraded to the fallback announces it rather than looking identical to a full resolution.
 - **The evidence** — each observable's classification and pre-test plan, deterministic cases and coverage, sampled planned and actual counts, all results, deviations, assumptions, and limitations; explain why the evidence suffices for each conclusion. For a dry run: the gate that stopped the pass, the checks that would settle it, and where they could run.
 - **The cascade** — every entry staged for deletion alongside the document, and every entry the citation check kept, naming what held it. Both halves: a cascade that reports only its deletions cannot be checked.
-- **Links** — inbound links fixed, prose citations repaired, surviving immutable entries with historical links (named by path), the required link check's actual result and any adoption blocker, and any task flagged as possibly moot.
+- **Links** — inbound links fixed, prose citations repaired, surviving immutable entries with slug citations (named by path), the required link check's actual result and any adoption blocker, and any task flagged as possibly moot.
 - **Uncommitted** — the staged deletions and edits, so the human can review `git status` and commit. Suggest a commit message shaped like `docs(problems): retire <slug> — flaw verified gone`.
 
 Do not commit and do not push. The changes are on disk and named; committing them is the human's.
@@ -114,7 +124,7 @@ Do not commit and do not push. The changes are on disk and named; committing the
 - **Do NOT certify from unjustified clean samples or stop when clean.** Any reproduced observable prevents retirement.
 - **Do NOT delete the document and its entries in separate commits**, in either order. One staged change; the guide says why both directions lose.
 - **Do NOT delete an entry whose citation check found a live citer** — including another journal entry, whose link you could never repair.
-- **Do NOT edit, renumber, or cross-reference a journal entry.** Repairs to prose citations happen in the citing artifact, never in an entry.
+- **Do NOT edit, renumber, or cross-reference a journal entry during retirement.** The guide's one-time adoption is a separate, recorded exception for legacy links to tasks, problems, and patterns; it never converts links to journal evidence. Repairs to prose citations of journal evidence happen in an editable citing artifact, never in an entry.
 - **Do NOT move anything to an archive.** Git is the archive: `git log --diff-filter=D` and `git log -S` find every retired document.
 - **Do NOT weaken a check until it passes.** If the honest check says the flaw remains, the outcome is Phase 3's "partially gone" or "cannot verify", and the document stays.
 - **Do NOT commit or push.**

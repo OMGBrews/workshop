@@ -3,6 +3,37 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **Documentation checks evaluate one repository view.** The shared provider
+  exposes stable working-tree and exact-index snapshots to shell and Python
+  consumers. The Markdown checker now includes non-ignored new files, omits
+  unstaged deletions, and reads targets and skip configuration from the same
+  view. Submodule targets follow the selected view; unavailable index objects
+  are evaluation errors.
+
+- **Journal citations survive retirement.** New entries cite task briefs,
+  problem records, and kaizen patterns by slug. Consumers adopt existing entries
+  through a recorded one-time migration before moves or retirement, keeping
+  journal evidence links and strict whole-tree link checks intact.
+
+- **Parked tasks require a reason and a return condition.** Task moves collect
+  the canonical parking note and require a status correction for active work;
+  rejected briefs need an individual confirmed move out. Task reports flag
+  missing notes, contradictory status, and evidence that return conditions are
+  met. Readiness and document conformance reject incomplete notes, including
+  on unfinalized drafts. Consumers backfill existing notes when adopting.
+
+- **The retired task-queue skill directory is removed entirely.** Recovery
+  guidance now lives in `docs/task-queue-retirement.md`. Consumers refresh
+  both skill surfaces after adoption and remove any legacy audit-helper links
+  and corresponding local checks before advancing their pin.
+
+- **Work documents share an optional Issues line.** Task, problem, and idea
+  templates and authoring guidance link GitHub issues with full URLs, issue
+  numbers and titles, and a ` · ` separator. The line stays in the document
+  body, and issue closure remains separate from the document's lifecycle.
+  Consumers adopt the templates through a Workshop pin update; existing seeded
+  README guidance needs a local edit.
+
 - **Task dependency graphs have a standalone strict check.**
   `Tools/check-task-dependencies.sh <repo-root>` reports missing and ambiguous
   prerequisites using the readiness parser. `task-audit` repairs only entries

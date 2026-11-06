@@ -44,6 +44,18 @@ dependencies: []
      `git log --diff-filter=A --follow --format=%cs -- <task-file>`.
      A recorded date goes stale on every edit; git's does not.
 
+     Linking GitHub issues: use an optional `**Issues**:` body line directly
+     after In brief (after the title in a document without In brief), never a
+     frontmatter field. Use full URLs, the issue number as link text, then
+     the issue title; separate issues with ` · `. A short parenthetical
+     after a title may clarify the relationship. Delete the optional example
+     when unused; do not leave an empty Issues line.
+
+     Issues and documents have independent lifecycles. Deleting a completed
+     task deletes its link, but never implies closing the issue; closing an
+     issue remains a separate human step. The shared Markdown link checker
+     skips external URLs, so it does not verify these links or issue status.
+
      Filename: kebab-case, action-verb-first, `.md` extension
      (e.g. `persist-draft-autosave-flag.md`, `restore-thumbnail-cache-on-startup.md`).
      Don't use `README.md` or `_TEMPLATE.md` — those are reserved.
@@ -73,6 +85,9 @@ dependencies: []
      not, should understand it. The Goal section below stays technical; this
      does not. -->
 
+<!-- OPTIONAL. Omit when there are no linked GitHub issues.
+     **Issues**: [#175](https://github.com/owner/repo/issues/175) Issue title · [#176](https://github.com/owner/repo/issues/176) Another issue title -->
+
 ## Goal
 
 <!-- REQUIRED. 1-3 sentences: what this task achieves and why it matters.
@@ -87,7 +102,7 @@ dependencies: []
      Anchor code references durably: a symbol name plus a short greppable
      quote (`run_tools`'s `if isinstance(result, Exception)` branch) outlives
      a bare line number, which rots with every commit. Line numbers are a
-     secondary convenience at most — the worker that reads this brief may be
+     secondary convenience at most — the session that reads this brief may be
      weeks away. -->
 
 ## Recommended solution
@@ -96,10 +111,10 @@ dependencies: []
      At creation you often don't know the solution yet; that's what
      `## Open questions` is for. `/task-finalize` verifies the task against
      HEAD, resolves the questions, and writes the design here while the
-     analysis is fresh — the strongest model prepares what a later session
-     (or the autonomous worker) executes.
-     ADVISORY, NOT CONTRACT: the acceptance criteria remain what the worker
-     is graded on. The worker follows this design unless the code at HEAD
+     analysis is fresh — the preparing session records what a later
+     implementing session executes.
+     ADVISORY, NOT CONTRACT: the acceptance criteria remain what the implementing
+     session is graded on. The session follows this design unless the code at HEAD
      contradicts it, and notes any deviation. Ground each design point in
      verified code (durable anchors, per the Context note above); delete the
      section for tasks whose approach is obvious from Goal + acceptance

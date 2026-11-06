@@ -62,10 +62,15 @@ Search the owning repository's tracked and untracked live sources explicitly;
 do not assume a search at a gitignored workspace root sees other repositories.
 Report known external references without editing other repositories implicitly.
 
-Immutable journal entries stay unchanged. Report historical citations to moved
-paths and run the repository's required link check under its existing policy.
-If historical links block adoption, report the blocker; do not weaken the check,
-rewrite journal history, or add duplicate problem records as redirects.
+Journal entries cite task briefs, problem records, and patterns by backticked
+slug, with type and repository where needed; those citations survive bucket
+moves unchanged. Before moving a record with legacy journal links, complete the
+kaizen guide's *Journal citations and one-time adoption* procedure as a separate,
+recorded migration. Do not treat immutable entries as mechanical link-repair
+inputs. If adoption is unresolved, defer the move and name the affected entries.
+Run the repository's required whole-tree link check. Do not weaken it, rewrite
+journal history routinely, or add duplicate problem records as redirects.
+Links to journal evidence retain their existing retention protections.
 
 Stage only the intended moves and link edits, preserving unrelated work. Never
 overwrite a destination, merge duplicate slugs, or delete a record during ranking.

@@ -2,8 +2,8 @@
 
 How one repository asks another to do work: where the request is written, how the
 other side finds out it is waiting, and when it dies. Read this before writing up
-a request for a repo you are not standing in — whether you are a human, an
-interactive session, or an autonomous worker.
+a request for a repo you are not standing in — whether you are a human or an
+interactive session.
 
 ## The rule
 
@@ -39,7 +39,7 @@ Use the shared task template, exactly as for any other task in the target repo:
 
   The `handoff-to:` invariant is what makes discovery possible: any tracked file
   carrying it is, by definition, still awaiting routing. Both keys are optional
-  extras — the task skills and the queue runner read the fields they name and
+  extras — the task skills read the fields they name and
   ignore the rest, so a brief carrying them is an ordinary task everywhere else.
 
   Address the repository that holds the receiver's task queue. A public
@@ -61,8 +61,8 @@ The normal case when working from a workspace that holds several repos.
 **Write the task directly into the receiving repo's `<tasks>/soon/`** with
 `handoff-from:`, and commit it there. Delivery and filing are the same act.
 
-- **Never into `queued/`.** Receiver triage is mandatory: the autonomous worker
-  must not pick up an ask nobody in the receiving repo has read.
+- **Never into `queued/`.** Autonomous task execution is retired. Receiver triage
+  is mandatory before implementing an ask.
 - **`priority:` is a suggestion**, not an instruction. The receiver reranks it
   by its own rubric.
 

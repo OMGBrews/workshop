@@ -60,7 +60,8 @@ a parked task resurfaces only when someone asks for it. The return path is
 ordinary: `/task-move` accepts `parked` as both a source and a target.
 
 **Every parked brief carries a parking note.** It is a `## Parked` section placed
-immediately after the `**In brief**:` paragraph, with two lead-ins:
+immediately after the `**In brief**:` paragraph and its optional `**Issues**:`
+line, with two lead-ins:
 
 ```markdown
 ## Parked
@@ -100,7 +101,7 @@ contradiction, and `/task-status` reports it as one.
 ## Retired `queued/` bucket
 
 Autonomous task execution is retired. Do not create or promote work into
-`queued/`. Recover surviving briefs through the [retirement guidance](../task-queue/README.md).
+`queued/`. Recover surviving briefs through the [retirement guidance](../../../docs/task-queue-retirement.md).
 
 ## Queue shape
 

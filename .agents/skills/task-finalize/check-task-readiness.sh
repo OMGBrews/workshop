@@ -88,6 +88,7 @@ ac_end_count=0
 ac_order_valid=0
 ac_real=0
 ac_placeholder=0
+parking_valid=0
 
 if ! parsed_task="$(awk '
       function emit(key, value) { print key "\t" value }
@@ -128,6 +129,63 @@ if ! parsed_task="$(awk '
       }
       function placeholder(value) {
         return value ~ /^<[^>]+>$/
+      }
+      function parking_placeholder(value) {
+        value = tolower(trim(value))
+        return value == "" || value ~ /^<[^>]+>$/ || value ~ /^(tbd|todo|pending|placeholder|n\/a|none|\.\.\.)[.!]?$/
+      }
+      # Only visible prose counts; quoted examples and commented guidance do not.
+      function parking_line(value, raw,    fence_char, fence_length, tail) {
+        if (raw ~ /^(    |\t)/) {
+          if (brief_seen && brief_ended && !parking_section && value != "") after_brief = 1
+          return
+        }
+        if (value ~ /^(```|~~~)/) {
+          if (brief_seen && brief_ended && !parking_section) after_brief = 1
+          fence_char = substr(value, 1, 1)
+          match(value, /^`+|^~+/)
+          fence_length = RLENGTH
+          tail = trim(substr(value, fence_length + 1))
+          if (!parking_fence) {
+            parking_fence = fence_char
+            parking_fence_length = fence_length
+          } else if (fence_char == parking_fence && fence_length >= parking_fence_length && tail == "") parking_fence = ""
+          return
+        }
+        if (parking_fence) return
+        if (value ~ /^\*\*In brief\*\*:/) { brief_seen = 1; brief_ended = 0; after_brief = 0; issues_seen = 0; return }
+        if (brief_seen && value == "") brief_ended = 1
+        # The optional Issues line belongs between In brief and the parking note.
+        # It is one metadata line, not permission for arbitrary intervening prose.
+        if (brief_seen && brief_ended && !after_brief && !parking_section && !issues_seen && value ~ /^\*\*Issues\*\*:/) {
+          issues_seen = 1
+          return
+        }
+        if (value ~ /^##[[:space:]]/) {
+          if (value == "## Parked") {
+            parking_count++
+            if (brief_seen && brief_ended && !after_brief) parking_placed = 1
+            parking_section = 1
+          } else parking_section = 0
+          after_brief = 1
+          parking_entry = ""
+          return
+        }
+        if (brief_seen && brief_ended && value != "" && !parking_section) after_brief = 1
+        if (!parking_section) return
+        if (value ~ /^\*\*Why\*\*:/) {
+          why_count++
+          parking_entry = "why"
+          sub(/^\*\*Why\*\*:[[:space:]]*/, "", value)
+        } else if (value ~ /^\*\*Unpark when\*\*:/) {
+          unpark_count++
+          parking_entry = "unpark"
+          sub(/^\*\*Unpark when\*\*:[[:space:]]*/, "", value)
+        } else if (value ~ /^\*\*[^*]+\*\*:/) parking_entry = ""
+        if (value != "") {
+          if (parking_entry == "why") why_text = trim(why_text " " value)
+          if (parking_entry == "unpark") unpark_text = trim(unpark_text " " value)
+        }
       }
       function record_dependency(value) {
         value = scalar(value)
@@ -209,6 +267,8 @@ if ! parsed_task="$(awk '
         next
       }
       {
+        visible = without_comments($0)
+        parking_line(visible, $0)
         if ($0 ~ /^<!-- AC:BEGIN([[:space:]]|--)/) {
           ac_begin_count++
           if (ac_begin_count == 1 && ac_end_count == 0 && !ac_open) ac_open = 1
@@ -224,9 +284,8 @@ if ! parsed_task="$(awk '
           next
         }
         if (ac_open && $0 ~ /^- \[[ x~]\][[:space:]]*/) {
-          value = $0
+          value = visible
           sub(/^- \[[ x~]\][[:space:]]*/, "", value)
-          value = without_comments(value)
           if (value == "" || placeholder(value)) emit("AC_PLACEHOLDER", "1")
           else emit("AC_REAL", "1")
           next
@@ -239,7 +298,7 @@ if ! parsed_task="$(awk '
           next
         }
         if (section != "") {
-          value = without_comments($0)
+          value = visible
           if (value != "") {
             if (section == "goal") {
               if (!placeholder(value)) emit("GOAL_REAL", "1")
@@ -250,6 +309,7 @@ if ! parsed_task="$(awk '
       }
       END {
         if (ac_begin_count == 1 && ac_end_count == 1 && ac_closed_once && !ac_open) ac_order_valid = 1
+        if (parking_count == 1 && parking_placed && why_count == 1 && unpark_count == 1 && !parking_placeholder(why_text) && !parking_placeholder(unpark_text)) emit("PARKING_VALID", 1)
         emit("FRONTMATTER_START", frontmatter_start + 0)
         emit("FRONTMATTER_CLOSED", frontmatter_closed + 0)
         emit("STATUS", status)
@@ -274,6 +334,7 @@ fi
 
 while IFS=$'\t' read -r key value; do
     case "$key" in
+        PARKING_VALID) parking_valid="$value" ;;
         FRONTMATTER_START) frontmatter_start="$value" ;;
         FRONTMATTER_CLOSED) frontmatter_closed="$value" ;;
         STATUS) status="$value" ;;
@@ -299,6 +360,13 @@ while IFS=$'\t' read -r key value; do
         AC_PLACEHOLDER) ac_placeholder=$((ac_placeholder + 1)) ;;
     esac
 done <<<"$parsed_task"
+
+parking_issue() {
+    if [ "$(dirname "$task_file")" = "$task_repo/docs/work/tasks/parked" ] && [ "$parking_valid" -ne 1 ]; then
+        printf 'parking note requires one ## Parked after In brief and its optional Issues line with substantive **Why**: and **Unpark when**: entries'
+    fi
+    return 0
+}
 
 field_issue() { # <field> <count> <value> <accepted-values>
     local field="$1" count="$2" value="$3" accepted="$4"
@@ -437,6 +505,9 @@ if [ "$mode" = "conformance" ]; then
         fi
     fi
 
+    issue="$(parking_issue)"
+    [ -z "$issue" ] || format_fail "$issue"
+
     issue="$(sentinels_issue)"
     [ -z "$issue" ] || format_fail "$issue"
 
@@ -519,6 +590,13 @@ if [ -z "$issue" ]; then
     fi
 else
     fail_rule 8 "$issue"
+fi
+
+issue="$(parking_issue)"
+if [ -n "$issue" ]; then
+    fail_rule parking "$issue"
+elif [ "$(dirname "$task_file")" = "$task_repo/docs/work/tasks/parked" ]; then
+    pass_rule parking "parking note is present and substantive"
 fi
 
 # A valid dependency can refer to completed work (whose brief was deleted) or

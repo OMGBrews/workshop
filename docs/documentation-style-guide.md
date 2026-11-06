@@ -842,7 +842,7 @@ A criterion is `- [ ]` (not done) or `- [x]` (done). A third marker, `- [~]`, is
 - **Constraints are acceptance criteria**, not background. Must work offline, must support both platforms — these get checkboxes.
 - **Delete unused optional sections** rather than leaving them empty.
 - **Completed tasks are deleted.** Git history preserves them; there is no `done` status. Reprioritize by moving the file between buckets — `/task-move` for one, `/task-reprioritize` for a rebalance.
-- **Slash commands**: `/task-list` (inventory), `/task-status` (liveness and closure verdicts), `/task-next` (what to work on), `/task-create`, `/task-move`, `/task-reprioritize`, `/task-audit` (validity against the codebase), `/task-finalize` (verify and resolve questions), `/task-implement` (execute in-session), `/task-queue` (retirement notice), `/problem-create`, `/problem-status`, `/problem-audit`, `/problem-reprioritize` (attention-horizon placement), `/problem-plan` (decide what to do about a record), `/thought-create` (capture a note into `docs/work/thoughts/`), `/thought-finalize` (decide what a thought becomes), and `/focus-update` (write or replace the repository's direction). They were renamed from verb-first names — `/list-tasks` → `/task-list` — in the 2026-07-26 convergence.
+- **Slash commands**: `/task-list` (inventory), `/task-status` (liveness and closure verdicts), `/task-next` (what to work on), `/task-create`, `/task-move`, `/task-reprioritize`, `/task-audit` (validity against the codebase), `/task-finalize` (verify and resolve questions), `/task-implement` (execute in-session), `/problem-create`, `/problem-status`, `/problem-audit`, `/problem-reprioritize` (attention-horizon placement), `/problem-plan` (decide what to do about a record), `/thought-create` (capture a note into `docs/work/thoughts/`), `/thought-finalize` (decide what a thought becomes), and `/focus-update` (write or replace the repository's direction). They were renamed from verb-first names — `/list-tasks` → `/task-list` — in the 2026-07-26 convergence.
 
 #### Metadata policy
 
@@ -897,6 +897,12 @@ Current third-party libraries used in the project. Maintained by `/update-librar
 - Review documentation during code reviews
 - Delete obsolete documentation rather than leaving stale content
 - Use `/audit-and-fix doc-quality` to periodically verify accuracy across the project — with `--path docs` in repos without tracker opt-in, and `Tools/check-markdown-links.sh` for link integrity
+
+The link checker uses a [working-tree repository view](repository-views.md):
+new non-ignored Markdown sources are checked, unstaged deletions are omitted,
+and surviving links to deleted targets fail. Sources, skip configuration, and
+targets all come from the captured view; staging edits is unnecessary. Other
+checks can use the provider's exact-index view to evaluate a proposed commit.
 
 ### What to check during review
 

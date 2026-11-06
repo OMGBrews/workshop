@@ -50,8 +50,8 @@ requirement declared here.
 
 ### Docs-only surface
 
-No docs-only surface is declared: `make check` walks every tracked Markdown file
-and shell script, so every check is presumed to read every path.
+No docs-only surface is declared: `make check` checks visible tracked and non-ignored untracked Markdown
+through a working-tree repository view and lints its declared shell scripts, so every check is presumed to read every path.
 
 ## Release requirements
 

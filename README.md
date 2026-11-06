@@ -39,6 +39,9 @@ Codex, and Oh My Pi shared prompt-entry behavior. See
 [the devcontainer harness keybindings guide](docs/devcontainer-harness-keybindings.md)
 for the image-build path, the live-apply command, and the host-terminal prerequisite.
 
+For surviving work from the retired autonomous runner, follow the
+[task queue recovery guidance](docs/task-queue-retirement.md).
+
 ## Checks and releases
 
 Run `make check` from a standalone clone to execute Workshop's complete public
@@ -52,6 +55,18 @@ network access is needed. After adopting a new Workshop pin, run
 heading or explicit anchor is absent: repair the link or restore the intended
 anchor and rerun the check. Exit 1 means broken links; exit 2 means incomplete
 checking or a parser/runtime error. Named skips identify unchecked targets.
+
+The checker captures visible tracked files and non-ignored untracked files,
+omitting unstaged deletions. It reads sources, skip configuration, and targets
+from that same working-tree snapshot. Parent-owned Markdown sources are checked;
+populated submodules supply targets using their visible contents. Unavailable
+mounts produce named skips; other capture failures exit 2. No staging is needed.
+
+Other shell and Python checks can reuse the
+[repository-view provider](docs/repository-views.md), including its exact-index
+mode for proposed commits. Index mode reads staged bytes and recorded gitlink
+objects, regardless of unstaged edits or untracked shadows; unavailable required
+objects are evaluation errors. Both modes preserve spaces and newlines in paths.
 
 GitHub Actions runs that same command for pushes, pull requests, and
 tags. Maintainers create milestone tags and GitHub Releases manually after the

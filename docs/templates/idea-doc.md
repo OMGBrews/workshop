@@ -1,5 +1,8 @@
 # Idea title
 
+<!-- OPTIONAL. Omit when there are no linked GitHub issues.
+     **Issues**: [#175](https://github.com/owner/repo/issues/175) Issue title · [#176](https://github.com/owner/repo/issues/176) Another issue title -->
+
 <!-- Replace with a short name for the direction, in sentence case. Save the file
      as docs/planning/ideas/<kebab-case-name>.md, with no date prefix. -->
 

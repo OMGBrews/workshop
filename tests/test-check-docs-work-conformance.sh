@@ -57,7 +57,7 @@ ${extra}---
 Exercise the document-format contract.
 
 ## Acceptance criteria
-<!-- AC:BEGIN — DO NOT REMOVE: /task-finalize, /task-move, and the task-queue worker parse the AC list between these sentinels. -->
+<!-- AC:BEGIN — DO NOT REMOVE: /task-finalize, /task-audit, and /task-status parse the AC list between these sentinels. -->
 
 - [ ] the fixture brief is valid
 
@@ -84,6 +84,7 @@ EOF
     write_brief "$1/docs/work/tasks/soon" "b-fixture-task"
     write_brief "$1/docs/work/tasks/later" "c-fixture-task"
     write_brief "$1/docs/work/tasks/parked" "d-fixture-task"
+    sed -i '/^## Goal$/i ## Parked\n\n**Why**: Capacity is reserved for current work.\n\n**Unpark when**: Current work has landed.\n' "$1/docs/work/tasks/parked/d-fixture-task.md"
     git -C "$1" add -A
     git -C "$1" commit -qm "fixture: conformant docs/work"
 }
@@ -375,6 +376,35 @@ parked_brief_malformed() {
 }
 expect "parked briefs are format-validated" 1 parked_brief_malformed \
     "FAIL 11" "parked/d-fixture-task.md"
+
+# Clause 11 consumes the shared parking parser under human policy: adoption
+# exposes missing notes immediately without forcing drafts to be finalized.
+parked_note_missing() {
+    sed -i '/^## Parked$/,/^## Goal$/{ /^## Goal$/!d; }' "$1/docs/work/tasks/parked/d-fixture-task.md"
+}
+expect "parked brief missing its parking note" 1 parked_note_missing \
+    "FAIL 11" "parked/d-fixture-task.md" "parking note"
+parked_note_incomplete() {
+    sed -i '/^\*\*Unpark when\*\*:/d' "$1/docs/work/tasks/parked/d-fixture-task.md"
+}
+expect "parked brief missing its unpark condition" 1 parked_note_incomplete \
+    "FAIL 11" "parking note"
+parked_note_comment() {
+    sed -i 's/^\*\*Why\*\*:.*/**Why**: <!-- explain later -->/' "$1/docs/work/tasks/parked/d-fixture-task.md"
+}
+expect "parked brief with comment-only reason" 1 parked_note_comment \
+    "FAIL 11" "parking note"
+parked_human_draft() {
+    printf '\n## Open questions\n\nWhich implementation should we choose?\n' >>"$1/docs/work/tasks/parked/d-fixture-task.md"
+}
+expect "valid unstamped parked draft with open questions" 0 parked_human_draft \
+    "ok   11" "brief(s) validated"
+parked_date_without_note() {
+    parked_note_missing "$1"
+    sed -i '/^dependencies:/a unpark-after: 2030-01-01' "$1/docs/work/tasks/parked/d-fixture-task.md"
+}
+expect "date cannot replace parking note" 1 parked_date_without_note \
+    "FAIL 11" "parking note"
 
 finalized_conformant() {
     sha=$(git -C "$1" rev-parse HEAD)

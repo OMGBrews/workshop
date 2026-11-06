@@ -53,33 +53,94 @@ source's contents, not merely its existence:
 | Seeded only | Copy only the skill into `.agents/skills/kaizen-resolve/`; keep a previously seeded local problems README, with no guide or distribution. | Use `docs/work/problems/README.md`, disclose the fallback, and do not seek an absent template. |
 | Missing source | Copy only the skill; omit guide and problems README. | Stop before staging and identify the missing lifecycle source; setup needs an available Workshop distribution. |
 
-## Retirement case
+## Adoption and retirement cases
 
-Initialize and commit this fixture before testing. File contents may be minimal
-but must express the stated claims and links:
+Initialize and commit each fixture before testing. Run
+`Tools/check-markdown-links.sh <fixture-root>` after edits without staging them:
+the checker captures visible tracked and non-ignored untracked files and omits
+unstaged deletions. Use no source or target exclusions. See the
+[repository-view contract](repository-views.md) for capture and failure semantics.
+
+For the problem case, file contents may be minimal but must express these claims
+and links:
 
 - `marker.txt`: `GOOD` and a final newline.
 - `docs/work/problems/fixed.md`: sole flaw is that the marker contains BAD;
   Evidence links to `../kaizen/journal/2026-01/2026-01-01-consumed.md`.
 - `docs/work/kaizen/journal/2026-01/2026-01-01-consumed.md`: consumed evidence.
-- `docs/work/kaizen/journal/2026-01/2026-01-02-survivor.md`: links to
-  `../../../problems/fixed.md` and `2026-01-01-consumed.md`.
+- `docs/work/kaizen/journal/2026-01/2026-01-02-survivor.md`: the sentence
+  `The [known flaw](../../../problems/fixed.md) recurred.` and a separate
+  link to `2026-01-01-consumed.md`.
 - `docs/index.md`: editable index linking to `work/problems/fixed.md`.
 - `docs/work/problems/README.md`: current lifecycle seed.
 
+First ask the reader to classify the inbound citations without changing files.
+The legacy journal link requires the guide's one-time adoption before retirement;
+it is neither an editable routine repair nor an accepted dangling link. In a
+separate disposable negative-control copy, delete the problem and repair the
+index without adoption. The strict check must fail and name the journal source
+and missing problem target. This is a demonstration of the old failure, not a
+candidate to land.
+
+Perform adoption on the original fixture as an explicit exception to journal
+immutability. Convert only the legacy citation to
+``The known flaw (problem `fixed`) recurred.`` Keep the evidence link and all
+surrounding historical wording. Review the diff, run the whole-tree link check,
+and commit the migration. Hash both journal entries now: this is the baseline
+for retirement, not their pre-migration content.
+
 Plan an exact whole-marker check for GOOD and a BAD negative control before
 executing it. After both succeed, run both citation searches for the consumed
-entry and search inbound problem references. Retire the fixed problem, remove
-the editable index row, and leave both journal files byte-for-byte unchanged.
-The survivor's citation protects the consumed entry; its link to the problem
-becomes an intentional historical link and cannot veto retirement.
+entry and search inbound problem references. Retire the fixed problem and remove
+the editable index row. The survivor's evidence link protects the consumed entry;
+its slug citation survives retirement unchanged.
 
 Expected staged paths are precisely deletion of `docs/work/problems/fixed.md`
-and modification of `docs/index.md`. Hash both journal entries before and after,
-and inspect `git diff --cached --name-status`. Run the required link check. A
-strict check rejects the survivor's historical problem link: report that actual
-failure as an adoption blocker and leave the candidate reviewable. Do not change
-policy, add exclusions, or claim a link-clean tree.
+and modification of `docs/index.md`. Hash both journal entries again and inspect
+`git diff --cached --name-status`. Require byte-identical journal content and a
+passing strict link check. As a separate negative control, forcibly delete the
+consumed entry: the check must fail on the surviving journal's evidence link.
+The reader must retain that entry in the proposed retirement, not convert its
+citation to a slug to make the deletion pass.
+
+Repeat the adoption, negative control, retirement, and byte-identity observations
+for both other retirable types:
+
+| Type | Target | Legacy journal destination | Adopted citation |
+|---|---|---|---|
+| Task | `docs/work/tasks/soon/fixed.md` | `../../../tasks/soon/fixed.md` | active task (task `fixed`) |
+| Pattern | `docs/work/kaizen/patterns/fixed.md` | `../../patterns/fixed.md` | recurring tendency (pattern `fixed`) |
+
+Supply `task-implement` for the task case and `kaizen-review` for the pattern
+case. Give the task met criteria and the pattern an approved, verified
+Plan-stage destination; citation handling does not waive either skill's other
+retirement requirements. Repair the editable index in both cases. A journal
+entry linking the evidence entry still protects that evidence from deletion.
+
+### Migration edge cases
+
+Give the reader an already missing task target whose last content is available
+in Git history. It must establish the document type and slug from that history,
+retain the descriptive link text and surrounding wording, and record the
+conversion in the adoption commit. For a cross-repository citation, retain the
+identified repository as well as type and slug. Give a second missing target
+whose identity cannot be established: the expected action is to report it as
+unresolved and stop adoption for resolution, never guess from a similar basename.
+Links to journal evidence remain links in every case.
+
+### Automated coverage and limits
+
+[`tests/test-journal-citations.sh`](../tests/test-journal-citations.sh) exercises
+the strict checker in disposable tracked repositories for all three target
+types: unmigrated retirement fails, adoption then retirement passes with
+byte-identical journals, and deleting cited journal evidence still fails. It
+also requires zero skipped sources or targets in the passing fixtures.
+
+The script applies explicit fixture edits; it is not a migration tool and does
+not prove a reader follows the instructions, recognizes ambiguous history, or
+makes a justified retirement decision. The reader trials above provide that
+observational evidence. Record their actual results separately; the protocol
+itself is not evidence that a trial was run.
 
 ## See also
 

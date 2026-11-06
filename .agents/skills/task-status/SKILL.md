@@ -20,6 +20,35 @@ out (completed tasks are deleted, not marked done), the `task-audit` skill re-ve
 brief in depth, `task-finalize` owns admission to `finalized/`, and
 `task-reprioritize` / `task-move` own the remaining bucket placement.
 
+## Parked briefs
+
+For every brief in `parked/`, inspect the parking note using the
+[canonical bucket definitions](../task-create/bucket-definitions.md), resolved
+relative to this skill's physical directory:
+
+- Report a missing, misplaced, duplicated, or incomplete `## Parked` section.
+  It belongs immediately after `**In brief**:` and its optional `**Issues**:`
+  line, and must contain substantive
+  `**Why**:` and `**Unpark when**:` entries. Empty text, HTML comments, and
+  placeholders such as `<reason>`, `TODO`, or `TBD` do not count. Report
+  `status: in-progress` as a parked/status contradiction.
+- Display the actual unpark condition and optional `unpark-after:` value.
+  Compare valid `YYYY-MM-DD` calendar dates with today's date and state the
+  date used. Flag dates on or before today as due for review. Report malformed,
+  repeated, or contradictory date metadata; do not guess which value governs.
+  An absent date is allowed, and a date field never replaces the note.
+- Evaluate dependency conditions against readily available git history or
+  delivered-work evidence. Read the note's wording: one completed dependency
+  does not satisfy a condition requiring several. A missing dependency slug
+  alone is uncertainty, never completion; inspect history to distinguish
+  completion from renaming, rejection, or a typo, and report unknown when the
+  evidence cannot settle it. Cite the supporting commit or artifact for a
+  condition that appears met.
+- Leave code conditions that require investigation to `task-audit`; report
+  them as unevaluated rather than claiming they are unmet. Recommend that
+  audit or a deliberate `task-move` as appropriate. No report automatically
+  unparks a task, including a rejected brief carrying `## Rejection rationale`.
+
 ## Known traps in this fleet — each has produced a wrong report before
 
 - **`[~]` markers exist.** A checked-vs-total count that only sees `[ ]` and

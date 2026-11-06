@@ -28,7 +28,7 @@ Kaizen exists to improve **how we build** — the collaboration loops between hu
 
 | Collection | Lives in the project at | Description |
 |------------|-------------------------|-------------|
-| Journal | `docs/work/kaizen/journal/YYYY-MM/YYYY-MM-DD-<slug>.md` | Running log of friction, errors, and lessons — **one entry per file**. Content-immutable: an entry is written once and never revised, but it does not live forever — see *The journal's lifecycle* below. |
+| Journal | `docs/work/kaizen/journal/YYYY-MM/YYYY-MM-DD-<slug>.md` | Running log of friction, errors, and lessons — **one entry per file**. Content-immutable after the one-time citation adoption below: an entry is written once and not routinely revised, but it does not live forever — see *The journal's lifecycle* below. |
 | Patterns | `docs/work/kaizen/patterns/<slug>.md` | Recurring themes distilled from the journal, with mitigations and status — **one pattern per file**. Present-tense synthesis. |
 
 **One entry per file, filed under a year-month directory.** A journal grows forever, so a single file eventually charges every reader the whole history to read one lesson, and its prepend-at-top convention makes the first lines a standing merge conflict between concurrent sessions. Month directories keep any one listing browsable at the ~30-entries-per-month a busy project generates; per-file entries make concurrent journaling conflict-free and give each entry its own git history.
@@ -36,6 +36,61 @@ Kaizen exists to improve **how we build** — the collaboration loops between hu
 There is **no index file**. `ls` is the index, and `grep -h '^# ' docs/work/kaizen/journal/*/*.md` lists every title. An index that must be hand-updated on every entry is a drift liability, and nothing loads the journal wholesale, so it would buy nothing. The singleton watchlist introduced below is not an index and must not be allowed to become one: an index is **per-entry and exhaustive**, so every write to the journal is a write to it and it drifts by default; the watchlist is **per-review and curated** — it holds only the entries a review could not match, it is written by one skill at one moment, and it shrinks as entries cluster or age out. The distinction is what stops it inheriting the drift liability.
 
 A project's `docs/work/kaizen/README.md` is a short pointer back to this guide — the methodology is shared and lives here, so it improves in one place rather than drifting across repos. Repos still on the older single-file layout (`journal.md` + `patterns.md`) convert with `workshop/Tools/migrate-kaizen-journal.sh`; it is idempotent and refuses rather than dropping an entry it cannot file.
+
+## Journal citations and one-time adoption
+
+Journal entries cite **task briefs, problem records, and kaizen patterns by
+backticked slug, never by path or Markdown link**. Name the document type and
+repository where needed to identify it: task `bound-provider-concurrency` in
+`owner/repo`, problem `unbounded-provider-concurrency`, or pattern
+`verify-before-reporting`. This follows [handoff citations](cross-repo-handoffs.md#citing-one).
+A slug survives a bucket move or retirement; git history recovers the document.
+
+This rule is specific to those three targets. **Links to journal evidence stay
+real links**, including journal-to-journal links and artifact Evidence lists.
+Their citation gate still prevents deleting an entry with a surviving citer.
+Other durable documentation links are unchanged.
+
+### Adopt existing entries once
+
+Existing entries are immutable except for this explicit, one-time citation
+migration. Complete adoption before moving or retiring a document with legacy
+journal links; do not treat each retirement as permission to edit history.
+
+1. Inventory links in the consumer's entire journal, including reference-style
+   links, bucketed and legacy paths, fragments, and cross-repository links.
+   Resolve each destination relative to its source (or reference definition)
+   and classify the target as task, problem, pattern, journal evidence, or other.
+   Inspect actual targets; a matching word in a URL is not classification.
+2. Establish the target's slug, type, and repository. For an already missing
+   target, inspect its owning repository's git history at the cited path
+   (`git log --all -- <path>` and `git show <commit>:<path>`), following moves
+   where necessary. Record the historical revision used. Do not guess from a
+   broken path alone: unresolved or ambiguous identities remain listed as
+   adoption blockers until evidence settles them.
+3. Convert only citations to the three retirable types. Preserve the descriptive
+   link text and all surrounding historical wording, adding the identified
+   backticked slug and type/repository as needed. For example, a link labeled
+   “active task” becomes “active task (task `bound-provider-concurrency`)”.
+   Preserve cross-repository identity even when slugs happen to be unique today.
+   For reference-style links, convert the affected uses and remove only unused
+   definitions; retain definitions still needed by other links. Preserve any
+   meaningful section description in prose. Do not rewrite unrelated prose or
+   convert links to journal evidence.
+4. Review the complete diff against the inventory. Record the migration and its
+   explicit immutability exception in git, with the target mappings and any
+   history evidence in the commit body or adoption record. Align local seeded
+   guidance with this policy without discarding deliberate local rules.
+5. Run the consumer's required whole-tree link check with the migrated files in
+   its checked set (stage new files where the check reads tracked paths). Record
+   its actual result. Adoption is complete only when the inventory is resolved
+   and the required check passes; repair unrelated failures through their normal
+   owners, never by broad exclusions or weaker missing-target checks.
+
+After adoption, surviving entries remain byte-for-byte unchanged during moves
+and retirement. A legacy link discovered later is incomplete adoption: stop the
+operation and finish the recorded migration first. Do not keep fixed records as
+redirects or evidence archives to avoid adoption.
 
 ## The journal's lifecycle
 
@@ -53,18 +108,18 @@ Same commit, not later and not earlier, and both halves of that matter:
 ### Retiring a fixed problem is distinct from retaining journal evidence
 
 `docs/work/problems/` holds outstanding flaws only. Once every claimed observable
-is verified gone with appropriate evidence, delete the problem record even when
-surviving journal entries cite it. Those citations do not veto problem retirement.
-Leave immutable journal entries unchanged and report each historical link; git
-history recovers the retired record. Repair editable inbound references in the
-same change. Do not retain a fixed problem as an evidence archive.
+is verified gone with appropriate evidence, delete the problem record. Surviving
+journal slug citations do not veto retirement: leave those entries unchanged,
+report the citations, and recover the record from git history when needed.
+Repair editable inbound references in the same change. Do not retain a fixed
+problem as an evidence archive.
 
-This rule does not relax the citation gate below: a consumed **journal entry**
-with a live citer must survive. The two targets have different lifecycles.
-Historical journal links to retired problem records are intentional, so report
-them rather than claiming a link-clean tree. Run the consumer's required link
-check; if it rejects those links, report an adoption blocker. Do not weaken the
-check or introduce broad exclusions to manufacture a pass.
+Before staging retirement, identify any legacy journal links to the record and
+complete [one-time adoption](#journal-citations-and-one-time-adoption). The same
+rule applies to task completion and pattern graduation. Then run the consumer's
+required link check; report its actual result without weakening it or introducing
+broad exclusions. This does not relax the citation gate below: a consumed
+**journal entry** with a live citer must survive.
 
 ### The citation gate uses a check, not a memory
 
@@ -75,9 +130,15 @@ grep -rn "2026-07-14-tab-delimited-jq-output-silently-collapsed-an-empty-field" 
 grep -rn "tab-delimited .jq. output silently collapsed" --exclude-dir=.git docs/   # the prose form
 ```
 
-Any hit from something still live — another pattern, a problem document, a task, an instruction file, a planning doc, **or another journal entry** — keeps the entry. The journal is included deliberately and it is not symmetric with the pattern-deletion rule, which tells you an entry linking a graduated pattern is *expected* to dangle: you may not edit an entry, so you can never repair a link *out of* one, which leaves not-deleting as the only way to keep the tree link-clean. An inbound link to a consumed journal entry is therefore a veto, exactly as a citation from a pattern is; it is not a veto on retiring a verified-fixed problem record. (In a workspace of gitignored sibling clones, name the directories explicitly — a recursive grep from the root silently searches one repo.)
+Any hit from something still live — another pattern, a problem document, a task,
+an instruction file, a planning doc, **or another journal entry** — keeps the
+entry. Journal evidence links remain real links, so an inbound citation to a
+consumed entry vetoes its deletion. This differs from slug citations to retired
+tasks, problems, and patterns, which survive unchanged. (In a workspace of
+gitignored sibling clones, name the directories explicitly — a recursive grep
+from the root silently searches one repo.)
 
-**The second grep is not optional, and it is why "link evidence by relative path" is load-bearing rather than stylistic.** The check matches a filename, so an artifact citing an entry the way the pattern format warns against — `2026-07-14 — Perl mojibake`, a bare date and a phrase — is invisible to it, and the entry it depends on is deleted out from under it. Measured, not hypothetical: at the time this section was written hq's own verification pattern cited 10 of its 14 occurrences in exactly that form, and a filename grep found none of them. Where you find a prose citation, repair it to a link; do not delete the entry.
+**The second grep is not optional, and it is why "link evidence by relative path" is load-bearing rather than stylistic.** The check matches a filename, so an artifact citing an entry the way the pattern format warns against — `2026-07-14 — Perl mojibake`, a bare date and a phrase — is invisible to it, and the entry it depends on is deleted out from under it. Measured, not hypothetical: at the time this section was written hq's own verification pattern cited 10 of its 14 occurrences in exactly that form, and a filename grep found none of them. Where you find a prose citation in an editable artifact, repair it to a link; do not delete the entry. A prose citation from another journal entry keeps the target without editing the citer.
 
 ### Unmatched — the watchlist, and age-out
 

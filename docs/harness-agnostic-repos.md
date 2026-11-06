@@ -175,9 +175,8 @@ those callers must stay identical rather than merely similar:
 | `docs/focus-document.md` | `focus-update` and repository owners | `task-next`, `task-reprioritize`, `session-land`, and repository task guides |
 
 The task template established this pattern after copied templates diverged into
-seven variants. The execution discipline is live runner configuration: the
-worker expands its marked blocks into one prompt, while `task-implement` reads
-the same file in-session. The readiness checker similarly keeps task movement and
+seven variants. The execution discipline is the shared rule set that
+`task-implement` reads in-session. The readiness checker similarly keeps task movement and
 repository conformance on one executable rule. The focus-document contract is shared
 in the other direction: writers and both selection readers need one artifact
 definition, while `task-next` and `task-reprioritize` retain different ranking

@@ -35,6 +35,8 @@ finalized-at: $sha
 
 # Good task
 
+**In brief**: A fixture that can be finalized or parked.
+
 ## Goal
 
 Ship a real outcome.
@@ -188,6 +190,124 @@ run_checker --conformance "$repo/$TASK_REL" human
 run_checker --conformance "$repo/$TASK_REL" finalized
 [ "$CHECK_RC" -eq 1 ] || fail "finalized conformance stamp policy: exit $CHECK_RC, wanted 1"
 assert_contains "finalized conformance stamp policy" "missing finalized-at"
+
+# Parking is a path-specific contract shared by readiness and conformance.
+# Begin with a fully ready note, then break one property at a time; every bad
+# case must fail in both interfaces for the parking diagnostic itself.
+write_parking_note() {
+    sed -i '/^## Goal$/i ## Parked\n\n**Why**: Capacity is reserved for the current release.\n\n**Unpark when**: The current release has landed.\n' "$1"
+}
+parking_missing() { sed -i '/^## Parked$/,/^## Goal$/{ /^## Goal$/!d; }' "$1"; }
+parking_missing_why() { sed -i '/^\*\*Why\*\*:/d' "$1"; }
+parking_missing_unpark() { sed -i '/^\*\*Unpark when\*\*:/d' "$1"; }
+parking_empty_why() { sed -i 's/^\*\*Why\*\*:.*/**Why**:/' "$1"; }
+parking_comment_only() {
+    sed -i 's/^\*\*Unpark when\*\*:.*/**Unpark when**: <!-- explain\nwhen to resume -->/' "$1"
+}
+parking_placeholder() { sed -i 's/^\*\*Why\*\*:.*/**Why**: <why the work was set aside>/' "$1"; }
+parking_tbd() { sed -i 's/^\*\*Unpark when\*\*:.*/**Unpark when**: TBD/' "$1"; }
+parking_date_only() {
+    parking_missing "$1"
+    sed -i '/^dependencies:/a unpark-after: 2030-01-01' "$1"
+}
+parking_misplaced() {
+    parking_missing "$1"
+    printf '\n## Parked\n\n**Why**: Capacity is reserved.\n\n**Unpark when**: The release lands.\n' >>"$1"
+}
+parking_duplicate() {
+    printf '\n## Parked\n\n**Why**: Another reason.\n\n**Unpark when**: Another condition.\n' >>"$1"
+}
+parking_multiline() {
+    sed -i 's/^\*\*Why\*\*:.*/**Why**:\nCapacity is reserved for\nthe current release./; s/^\*\*Unpark when\*\*:.*/**Unpark when**:\nThe current release\nhas landed./' "$1"
+}
+
+expect_parking() { # <label> <exit> <mutation>
+    local label="$1" wanted_rc="$2" mutate="$3" repo file interface
+    repo="$TMP/parking-$label"
+    make_good_repo "$repo"
+    file="$repo/docs/work/tasks/parked/good-task.md"
+    mv "$repo/$TASK_REL" "$file"
+    write_parking_note "$file"
+    "$mutate" "$file"
+    for interface in readiness conformance; do
+        if [ "$interface" = readiness ]; then run_checker "$file"
+        else run_checker --conformance "$file" human
+        fi
+        if [ "$CHECK_RC" -ne "$wanted_rc" ]; then
+            fail "parking $label ($interface): exit $CHECK_RC, wanted $wanted_rc"
+            printf '%s\n' "$CHECK_OUTPUT" | sed 's/^/    /'
+        fi
+        if [ "$wanted_rc" -eq 1 ]; then
+            assert_contains "parking $label ($interface)" "parking note"
+        fi
+    done
+    echo "ok: parking $label in readiness and conformance"
+}
+# A documented example must not substitute for the actual note. Shorter or
+# mismatched delimiters inside a fence do not close its Markdown code block.
+parking_fenced_example() {
+    parking_missing "$1"
+    # shellcheck disable=SC2016 # Backticks are literal Markdown fence fixtures.
+    sed -i '/^## Goal$/i ````\n```\n~~~\n## Parked\n\n**Why**: Example reason.\n\n**Unpark when**: Example condition.\n````\n' "$1"
+}
+parking_indented_example() {
+    parking_missing "$1"
+    sed -i '/^## Goal$/i \    ## Parked\n\n    **Why**: Example reason.\n\n    **Unpark when**: Example condition.\n' "$1"
+}
+expect_parking fenced-example 1 parking_fenced_example
+expect_parking indented-example 1 parking_indented_example
+parking_with_issues() {
+    sed -i '/^## Parked$/i **Issues**: [#17](https://github.com/example/project/issues/17) Deferred improvement\n' "$1"
+}
+parking_with_intervening_prose() {
+    sed -i '/^## Parked$/i Unrelated introductory prose.\n' "$1"
+}
+parking_with_duplicate_issues() {
+    parking_with_issues "$1"
+    parking_with_issues "$1"
+}
+expect_parking valid 0 no_change
+expect_parking with-issues 0 parking_with_issues
+expect_parking intervening-prose 1 parking_with_intervening_prose
+expect_parking duplicate-issues 1 parking_with_duplicate_issues
+expect_parking multiline 0 parking_multiline
+expect_parking missing 1 parking_missing
+expect_parking missing-why 1 parking_missing_why
+expect_parking missing-unpark 1 parking_missing_unpark
+expect_parking empty-why 1 parking_empty_why
+expect_parking comment-only 1 parking_comment_only
+expect_parking placeholder 1 parking_placeholder
+expect_parking tbd 1 parking_tbd
+expect_parking date-only 1 parking_date_only
+expect_parking misplaced 1 parking_misplaced
+expect_parking duplicate 1 parking_duplicate
+
+# A valid parked draft can remain unfinalized and retain design questions.
+# Readiness must still reject those independent handoff requirements.
+repo="$TMP/parked-human-draft"
+make_good_repo "$repo"
+remove_finalized_at "$repo"
+open_question "$repo"
+file="$repo/docs/work/tasks/parked/good-task.md"
+mv "$repo/$TASK_REL" "$file"
+write_parking_note "$file"
+run_checker --conformance "$file" human
+[ "$CHECK_RC" -eq 0 ] || fail "parked human draft: exit $CHECK_RC, wanted 0"
+run_checker "$file"
+[ "$CHECK_RC" -eq 1 ] || fail "parked draft readiness: exit $CHECK_RC, wanted 1"
+assert_contains "parked draft readiness" "FAIL 6"
+assert_contains "parked draft readiness" "FAIL 8"
+
+# Neither another task bucket nor a problem parked bucket inherits this rule.
+# The ordinary ready fixture above already proves a note-less now/ brief passes.
+repo="$TMP/parking-path-scope"
+make_good_repo "$repo"
+mkdir -p "$repo/docs/work/problems/parked"
+cp "$repo/$TASK_REL" "$repo/docs/work/problems/parked/good-task.md"
+run_checker "$repo/docs/work/problems/parked/good-task.md"
+[ "$CHECK_RC" -eq 0 ] || fail "problem parked path: exit $CHECK_RC, wanted 0"
+run_checker --conformance "$repo/$TASK_REL" human
+[ "$CHECK_RC" -eq 0 ] || fail "ordinary note-less task conformance: exit $CHECK_RC, wanted 0"
 
 if [ "$failures" -ne 0 ]; then
     echo "$failures check-task-readiness assertion(s) failed" >&2
