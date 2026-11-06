@@ -153,8 +153,14 @@ if ! parsed_task="$(awk '
           return
         }
         if (parking_fence) return
-        if (value ~ /^\*\*In brief\*\*:/) { brief_seen = 1; brief_ended = 0; after_brief = 0; return }
+        if (value ~ /^\*\*In brief\*\*:/) { brief_seen = 1; brief_ended = 0; after_brief = 0; issues_seen = 0; return }
         if (brief_seen && value == "") brief_ended = 1
+        # The optional Issues line belongs between In brief and the parking note.
+        # It is one metadata line, not permission for arbitrary intervening prose.
+        if (brief_seen && brief_ended && !after_brief && !parking_section && !issues_seen && value ~ /^\*\*Issues\*\*:/) {
+          issues_seen = 1
+          return
+        }
         if (value ~ /^##[[:space:]]/) {
           if (value == "## Parked") {
             parking_count++
@@ -357,7 +363,7 @@ done <<<"$parsed_task"
 
 parking_issue() {
     if [ "$(dirname "$task_file")" = "$task_repo/docs/work/tasks/parked" ] && [ "$parking_valid" -ne 1 ]; then
-        printf 'parking note requires one ## Parked immediately after In brief with substantive **Why**: and **Unpark when**: entries'
+        printf 'parking note requires one ## Parked after In brief and its optional Issues line with substantive **Why**: and **Unpark when**: entries'
     fi
     return 0
 }

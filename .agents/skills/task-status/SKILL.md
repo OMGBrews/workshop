@@ -27,7 +27,8 @@ For every brief in `parked/`, inspect the parking note using the
 relative to this skill's physical directory:
 
 - Report a missing, misplaced, duplicated, or incomplete `## Parked` section.
-  It belongs immediately after `**In brief**:` and must contain substantive
+  It belongs immediately after `**In brief**:` and its optional `**Issues**:`
+  line, and must contain substantive
   `**Why**:` and `**Unpark when**:` entries. Empty text, HTML comments, and
   placeholders such as `<reason>`, `TODO`, or `TBD` do not count. Report
   `status: in-progress` as a parked/status contradiction.

@@ -60,7 +60,8 @@ a parked task resurfaces only when someone asks for it. The return path is
 ordinary: `/task-move` accepts `parked` as both a source and a target.
 
 **Every parked brief carries a parking note.** It is a `## Parked` section placed
-immediately after the `**In brief**:` paragraph, with two lead-ins:
+immediately after the `**In brief**:` paragraph and its optional `**Issues**:`
+line, with two lead-ins:
 
 ```markdown
 ## Parked

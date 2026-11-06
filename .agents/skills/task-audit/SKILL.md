@@ -124,7 +124,8 @@ For each task, the analysis agent must:
 
 7. **Parking review** — For each parked brief, report a missing, misplaced,
    duplicated, or incomplete `## Parked` section. It must immediately follow
-   `**In brief**:` and hold substantive `**Why**:` and `**Unpark when**:`
+   `**In brief**:` and its optional `**Issues**:` line, and hold substantive
+   `**Why**:` and `**Unpark when**:`
    entries; empty text, HTML comments, and placeholders such as `<reason>`,
    `TODO`, or `TBD` do not count. Flag `status: in-progress` as a contradiction.
    Evaluate the actual unpark condition:

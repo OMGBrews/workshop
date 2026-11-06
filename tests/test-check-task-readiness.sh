@@ -256,7 +256,20 @@ parking_indented_example() {
 }
 expect_parking fenced-example 1 parking_fenced_example
 expect_parking indented-example 1 parking_indented_example
+parking_with_issues() {
+    sed -i '/^## Parked$/i **Issues**: [#17](https://github.com/example/project/issues/17) Deferred improvement\n' "$1"
+}
+parking_with_intervening_prose() {
+    sed -i '/^## Parked$/i Unrelated introductory prose.\n' "$1"
+}
+parking_with_duplicate_issues() {
+    parking_with_issues "$1"
+    parking_with_issues "$1"
+}
 expect_parking valid 0 no_change
+expect_parking with-issues 0 parking_with_issues
+expect_parking intervening-prose 1 parking_with_intervening_prose
+expect_parking duplicate-issues 1 parking_with_duplicate_issues
 expect_parking multiline 0 parking_multiline
 expect_parking missing 1 parking_missing
 expect_parking missing-why 1 parking_missing_why

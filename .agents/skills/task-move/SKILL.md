@@ -40,7 +40,8 @@ relative to this skill's physical directory. Apply these checks before any
   note still describes the intended deferral. Empty answers, HTML comments,
   and placeholders such as `<reason>`, `TODO`, or `TBD` do not count.
 - When parking, write or update exactly one `## Parked` section immediately after the
-  `**In brief**:` paragraph, with substantive `**Why**:` and `**Unpark when**:`
+  `**In brief**:` paragraph and its optional `**Issues**:` line, with substantive
+  `**Why**:` and `**Unpark when**:`
   entries. Preserve the rest of the brief; do not append a duplicate section.
   When the condition includes a date, optionally record a matching
   `unpark-after: YYYY-MM-DD` frontmatter value. A date field never replaces
