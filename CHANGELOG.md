@@ -107,6 +107,9 @@ they create a manually initiated milestone tag or GitHub Release.
   work, not rejected work, and its old name led readers to treat its briefs as
   retired. `parked/` holds deferred work nobody is watching; every brief in it
   carries a `## Parked` section stating **Why** and **Unpark when**, with an
+
+- Allow explicitly registered independent repositories to supply captured Markdown link targets in workspace indexes.
+
   optional `unpark-after: YYYY-MM-DD` frontmatter date, and a parked brief's
   filename never changes. Rejected briefs are deleted with the rationale in the
   commit message, and `blocked` stays a status rather than a bucket. The task

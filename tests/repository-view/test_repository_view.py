@@ -56,6 +56,31 @@ class RepositoryViewTests(unittest.TestCase):
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30, **kwargs,
         )
 
+    def test_explicit_ignored_target_repository_is_captured_and_isolated(self):
+        self.write(self.repo, ".gitignore", "external/\n")
+        self.commit(self.repo)
+        child = self.new_repo("parent/external")
+        self.write(child, "target.md", "# Present")
+        self.write(child, ".gitignore", "secret.md\n")
+        self.commit(child)
+        self.write(child, "secret.md", "ignored")
+        with RepositoryView(self.repo, target_repositories=("external",)) as view:
+            self.assertEqual(view.read_bytes("external/target.md"), b"# Present")
+            self.assertEqual(view.entries["external/target.md"]["owner"], "external")
+            self.assertFalse(view.exists("external/secret.md"))
+            self.write(child, "target.md", "# Changed")
+            self.assertEqual(view.read_bytes("external/target.md"), b"# Present")
+        with self.assertRaises(ViewError):
+            RepositoryView(self.repo, mode="index", target_repositories=("external",))
+        for invalid in ("missing", "..", "", "external/..", "external/target.md"):
+            with self.subTest(invalid=invalid), self.assertRaises(ViewError):
+                with RepositoryView(self.repo, target_repositories=(invalid,)):
+                    pass
+        (self.repo / "alias").symlink_to(child, target_is_directory=True)
+        with self.assertRaises(ViewError):
+            with RepositoryView(self.repo, target_repositories=("alias",)):
+                pass
+
     def test_working_and_index_are_distinct_stable_views(self):
         for name, text in {
             "source.md": "[target](target.md)", "target.md": "# Old",

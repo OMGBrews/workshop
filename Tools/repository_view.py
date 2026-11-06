@@ -141,9 +141,13 @@ class ManifestView:
 class RepositoryView(ManifestView):
     """Context manager capturing working-tree or exact-index repository bytes."""
 
-    def __init__(self, repo: str | Path, mode: str = "working-tree"):
+    def __init__(self, repo: str | Path, mode: str = "working-tree", *,
+                 target_repositories: tuple[str, ...] = ()):
         if mode not in ("working-tree", "index"):
             raise ViewError(f"unknown repository-view mode: {mode}")
+        if target_repositories and mode != "working-tree":
+            raise ViewError("target repositories require a working-tree view")
+        self.target_repositories = target_repositories
         self.repo = Path(repo).resolve()
         self.mode = mode
         self.entries = {"": {"kind": "directory", "owner": "", "origin": "tracked"}}
@@ -161,6 +165,24 @@ class RepositoryView(ManifestView):
             self.root.mkdir()
             self.manifest = Path(self._temp.name) / "manifest.json"
             self._capture(self.repo, "", None)
+            for requested in self.target_repositories:
+                mount = _safe(requested)
+                if not mount or mount in self.entries:
+                    raise ViewError(f"target repository overlaps captured paths: {requested!r}")
+                checkout = self.repo / mount
+                for ancestor in (checkout, *checkout.parents):
+                    if ancestor == self.repo:
+                        break
+                    if ancestor.is_symlink():
+                        raise ViewError(f"symlink target repository: {requested!r}")
+                top = Path(_name(_git(checkout, "rev-parse", "--show-toplevel")[:-1]))
+                if top.resolve() != checkout.resolve():
+                    raise ViewError(f"target repository is not a repository root: {requested!r}")
+                self._parents(mount, mount, "untracked")
+                self.entries[mount] = {"kind": "directory", "owner": mount,
+                                       "origin": "untracked", "target_repository": True}
+                (self.root / mount).mkdir()
+                self._capture(checkout, mount, None)
             self.manifest.write_text(json.dumps({"version": 1, "mode": self.mode,
                 "root": str(self.root), "entries": self.entries,
                 "unavailable": self.unavailable}, ensure_ascii=True))

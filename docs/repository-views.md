@@ -156,3 +156,19 @@ entries matching no visible parent-owned Markdown source fail (exit 1). This
 line-based configuration cannot name a single newline-bearing source directly;
 a directory prefix can still exclude it. The skip file itself is read through
 the captured view, including confined symlink resolution.
+
+## Independent target repositories
+
+A workspace index may deliberately ignore independent clones. A working-tree
+caller can opt them into the captured target namespace with
+`RepositoryView(root, target_repositories=("workshop", "studio/project"))`.
+The Markdown checker exposes the same contract through repeatable
+`--target-repository RELATIVE_PATH` arguments. Callers own that explicit registry;
+there is no automatic discovery of ignored directories.
+
+Each target must be an existing independent repository root below the inspected
+root, without symlink ancestors or overlaps with captured paths. A missing root
+is an evaluation error. Its tracked and non-ignored untracked content is captured
+with its own repository ownership, so it supplies link targets and anchors but
+never parent Markdown sources. Its own ignored files remain invisible. Index
+views refuse this option because these clones are not part of the parent's index.

@@ -296,3 +296,29 @@ run_check "$work/boundary" "$work/child-dirty.log"
 echo 'ok 15 - child edits supply targets without scanning child sources'
 
 echo 'all markdown-link tests passed'
+
+# Explicit ignored independent repositories contribute targets, never sources.
+mkdir -p "$work/registered/external"
+git -C "$work/registered" init -q
+printf 'external/\n' > "$work/registered/.gitignore"
+printf '[target](external/target.md#present)\n' > "$work/registered/README.md"
+git -C "$work/registered" add .gitignore README.md
+git -C "$work/registered/external" init -q
+printf '# Present\n[not a parent source](missing.md)\n' > "$work/registered/external/target.md"
+git -C "$work/registered/external" add target.md
+if bash "$check" "$work/registered" > "$work/registered-before.log" 2>&1; then
+  fail 'ignored independent repository was implicitly included'
+fi
+bash "$check" "$work/registered" --target-repository external > "$work/registered.log" 2>&1 \
+  || { cat "$work/registered.log"; fail 'explicit independent target failed'; }
+printf '# Changed\n' > "$work/registered/external/target.md"
+if bash "$check" "$work/registered" --target-repository external > "$work/registered-anchor.log" 2>&1; then
+  fail 'missing anchor in independent target passed'
+fi
+grep -q 'missing Markdown anchor:' "$work/registered-anchor.log" || fail 'independent anchor was not checked'
+rm "$work/registered/external/target.md"
+if bash "$check" "$work/registered" --target-repository external > "$work/registered-missing.log" 2>&1; then
+  fail 'missing file in independent target passed'
+fi
+grep -q 'broken Markdown link:' "$work/registered-missing.log" || fail 'independent missing file was not checked'
+echo 'ok - explicit independent repositories supply checked targets without adding sources'
