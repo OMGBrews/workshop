@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Check Markdown policy using one captured working-tree repository view."""
 
+import argparse
 import importlib.util
 import os
 from pathlib import Path
@@ -165,16 +166,21 @@ def main(argv):
               'Check parent-owned Markdown in one working-tree repository view: visible\n'
               'tracked and non-ignored untracked files, excluding unstaged deletions.\n'
               'Populated submodules supply visible targets; unavailable mounts are named skips.\n'
+              'Repeat --target-repository RELATIVE_PATH to include ignored independent repositories\n'
+              'as targets only; missing roots are errors and their own ignored files stay excluded.\n'
               'Sources, .markdown-links-skip, targets and anchors all use the captured view.\n'
               'The shared repository_view.py also provides exact-index views for other consumers.\n'
               'Exit 0: valid; 1: broken links, missing anchors or stale skips; 2: evaluation error.\n'
               'See docs/repository-views.md for both modes, isolation and failure semantics.')
         return 0
-    if len(argv) != 1:
-        print('usage: bash Tools/check-markdown-links.sh <repo-root>', file=sys.stderr)
-        return 2
+    parser = argparse.ArgumentParser()
+    parser.add_argument('repo_root')
+    parser.add_argument('--target-repository', action='append', default=[],
+                        help='explicit nested independent repository, used only for link targets')
+    args = parser.parse_args(argv)
     try:
-        with RepositoryView(argv[0], mode='working-tree') as view:
+        with RepositoryView(args.repo_root, mode='working-tree',
+                            target_repositories=tuple(args.target_repository)) as view:
             return Checker(view).run()
     except (ViewError, OSError, UnicodeError) as error:
         print(f'Markdown repository view evaluation failed: {error}', file=sys.stderr)
