@@ -13,6 +13,7 @@ usage() {
     cat >&2 <<'EOF'
 usage:
   bash check-task-readiness.sh <task-file>
+  bash check-task-readiness.sh --dependencies <task-file>
   bash check-task-readiness.sh --conformance <task-file> <human|finalized>
 EOF
 }
@@ -21,6 +22,9 @@ mode="readiness"
 policy=""
 if [ "$#" -eq 1 ]; then
     task_argument="$1"
+elif [ "$#" -eq 2 ] && [ "$1" = "--dependencies" ]; then
+    mode="dependencies"
+    task_argument="$2"
 elif [ "$#" -eq 3 ] && [ "$1" = "--conformance" ]; then
     mode="conformance"
     task_argument="$2"
@@ -151,6 +155,8 @@ if ! parsed_task="$(awk '
             next
           }
           if ($0 ~ /^[[:space:]]*($|#)/) next
+          # An indented non-list value belongs to this block and is malformed.
+          if ($0 ~ /^[[:space:]]+/) dependencies_syntax = 1
           in_dependencies_block = 0
         }
         if ($0 ~ /^status:[[:space:]]*/) {
@@ -374,6 +380,24 @@ sentinels_issue() {
     fi
     return 0
 }
+
+# Reuse the exact readiness/conformance parser without applying readiness
+# policy. The graph checker owns target resolution and its strict verdict.
+if [ "$mode" = "dependencies" ]; then
+    if [ "$frontmatter_start" -ne 1 ] || [ "$frontmatter_closed" -ne 1 ]; then
+        echo "missing or unclosed frontmatter" >&2
+        exit 1
+    fi
+    issue="$(dependencies_issue)"
+    if [ -n "$issue" ]; then
+        printf '%s\n' "$issue" >&2
+        exit 1
+    fi
+    for dependency in "${dependencies[@]}"; do
+        printf '%s\n' "$dependency"
+    done
+    exit 0
+fi
 
 if [ "$mode" = "conformance" ]; then
     conformance_failures=0

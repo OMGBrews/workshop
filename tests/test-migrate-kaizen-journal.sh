@@ -136,7 +136,7 @@ done < <(find "$R/docs/work/kaizen/journal" -name '2026-*.md')
 # The truncated slug must end on a whole word from the title, not a fragment.
 long_slug="$(basename "$(find "$R/docs/work/kaizen/journal" -name '2026-05-03-*.md')" .md)"
 last_word="${long_slug##*-}"
-printf '%s' "$long_title" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '\n' | grep -qx "$last_word" \
+printf '%s' "$long_title" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '\n' | grep -x "$last_word" > /dev/null \
   || fail "long title was cut mid-word (trailing fragment '$last_word'): $long_slug"
 echo "ok 4 - slugs hostile titles cleanly, caps at 60 on a word boundary"
 
