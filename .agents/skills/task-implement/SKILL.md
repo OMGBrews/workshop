@@ -1,6 +1,6 @@
 ---
 name: task-implement
-description: Implement a prepared task in the current session — re-verify the brief against HEAD, build to the acceptance criteria, tick them off as they are met, then close the task out on the user's confirmation (deleting the brief, per the repo's completion convention). Also the close-out path for a task that is already done but was never closed
+description: Implement a prepared task in the current session — re-verify the brief against HEAD, build to the acceptance criteria, tick them off as they are met, then close the task out on the user's confirmation (deleting the brief, per the repo's completion convention). Invokes problem-resolve for linked flaws that appear fixed. Also closes already-implemented tasks.
 ---
 
 # Implement Task
@@ -39,7 +39,7 @@ If the argument resolves to a real task file under `<tasks>/{finalized,now,soon,
 
 Otherwise, with no usable argument:
 
-1. If the `task-next` skill exists in this repo (check the `.claude/skills/task-next/` bridge into the canonical `.agents/skills/` tree), stop and offer it: "No task named. Run `task-next` to pick one, then re-run `task-implement <task>`." Do not invoke it — the pipeline offers, it never chains.
+1. If the `task-next` skill exists in this repo (check the `.claude/skills/task-next/` bridge into the canonical `.agents/skills/` tree), stop and offer it: "No task named. Run `task-next` to pick one, then re-run `task-implement <task>`." Do not invoke it — task selection offers a next step; the required problem-resolution handoff during close-out is separate.
 2. Where that skill is absent, list `finalized/` first, then `now/` (falling back to `soon/` when both are empty), with each task's title, `effort`, `priority`, and acceptance-criteria progress, and ask which to implement. This is a pick-one capture, so a question prompt is appropriate — brief first, per the `ask-with-briefing` block.
 
 Refuse a task whose `dependencies:` are unmet, naming the blocking task, unless the user overrides.
@@ -175,7 +175,7 @@ Run all four before claiming completion. Each has an answer you can read, not on
 
 | The runner checks | Check here |
 |-------------------|-----------|
-| The brief is gone from the worktree | **Not here — at 6e.** The deletion follows the human's confirmation, so this cannot be true yet; asserting it at 6a is a check nothing can pass. Here, confirm the inverse: the brief is still present, and removing it is the only change left |
+| The brief is gone from the worktree | **Not here — at 6e.** The deletion follows the human's confirmation, so this cannot be true yet; asserting it at 6a is a check nothing can pass. Here, confirm the inverse: the brief is still present, implementation is complete, and the remaining work is task and linked-problem close-out |
 | Commits exist beyond the branch's start SHA | `git log --oneline <Phase 2 SHA>..HEAD` is non-empty and the commits are this task's |
 | No leftover `STUCK.md` | No scratch files, debug prints, or commented-out blocks left behind — read your own diff (`git diff <Phase 2 SHA>..HEAD`) |
 | The tree still builds (`pytest --collect-only`) | The repo's cheapest whole-tree sanity check passes — test collection, a type check, a build, whichever this repo has — plus every applicable `definition-of-done.md` requirement |
@@ -198,6 +198,33 @@ then either finish it or take the Phase 5 blocked path.
 Then re-read the criteria one at a time and confirm each `[x]` against the
 diff. A criterion you cannot point at evidence for is not met: untick it and
 either finish it or go to Phase 5.
+
+### 6b.1 — Resolve problems the implementation appears to have fixed
+
+Before deleting the brief, collect problem records it cites and any explicitly
+identified as fixed during implementation. Resolve the actual records, including
+bucket moves, and read their full claims. Context-only references are not a
+reason to retire an unrelated problem; do not sweep the whole problem queue.
+
+For each record whose flaw appears fully resolved, **invoke
+[problem-resolve](../problem-resolve/SKILL.md) in this session**, passing its path.
+This is part of implementation close-out, not an offer left for a later session.
+Apply that skill's independent evidence procedure: completed criteria, a commit,
+or a passing implementation suite alone do not establish problem retirement.
+This also applies to the already-implemented path from Phase 3.
+
+Snapshot the affected files and index before invocation so its candidate can be
+reviewed independently of other work. The resolver stages only verified
+retirements, reference repairs, and any pending Kaizen review receipts; it never
+commits, pushes, or deletes journal evidence. Keep the brief's criteria and
+verification evidence intact when repairing its outgoing problem link.
+
+Carry each outcome into 6d: verified retirement candidate, still present, partial,
+or unavailable evidence, with the specific remaining claim or blocker. A failed
+problem verification blocks task completion only if it contradicts a task
+acceptance criterion; otherwise the task may close while the problem remains.
+Missing skill/distribution or conflicting local policy leaves the problem in
+place and is reported, never replaced by ad hoc deletion.
 
 ### 6c — Check inbound references before deleting
 
@@ -255,13 +282,21 @@ Everything above is a check you run. This is the one call you do not make alone.
 
 Present what 6a–6c found — each criterion and the evidence behind it, the checks
 that ran and what they printed, the inbound references you would fix and the
-dependency entries you would remove — and then ask, plainly, whether to close
-the task. Deleting the brief is what tells every later reader the work is
-finished; the human is the one entitled to say that.
+dependency entries you would remove, and each 6b.1 problem outcome — and then
+ask, plainly, whether to close the task and include the staged verified problem
+retirements. Name their paths, reference repairs, and pending Kaizen receipts;
+the staged diff is available for review before confirmation. Deleting the brief
+is what tells every later reader the work is finished; the human is the one entitled to say that.
 
 - **Confirmed** → 6e: delete the brief, with all three classes of 6c fix, and
-  commit them with the work.
-- **Declined** → commit the implementation and any *already-wrong* link fixes
+  commit them with the work and the confirmed problem-retirement candidates.
+  Each receipt stays in the same commit as its problem deletion. Honor selective
+  confirmation: withdraw unconfirmed candidates using the snapshots, even when
+  the task itself is confirmed.
+- **Declined** → withdraw only this run's unconfirmed problem-retirement
+  candidates using the 6b.1 snapshots, preserving unrelated work and recording
+  the verification results in the retained task brief. Then commit the
+  implementation and any *already-wrong* link fixes
   *without* the deletion, leave the links that only the deletion would have
   broken and the dependency entries exactly as they are, leave the brief in its bucket with
   `status: in-progress` (which is then simply true), and say what is
@@ -283,8 +318,8 @@ look afterwards like it covered them.
 Completed tasks are deleted, not archived; git preserves the history and
 `git log --diff-filter=D` finds them. `git rm <tasks>/<bucket>/<task>.md` and
 commit it together with the final implementation change, any link fixes, and
-any dependency entries removed from other briefs, so
-one commit shows the work and the brief's removal as the single event they are.
+any dependency entries removed from other briefs, and the confirmed problem
+retirements with their receipts, so one commit shows the work and the brief's removal as the single event they are.
 
 Before committing, read `git status --short` and confirm the brief shows `D`.
 This is the runner's "the brief is gone" check, deferred from 6a to the one
@@ -297,7 +332,9 @@ evidence you wrote beside them then exist in no commit at all, and the history
 that was supposed to preserve the finished brief preserves the unfinished one.
 Phase 4's commit-as-you-go normally handles this. If the last criterion was
 ticked without a commit, commit that first, then delete in a second commit —
-two commits that keep the record beat one that reads well and loses it.
+two commits that keep the record beat one that reads well and loses it. Commit
+that brief checkpoint by explicit path, excluding staged problem-retirement
+candidates so their deletions and receipts remain together for close-out.
 
 The `status: in-progress` marker disappears with the file. That is the only
 clean way it goes away.
@@ -313,4 +350,6 @@ is that the human cannot inspect a branch the way a runner can:
 - Which checks ran and what they printed.
 - Inbound references found and how each was handled, including the briefs
   whose `dependencies:` lost this slug and any that are now unblocked.
+- Each linked problem inspected, its resolver outcome, any retirement commit,
+  and pending Kaizen receipt; distinguish task completion from unresolved claims.
 - Anything deliberately left undone, and why.

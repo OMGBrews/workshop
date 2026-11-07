@@ -1,6 +1,6 @@
 ---
 name: problem-audit
-description: Read-only staleness audit of this repository's problem records against current evidence and usable git history — every record at repo breadth, or one record in depth. Use to re-verify whether documented flaws and their evidence still hold; retirement remains with `kaizen-resolve`.
+description: Read-only staleness audit of this repository's problem records against current evidence and usable git history — every record at repo breadth, or one record in depth. Use to re-verify whether documented flaws and their evidence still hold; retirement remains with `problem-resolve`.
 ---
 
 # Audit problem records
@@ -11,7 +11,7 @@ when given a path, filename, or title.
 
 This skill is **strictly read-only**. Do not edit, stamp, move, stage, delete, or
 commit a record, and do not run corrective commands. Even a likely fix is only
-a finding: `kaizen-resolve` owns the separate verification and retirement gate.
+a finding: `problem-resolve` owns the separate verification and retirement gate.
 
 ## Scope and modes
 
@@ -99,7 +99,7 @@ Use exactly one of these verdicts for each record:
 - **Still present** — current evidence supports that the documented flaw still
   exists.
 - **Likely fixed** — current evidence supports a fix, but the independent
-  world-side verification required by `kaizen-resolve` has not retired it.
+  world-side verification required by `problem-resolve` has not retired it.
 - **Premise drifted** — an assumption underlying the record has changed enough
   that the original claim no longer describes the present system.
 - **Evidence rotted** — cited support is now unusable or no longer establishes
@@ -121,7 +121,7 @@ For each audited record, report:
 - current supporting, contrary, and missing evidence, including which cited
   paths were tracked and which belonged elsewhere;
 - the verdict and the facts that justify it; and
-- the next owner when action is warranted: `kaizen-resolve` for **Likely
+- the next owner when action is warranted: `problem-resolve` for **Likely
   fixed**, or ordinary task planning when the flaw still needs a fix.
 
 In repo-wide mode, lead with the record count and a compact one-line result for

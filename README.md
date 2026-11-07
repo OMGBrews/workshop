@@ -42,6 +42,13 @@ for the image-build path, the live-apply command, and the host-terminal prerequi
 For surviving work from the retired autonomous runner, follow the
 [task queue recovery guidance](docs/task-queue-retirement.md).
 
+Problem records and Kaizen have separate lifecycles. The
+[problem lifecycle](docs/problem-lifecycle.md) covers existing flaws through
+verified retirement with `problem-resolve`; the
+[Kaizen guide](docs/kaizen-guide.md) covers incidents, recurring tendencies, and
+journal retention. Kaizen review can discover a problem without owning its
+retirement.
+
 ## Checks and releases
 
 Run `make check` from a standalone clone to execute Workshop's complete public

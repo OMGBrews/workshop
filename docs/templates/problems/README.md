@@ -18,7 +18,7 @@ Create a problem document when:
 Do not create a problem document for:
 
 - **Concrete, ready-to-execute work** → the repo's tasks directory (`docs/work/tasks/`)
-- **Friction in how we build** — collaboration loops between humans, AI agents, and tooling → `docs/work/kaizen/journal/`; recurring *tendencies* distilled from it → `docs/work/kaizen/patterns/`. A problem tracks a fixable *state*; a pattern tracks a *tendency*. The discriminator is whether "verified gone" is a meaningful endpoint.
+- **An incident or lesson about how we work** → `docs/work/kaizen/journal/`; recurring tendencies belong in `docs/work/kaizen/patterns/`. A specific defect in tooling, process, or instructions still belongs here when its continued existence and eventual removal can be verified. The incident and the defect may each warrant a record.
 - **Speculative future features** → the repo's planning/ideas area
 
 ## Priority buckets
@@ -37,53 +37,23 @@ execution buckets; related tasks own implementation.
 
 ## Lifecycle
 
-A problem document persists while the flaw exists. Delete it once the flaw is
-verified gone — usually after a task fixes it, but **task completion alone is not
-the trigger**: verify the flaw from the world's side first. Git preserves history.
-Surviving journal slug citations do not veto retirement: leave entries unchanged
-and report their citations. Repair editable inbound references in the same change;
-do not keep fixed problems as evidence archives.
+The canonical [problem lifecycle](../../problem-lifecycle.md) owns creation,
+planning, and retirement independently of Kaizen adoption. When seeding this
+README into a consumer, rewrite that link to its mounted Workshop guide.
 
-Journal entries cite tasks, problems, and patterns by backticked slug, with type
-and repository where needed for identification. Links to journal evidence remain
-real links. The canonical policy is **Journal citations and one-time adoption**
-in the Workshop distribution's `docs/kaizen-guide.md`.
+A problem persists while its flaw exists. `problem-resolve` verifies the actual
+outcome before retiring it; task completion alone is not evidence. Acceptance
+and deferment retain an existing flaw. Git preserves retired records.
+Repair editable inbound references in the same change and run applicable checks.
 
-For a previously seeded repository without a mounted guide, the adoption rules
-are available here: before moving or retiring records with legacy journal links,
-inventory the entire journal's links (including reference-style, missing, and
-cross-repository targets). Establish each task/problem/pattern target's slug,
-type, and repository from its contents or, for missing targets, its owning git
-history; record the historical revision. Do not guess ambiguous identities.
-Convert only those citations to descriptive text plus backticked slug, preserving
-surrounding historical wording and cross-repository identity. Remove unused
-reference definitions only; keep definitions still used elsewhere. Preserve
-meaningful section descriptions. Never convert journal evidence links or rewrite
-unrelated prose. Review the diff and record the migration, mappings, and history
-evidence in git as an **explicit one-time immutability exception**. Align local
-guidance without discarding deliberate local rules. Run the consumer's required
-whole-tree link check over the migrated files and report the actual result.
-Unresolved identities or a failed check leave adoption incomplete; finish it
-before retirement, without exclusions or weakened checks. Afterwards, surviving
-journal entries remain byte-for-byte unchanged. A later legacy link means
-incomplete adoption, not permission for routine journal edits.
+Journal entries are preserved during problem retirement. If the problem cites
+journal evidence, `problem-resolve` writes a pending review receipt with the
+deletion; `kaizen-review` later decides retention. Journal slug citations survive
+unchanged, and legacy journal links require the guide's one-time adoption before
+retirement. A problem without journal involvement requires no Kaizen files.
 
-Initial seeding requires an available Workshop distribution; a lone skill copy
-cannot supply an absent template. Deliberate local policy conflicts must be
-resolved before adopting or retiring, not silently overridden.
-
-**Deleting the document deletes the journal entries it consumed.** A problem filed from a kaizen cluster cites `docs/work/kaizen/journal/` entries as evidence; those entries are *consumed* by it, and the same commit that deletes the document deletes them — provided nothing else live still cites them. Check each one before removing it:
-
-```bash
-grep -rn "<entry-filename-without-.md>" --exclude-dir=.git docs/      # linked citations
-grep -rn "<a distinctive phrase from the entry's title>" --exclude-dir=.git docs/   # prose ones
-```
-
-Any hit from something live — a pattern, another problem, a task, an instruction file, or another journal entry — and the entry stays. The rule, the reasoning, and the second grep's necessity are in the mounted Workshop tree's `docs/kaizen-guide.md` under *The journal's lifecycle*.
-
-The cascade belongs to **the session that verifies the flaw gone**, because that session is the only one holding the document's evidence list — once the file is deleted, nothing records which entries it absorbed. `/kaizen-resolve` is that session's ritual — run it rather than reconstructing this by hand. Skipping it costs one stray entry rather than a broken link, but that entry then matches nothing and is read by every future review.
-
-A single problem may spawn one task or several. Tasks reference back to the problem document for context; the problem does not restate their acceptance criteria.
+A single problem may spawn several tasks. Tasks carry solutions and cite the
+problem; the problem does not restate their acceptance criteria.
 
 ## Document structure
 
@@ -122,7 +92,7 @@ A record the user has decided to live with carries one line recording that decis
 
 `problem-plan` writes it, replaces it on a revisit, and stops on a record that already carries one. An Accepted record is parked in `parked/`, and the line is its parking reason. A record planned into a task carries no Disposition line: the task citing the record is the mark. A record with neither has not been decided yet.
 
-Skills: `problem-create` files a record from the canonical template, `problem-status` reports current signals, `problem-audit` re-verifies the record in depth, `problem-plan` decides what to do about it, and `kaizen-resolve` retires it only after the flaw is verified gone.
+Skills: `problem-create` files a record from the canonical template, `problem-status` reports current signals, `problem-audit` re-verifies the record in depth, `problem-plan` decides what to do about it, and `problem-resolve` retires it only after the flaw is verified gone.
 
 ## See also
 

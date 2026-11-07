@@ -16,7 +16,7 @@
          matches the world
        - `problem-plan` — decides what to do about a record, and writes its
          Disposition line when the decision is to live with the flaw
-       - `kaizen-resolve` — verifies a flaw gone before retiring its record
+       - `problem-resolve` — verifies a flaw gone before retiring its record
 
      Disposition: a new record carries none. `problem-plan` adds one line,
      never a frontmatter field, directly after the In brief paragraph (after

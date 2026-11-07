@@ -44,6 +44,9 @@ for kind in problem task pattern; do
   printf '# Consumed evidence\n\nThe original observation remains relevant to the survivor.\n' > "$repo/$evidence"
   printf '# Survivor\n\nThe [known issue](%s) recurred.\nSee [original evidence](2026-01-01-consumed.md).\n' "$destination" > "$repo/$survivor"
   printf '# Index\n\n[Active record](%s)\n' "${target#docs/}" > "$repo/docs/index.md"
+  if [[ "$kind" == problem ]]; then
+    printf '\nEvidence: [original observation](../kaizen/journal/2026-01/2026-01-01-consumed.md)\n' >> "$repo/$target"
+  fi
   git -C "$repo" init -q
   commit_all "$repo" legacy
   expect_pass "$kind initial links"
@@ -68,6 +71,25 @@ for kind in problem task pattern; do
   git -C "$repo" add docs/index.md
   cmp "$repo/$survivor" "$work/$kind-survivor.before" || fail "$kind retirement changed survivor"
   cmp "$repo/$evidence" "$work/$kind-evidence.before" || fail "$kind retirement changed evidence"
+  if [[ "$kind" == problem ]]; then
+    receipt='docs/work/kaizen/pending-problem-reviews/fixed.md'
+    mkdir -p "$repo/$(dirname "$receipt")"
+    source_sha=$(git -C "$repo" rev-parse HEAD)
+    cat > "$repo/$receipt" <<EOF
+# Pending evidence review
+
+Evidence from retired problem fixed awaits Kaizen review.
+
+Former path: docs/work/problems/fixed.md
+Source revision: $source_sha (retired copy unchanged).
+Reason: the fixture's marker was verified corrected. Pending Kaizen review.
+
+[Consumed evidence](../journal/2026-01/2026-01-01-consumed.md)
+EOF
+    git -C "$repo" add "$receipt"
+    [[ "$(git -C "$repo" diff --cached --name-only | wc -l)" -eq 3 ]] \
+      || fail 'retirement must stage exactly problem, index, receipt'
+  fi
   expect_pass "$kind adopted retirement"
 
   # The surviving evidence link remains a real dependency, never a slug citation.
@@ -78,4 +100,32 @@ for kind in problem task pattern; do
   printf 'ok - %s: legacy deletion fails; adopted retirement preserves journals; cited evidence stays protected\n' "$kind"
 done
 
+# With no journal dependency, problem retirement creates no Kaizen directory.
+repo="$work/no-kaizen"
+mkdir -p "$repo/docs/work/problems"
+git -C "$repo" init -q
+printf '# Fixed problem\n\nThe fixture marker is corrected.\n' > "$repo/docs/work/problems/fixed.md"
+commit_all "$repo" initial
+git -C "$repo" rm -q docs/work/problems/fixed.md
+expect_pass 'retirement without Kaizen'
+[[ ! -e "$repo/docs/work/kaizen" ]] || fail 'unexpected Kaizen prerequisite'
+
+# A receipt alone protects evidence even when no other artifact cites it.
+repo="$work/problem"
+survivor="docs/work/kaizen/journal/2026-01/2026-01-02-survivor.md"
+evidence="docs/work/kaizen/journal/2026-01/2026-01-01-consumed.md"
+# shellcheck disable=SC2016 # Literal Markdown citation.
+printf '# Survivor\n\nHistorical problem `fixed` is retired.\n' > "$repo/$survivor"
+expect_pass 'receipt holds otherwise unreferenced evidence'
+git -C "$repo" rm -q "$evidence"
+run_check
+[[ "$rc" -eq 1 ]] || fail 'dangling pending receipt must fail'
+grep -Fq "broken Markdown link: $receipt -> ../journal/2026-01/2026-01-01-consumed.md" "$work/check.log" \
+  || fail 'checker did not identify pending evidence loss'
+git -C "$repo" restore --source=HEAD --staged --worktree -- "$evidence"
+# Model review retaining a useful lesson in the watchlist, then discharging receipt.
+printf '# Watchlist\n\n[Consumed evidence](journal/2026-01/2026-01-01-consumed.md) — fixture lesson remains useful.\n' > "$repo/docs/work/kaizen/singletons.md"
+rm "$repo/$receipt"
+expect_pass 'review hands retained evidence to watchlist'
+cmp "$repo/$evidence" "$work/problem-evidence.before" || fail 'review altered evidence'
 echo 'all journal-citation fixtures passed'

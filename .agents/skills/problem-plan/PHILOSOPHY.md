@@ -70,7 +70,7 @@ candidates die, and adjudication happens before the user sees anything.
 
 The same division runs across the problem lifecycle. `problem-status` says
 whether the flaw still stands; this skill decides what to do about it;
-`task-finalize` designs the fix; `kaizen-resolve` retires the record once
+`task-finalize` designs the fix; `problem-resolve` retires the record once
 the flaw is verified gone. A record never gains a solution section, because
 a record describes the present and a solution describes the future; the
 chosen fix lives in the task that cites the record. The only mark the skill

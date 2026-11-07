@@ -40,7 +40,7 @@ rubric rather than silently overriding the instruction.
 - In-progress or queued tasks provide context, not automatic promotion, demotion,
   pinning, or evidence that harm has stopped.
 - A completed task does not resolve a problem. A supported likely-fixed finding
-  routes to kaizen-resolve; leave the record in place pending that workflow.
+  routes to problem-resolve; leave the record in place pending that workflow.
 - Rotten or uncertain evidence is not low severity. Rank the need to investigate
   the claimed impact and state the uncertainty. Do not call an old claim current
   merely because nobody has disproved it.
@@ -59,7 +59,7 @@ observable is placement and preserved evidence, not matching explanatory wording
 | Urgent flaw whose fix depends on another team | Keep attention now if harm remains; explain dependency |
 | Low-impact inconvenience with a reliable workaround | Later may be appropriate even when now has open capacity |
 | Related task merged, no world-side verification | Preserve problem; task completion alone cannot retire or demote it |
-| Audit reports likely fixed | Leave location unchanged; route to kaizen-resolve |
+| Audit reports likely fixed | Leave location unchanged; route to problem-resolve |
 | Two otherwise comparable flaws, one directly in focus | Focus may determine which receives earlier attention; cite it |
 | Never contains a newly concerning flaw | Report it and the need for an explicit placement decision; no automatic move |
 | Mixed root, bucketed, parked, and legacy prose records | Inventory all once; classify root candidates individually |

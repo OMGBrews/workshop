@@ -3,6 +3,15 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **Problems own their retirement.** `problem-resolve` verifies and retires
+  problem records without requiring Kaizen adoption. Journal evidence survives;
+  pending receipts give `kaizen-review` a bounded retention inbox independent of
+  its date window. `task-implement` invokes problem verification for linked
+  resolved flaws during close-out. `kaizen-resolve` is a compatibility redirect. On adoption,
+  refresh skill links and reconcile seeded problem/Kaizen READMEs with
+  `docs/problem-lifecycle.md`; do not retain the former same-commit problem
+  cascade. Existing journal contents remain unchanged.
+
 - **Documentation checks evaluate one repository view.** The shared provider
   exposes stable working-tree and exact-index snapshots to shell and Python
   consumers. The Markdown checker now includes non-ignored new files, omits

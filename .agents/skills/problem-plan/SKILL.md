@@ -1,6 +1,6 @@
 ---
 name: problem-plan
-description: Decide what to do about one problem record in docs/work/problems/ — gate it on current status and prior plans, diverge over candidate resolutions with a small read-only fan-out when the fix is not already settled, agree the approach with the user one fork per turn, then hand the decision into one or more tasks (or a cross-repo handoff, a design document, or an accept/defer line on the record) and offer task-finalize. The decide stage between problem-status and kaizen-resolve; the record never gains a solution section. Requires a record name or path.
+description: Decide what to do about one problem record in docs/work/problems/ — gate it on current status and prior plans, diverge over candidate resolutions with a small read-only fan-out when the fix is not already settled, agree the approach with the user one fork per turn, then hand the decision into one or more tasks (or a cross-repo handoff, a design document, or an accept/defer line on the record) and offer task-finalize. The decide stage between problem-status and problem-resolve; the record never gains a solution section. Requires a record name or path.
 ---
 
 # Plan a problem
@@ -11,7 +11,7 @@ the approach with the user, and hand that decision to whatever owns the next
 artifact. This is the decide stage of the problem lifecycle. `problem-create`
 and `kaizen-review` file a record; `problem-status` and `problem-audit` say
 whether it still holds; **this skill decides what to do about it**;
-`task-finalize` designs the chosen fix; `kaizen-resolve` retires the record
+`task-finalize` designs the chosen fix; `problem-resolve` retires the record
 once the flaw is verified gone.
 
 The record itself is not finished by this skill and is never deleted by it. A
@@ -119,13 +119,13 @@ which fixes the record and continues.
    a changed mechanism is what makes Likely fixed, and the measured rate
    goes in the task's Context. Act on the verdict:
    - **Still present** — continue.
-   - **Likely fixed** — hand to `kaizen-resolve` and stop. Do not plan a fix
+   - **Likely fixed** — hand to `problem-resolve` and stop. Do not plan a fix
      for a flaw that may be gone.
    - **Premise drifted** or **Evidence rotted** — repair before planning:
      rewrite the affected sections so they are true at HEAD, keeping the
      record's structure, and name the commits that changed the ground. This
      is authored content (Phase 8). If the repair shows no flaw remains, that
-     is Likely fixed: route to `kaizen-resolve`. Stale line numbers alone are
+     is Likely fixed: route to `problem-resolve`. Stale line numbers alone are
      not drift — the task will carry durable anchors — so leave them.
    - **Cannot tell** — say exactly what could not be checked and ask whether
      to plan on the record's claims or gather evidence first. Planning on
@@ -329,7 +329,7 @@ changes the weight of a candidate, the next question says so.
 | The fix needs a design before tasks can be cut | A design document, below |
 | A rejected candidate is worth keeping in view | An idea document, below — alongside the exit that won |
 | Live with it, for now or for good | A `**Disposition**:` line on the record, below |
-| Already fixed | Nothing here — `kaizen-resolve`, from Phase 2 |
+| Already fixed | Nothing here — `problem-resolve`, from Phase 2 |
 
 One record may take two exits — a handoff plus the local task that waits on
 it, an accepted flaw whose worst symptom still gets a task, a task plus the

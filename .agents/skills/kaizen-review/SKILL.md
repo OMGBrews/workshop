@@ -9,7 +9,7 @@ The **Act** stage of the kaizen PDCA loop, run interactively. The `session-end` 
 
 Two properties shape everything below:
 
-- **The journal is content-immutable.** It is a record of what happened, so this skill never *edits* an entry — not to renumber, not to cross-reference, not to correct. It does end an entry's life: the guide's *The journal's lifecycle* section gives every entry two exits — deleted with the artifact that consumed it, or aged off the watchlist — and both are this skill's to perform. The guide's one-time citation adoption is an explicit, separately recorded exception; routine review still leaves surviving entries unchanged and deletes consumed entries whole. `patterns/` is the present-tense synthesis; `singletons.md` is the watchlist of entries still waiting for a sibling, and this skill is its only writer.
+- **The journal is content-immutable.** It is a record of what happened, so this skill never *edits* an entry — not to renumber, not to cross-reference, not to correct. It does end an entry's life: the guide's *The journal's lifecycle* section defines entry retention — pattern graduation, problem-retirement receipt review, and watchlist age-out — and those exits are this skill's to perform. The guide's one-time citation adoption is an explicit, separately recorded exception; routine review still leaves surviving entries unchanged and deletes consumed entries whole. `patterns/` is the present-tense synthesis; `singletons.md` is the watchlist of entries still waiting for a sibling, and this skill is its only writer.
 - **Graduation is the point, and graduation is destructive.** A pattern graduates by having its lesson written into a live standard, its own file deleted, and the entries it consumed deleted with it. Both halves are the human's call, and the delete half is only safe once the write half is verified from the reader's side — see Phase 5.
 
 Repo-agnostic: it works in any project that has adopted kaizen and stops cleanly in one that has not.
@@ -20,9 +20,9 @@ Repo-agnostic: it works in any project that has adopted kaizen and stops cleanly
 
 ## Phase 1 — Preconditions
 
-1. **Is kaizen adopted here?** `docs/work/kaizen/` with `journal/` and `patterns/` under it. If it is absent, print `This project has not adopted kaizen — no docs/work/kaizen/ directory. Invoke the kaizen-init skill to scaffold it, then come back.` and **stop**. Do not scaffold, do not offer to; adoption is its own decision and its own skill.
+1. **Is kaizen adopted here?** `docs/work/kaizen/` with `journal/` and `patterns/` under it. If receipts exist without a complete Kaizen layout, preserve them, report that adoption is needed before reviewing them, and stop. If it is absent, print `This project has not adopted kaizen — no docs/work/kaizen/ directory. Invoke the kaizen-init skill to scaffold it, then come back.` and **stop**. Do not scaffold, do not offer to; adoption is its own decision and its own skill.
 2. **Resolve the guide.** Resolve it by the physical-directory rule ([`skill-path-resolution.md`](../../../docs/skill-path-resolution.md)): `<this skill's physical directory>/../../../docs/kaizen-guide.md` first (follow the symlink before taking `..`), then the repo-root paths kept for repos that mount the docs elsewhere — `<mount>/docs/kaizen-guide.md` from the repo root, under whatever name this repo mounts the tree by, and the project's `docs/work/kaizen/README.md` where it links the guide. If nothing resolves, **degrade rather than stopping**: run the procedure this body carries, and say in the report that the guide was not found and this run is therefore thinner than a full one — the standing rules the guide would have imported are this body's own wording instead of the canonical source.
-3. **Read the guide's "Analysis (the Act stage)" section and its "Pattern format" block now.** Not from memory, and not from this file — the procedure, the graduation destinations, and the pattern fields live there and are deliberately not restated here. One source, so the two cannot disagree.
+3. **Read the guide's "Analysis (the Act stage)", "The journal's lifecycle", and "Pattern format" sections now.** Not from memory, and not from this file — the procedure, the graduation destinations, and the pattern fields live there and are deliberately not restated here. One source, so the two cannot disagree.
 
 ---
 
@@ -47,7 +47,14 @@ Print the window and the entry count before reading anything, so the report's sc
 
 ## Phase 3 — Read the ground
 
-Three things, in this order:
+First inspect `docs/work/kaizen/pending-problem-reviews/`. Read every receipt
+and its linked evidence regardless of the chosen window, even an empty window.
+Apply the guide's **Problem retirement receipts** procedure during this review;
+report receipt outcomes separately from windowed-entry counts. If the guide is
+unavailable, leave receipts and their evidence untouched and report that work as
+pending. Never infer a deletion permission from a fixed problem.
+
+Then read three things, in this order:
 
 1. **Every existing pattern file, in full.** `docs/work/kaizen/patterns/*.md` (skip `README.md`). You cannot decide whether an entry joins an existing cluster against a pattern you have only seen the title of, and the whole cost of getting this wrong is a duplicate pattern competing with the real one.
 2. **The watchlist, `docs/work/kaizen/singletons.md`, in full.** This is the matching set for everything *outside* the window: one line per entry an earlier review could not cluster, each carrying its root cause precisely so you can match against it without re-reading the corpus. It is short by construction and it is the whole reason a windowed review can still catch a pair whose halves are months apart. A missing file means no review has needed one yet — you will create it in Phase 4. Do **not** substitute a grep over the journal: that is the unbounded read the watchlist exists to replace, and in this workspace a recursive grep silently searches one repo anyway.
@@ -199,7 +206,8 @@ Print a concise block:
 - **Graduations** — applied (destination, and the reader-side check that confirmed it), proposed-and-declined, and any left as candidates for next time.
 - **Counts and triggers** — any occurrence count updated, and any threshold crossed, with the task that owns the escalation.
 - **Watchlist** — lines **added** (how many, and their titles), lines **matched** into a pattern or problem and dropped, lines **aged out**, and any line dropped while its entry survived on a live citation. If this pass created `singletons.md`, say so and say it was seeded from the whole corpus.
-- **Journal deletions** — every entry removed, by cascade or by age-out, naming the artifact that consumed it; and every entry the citation check *kept*, naming what held it. Both halves: a cascade that reports only its deletions cannot be checked.
+- **Problem receipts** — each discharged or pending receipt, the retention decision for every entry, and any new pattern or watchlist destination.
+- **Journal deletions** — every entry removed, by pattern cascade, receipt review, or age-out, naming its owner and retention decision; and every entry the citation check *kept*, naming what held it. Both halves: a cascade that reports only its deletions cannot be checked.
 - **Reach** — for each graduation, whether the destination is live here; for a shared Workshop destination, whether this project and other intended consumers still await adoption.
 - **Uncommitted** — the files changed and the deletions staged, so the human can review and commit them.
 
@@ -210,7 +218,7 @@ Do not commit and do not push. The changes are on disk and named; committing the
 ## Hard "do NOT" list
 
 - **Do NOT edit, renumber, or cross-reference a journal entry during review.** The journal is content-immutable; the guide's one-time citation adoption is a separate, recorded exception, not a review operation. Everything this skill has to say goes in `patterns/`, in `singletons.md`, or in a destination artifact.
-- **Do NOT delete a journal entry outside the two exits the guide defines** — the consumption cascade (the artifact that absorbed it is being deleted in the same commit) and watchlist age-out. Tidying, deduplicating, "it's obsolete", "it's covered elsewhere" are not exits; that is destroying the record.
+- **Do NOT delete a journal entry outside the exits the guide defines** — pattern graduation, a completed problem-receipt retention review, or watchlist age-out. Tidying, deduplicating, "it's obsolete", "it's covered elsewhere" are not exits; that is destroying the record.
 - **Do NOT delete an entry whose citation check found a live citer** — including another journal entry, whose link you could never repair. Keep it and report what held it.
 - **Do NOT leave a singleton as a report line only.** It goes on the watchlist, or the review after next cannot see its second instance arrive, which is the whole failure this lifecycle exists to close.
 - **Do NOT write a pattern from a single entry.** Two or more sharing a root cause — a windowed pair, or a windowed entry matching a watch line — or it is a singleton and it waits.
@@ -225,7 +233,7 @@ Do not commit and do not push. The changes are on disk and named; committing the
 
 ## See also
 
-- [`kaizen-guide.md`](../../../docs/kaizen-guide.md) — the canonical practice: the PDCA cycle, the Act-stage procedure, the pattern format, and the graduation destinations. This skill is that section, run.
+- [`kaizen-guide.md`](../../../docs/kaizen-guide.md) — the canonical practice: the PDCA cycle, the Act-stage procedure, the pattern format, and the graduation destinations. This skill runs that section and the journal-retention procedure.
 - [`kaizen-init`](../kaizen-init/SKILL.md) — scaffolds `docs/work/kaizen/` into a project that has not adopted kaizen.
 - [`session-end`](../session-end/SKILL.md) — the per-session Check stage. Its Phase 2c is where the boundary between the two skills is written down.
 - [`consumed-by.md`](../../../docs/work/consumed-by.md) — the declared wrapper
