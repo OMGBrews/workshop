@@ -901,8 +901,10 @@ Current third-party libraries used in the project. Maintained by `/update-librar
 The link checker uses a [working-tree repository view](repository-views.md):
 new non-ignored Markdown sources are checked, unstaged deletions are omitted,
 and surviving links to deleted targets fail. Sources, skip configuration, and
-targets all come from the captured view; staging edits is unnecessary. Other
-checks can use the provider's exact-index view to evaluate a proposed commit.
+targets all come from the view; staging edits is unnecessary. Explicit target
+repositories are listed from Git and consulted live, one linked path at a time.
+Other checks can use the provider's exact-index view to evaluate a proposed
+commit.
 
 ### What to check during review
 

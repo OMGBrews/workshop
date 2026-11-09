@@ -12,6 +12,13 @@ they create a manually initiated milestone tag or GitHub Release.
   `docs/problem-lifecycle.md`; do not retain the former same-commit problem
   cascade. Existing journal contents remain unchanged.
 
+- **Target repositories cost what their links use.** An explicit
+  `--target-repository` is listed from Git and each linked path is checked on
+  disk when a link first refers to it, instead of copying every file in the
+  target. A target file is read on first use and keeps those bytes for the
+  run; other concurrent changes to a target are not detected. Link outcomes
+  are unchanged.
+
 - **Documentation checks evaluate one repository view.** The shared provider
   exposes stable working-tree and exact-index snapshots to shell and Python
   consumers. The Markdown checker now includes non-ignored new files, omits
