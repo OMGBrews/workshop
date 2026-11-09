@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import errno
 import json
 import os
 from pathlib import Path
@@ -58,6 +59,9 @@ def _safe(path: str) -> str:
     return "" if normalized == "." else normalized
 
 
+UNCONFIRMED = "unconfirmed"
+
+
 class ManifestView:
     """Read-only logical operations over an already captured view."""
 
@@ -76,11 +80,21 @@ class ManifestView:
         except (OSError, ValueError, KeyError) as exc:
             raise ViewError(f"cannot read repository-view manifest: {exc}") from exc
 
+    def _entry(self, path: str):
+        """Return one entry's metadata; live views confirm target entries here."""
+        return self.entries.get(path)
+
     def paths(self, *, owner: str | None = None,
               origin: str | None = None, suffix: str = ""):
-        """Yield non-directory entries, preserving names (including newlines)."""
+        """Yield non-directory entries, preserving names (including newlines).
+
+        A target repository's unconfirmed entries are names only: inferred
+        directories are omitted and listed names are yielded unconfirmed.
+        """
         for path, entry in sorted(self.entries.items()):
             if entry["kind"] in ("directory", "unavailable"):
+                continue
+            if entry["kind"] == UNCONFIRMED and entry.get("inferred"):
                 continue
             if owner is not None and entry["owner"] != owner:
                 continue
@@ -104,7 +118,7 @@ class ManifestView:
             parts = path.split("/") if path else []
             for index in range(len(parts)):
                 prefix = "/".join(parts[:index + 1])
-                entry = self.entries.get(prefix)
+                entry = self._entry(prefix)
                 if entry and entry["kind"] == "symlink":
                     target = entry["target"]
                     if target.startswith("/"):
@@ -121,10 +135,10 @@ class ManifestView:
         raise ViewError(f"symlink cycle or excessive depth: {path!r}")
 
     def exists(self, path: str) -> bool:
-        return self.resolve(path) in self.entries
+        return self._entry(self.resolve(path)) is not None
 
     def is_dir(self, path: str) -> bool:
-        entry = self.entries.get(self.resolve(path))
+        entry = self._entry(self.resolve(path))
         return entry is not None and entry["kind"] == "directory"
 
     def path(self, path: str) -> Path:
@@ -154,6 +168,9 @@ class RepositoryView(ManifestView):
         self.unavailable = []
         self._temp = None
         self._active = set()
+        # Target repositories contribute names, confirmed on first use.
+        self._children = {}
+        self._materialized = set()
 
     def __enter__(self) -> RepositoryView:
         try:
@@ -181,8 +198,9 @@ class RepositoryView(ManifestView):
                 self._parents(mount, mount, "untracked")
                 self.entries[mount] = {"kind": "directory", "owner": mount,
                                        "origin": "untracked", "target_repository": True}
+                self._adopt(mount)
                 (self.root / mount).mkdir()
-                self._capture(checkout, mount, None)
+                self._list_target(checkout, mount)
             self.manifest.write_text(json.dumps({"version": 1, "mode": self.mode,
                 "root": str(self.root), "entries": self.entries,
                 "unavailable": self.unavailable}, ensure_ascii=True))
@@ -203,7 +221,163 @@ class RepositoryView(ManifestView):
         if parent and parent not in self.entries:
             self._parents(parent, owner, origin)
             self.entries[parent] = {"kind": "directory", "owner": owner, "origin": origin}
+            self._adopt(parent)
             (self.root / parent).mkdir(exist_ok=True)
+
+    # -- Target repositories: names listed from Git, confirmed on demand. --
+
+    def _adopt(self, path: str):
+        """Record a path as its parent's child, for descendant confirmation."""
+        self._children.setdefault(posixpath.dirname(path), []).append(path)
+
+    def _note(self, path: str, entry: dict):
+        """Record a target entry and infer unconfirmed parents, touching no file."""
+        parent = posixpath.dirname(path)
+        if parent and parent not in self.entries:
+            self._note(parent, {"kind": UNCONFIRMED, "owner": entry["owner"],
+                                "origin": entry["origin"], "inferred": True})
+        previous = self.entries.get(path)
+        if previous is None:
+            self._adopt(path)
+            self.entries[path] = entry
+        elif previous["kind"] == UNCONFIRMED and previous.get("inferred"):
+            # A listed name outranks a directory inferred from its descendants.
+            self.entries[path] = entry
+
+    def _list_target(self, repo: Path, owner: str):
+        identity = (str(repo.resolve()), None)
+        if identity in self._active:
+            raise ViewError("recursive repository cycle")
+        self._active.add(identity)
+        try:
+            _, tracked = self._index(repo, allow_unmerged=True)
+            others = _git(repo, "ls-files", "--others", "--exclude-standard", "-z")
+            names = [(_safe(name), mode) for name, mode, _ in tracked]
+            # A nested repository that is not a submodule is listed as "B/";
+            # _safe normalizes it so the overlap test still sees "B".
+            names += [(_safe(_name(name)), "") for name in others.split(b"\0") if name]
+            for name, mode in names:
+                if not name:
+                    raise ViewError(f"invalid Git path: {name!r}")
+                logical = posixpath.join(owner, name)
+                if mode != "160000":
+                    self._note(logical, {"kind": UNCONFIRMED, "owner": owner,
+                                         "origin": "untracked" if mode == "" else "tracked"})
+                    continue
+                child = self._child(repo, name, b"", working=True, store=False, oid="")
+                if child is None:
+                    self._note(logical, {"kind": "unavailable", "owner": owner,
+                                         "origin": "tracked", "mode": "160000"})
+                    self.unavailable.append(logical)
+                    continue
+                self._note(logical, {"kind": "directory", "owner": logical,
+                                     "origin": "tracked", "mode": "160000"})
+                self._list_target(child[0], logical)
+        finally:
+            self._active.remove(identity)
+
+    def _probe(self, path: str):
+        """lstat one live path below the root without following any symlink."""
+        parts = path.split("/")
+        directory = os.open(self.repo, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            for component in parts[:-1]:
+                try:
+                    next_dir = os.open(component, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                                       dir_fd=directory)
+                except (FileNotFoundError, NotADirectoryError):
+                    return None, None
+                except OSError as exc:
+                    if exc.errno == errno.ELOOP:
+                        return None, None
+                    raise
+                os.close(directory)
+                directory = next_dir
+            try:
+                found = os.stat(parts[-1], dir_fd=directory, follow_symlinks=False)
+            except (FileNotFoundError, NotADirectoryError):
+                return None, None
+            target = (os.readlink(parts[-1], dir_fd=directory)
+                      if stat.S_ISLNK(found.st_mode) else None)
+            return found, target
+        finally:
+            os.close(directory)
+
+    def _entry(self, path: str):
+        entry = self.entries.get(path)
+        if entry is not None and entry["kind"] == UNCONFIRMED:
+            self._confirm(path)
+            entry = self.entries.get(path)
+        return entry
+
+    def _confirm(self, path: str):
+        """Settle one unconfirmed target entry against the live tree, once.
+
+        Only listed names and their ancestors are ever confirmed, so an
+        unlisted (ignored) live file is never visible.
+        """
+        entry = self.entries[path]
+        parent = posixpath.dirname(path)
+        above = self._entry(parent) if parent else self.entries[""]
+        if above is None or above["kind"] != "directory":
+            # A missing parent, or a file or symlink that replaced a tracked
+            # directory, hides every former descendant.
+            del self.entries[path]
+            return
+        found, target = self._probe(path)
+        if found is None:
+            del self.entries[path]
+            return
+        if stat.S_ISLNK(found.st_mode):
+            confirmed = {"kind": "symlink", "mode": "120000", "target": target}
+        elif stat.S_ISREG(found.st_mode):
+            confirmed = {"kind": "file", "mode": "100755" if found.st_mode & 0o111 else "100644"}
+        elif stat.S_ISDIR(found.st_mode):
+            confirmed = {"kind": "directory"}
+        else:
+            raise ViewError(f"unsupported working-tree entry type: {path!r}")
+        inferred = entry.get("inferred")
+        if inferred and confirmed["kind"] != "directory":
+            # The replacing file or symlink is itself unlisted content.
+            entry = dict(entry, origin="untracked")
+        merged = {key: value for key, value in entry.items() if key != "inferred"}
+        merged.update(confirmed)
+        self.entries[path] = merged
+        if confirmed["kind"] != "directory":
+            return
+        # A listed directory is present even when empty. A directory inferred
+        # only from listed descendants is present only if one of them is.
+        if inferred and not any(self._entry(child) is not None
+                                for child in list(self._children.get(path, ()))):
+            del self.entries[path]
+            return
+        (self.root / path).mkdir(parents=True, exist_ok=True)
+
+    def paths(self, *, owner: str | None = None,
+              origin: str | None = None, suffix: str = ""):
+        for path in [path for path, entry in self.entries.items()
+                     if entry["kind"] == UNCONFIRMED and (owner is None or entry["owner"] == owner)]:
+            if path in self.entries:
+                self._entry(path)
+        yield from super().paths(owner=owner, origin=origin, suffix=suffix)
+
+    def path(self, path: str) -> Path:
+        """Return a confined materialized path; target files are read on first use."""
+        resolved = self.resolve(path)
+        entry = self._entry(resolved)
+        if (entry is not None and entry["kind"] == "file"
+                and resolved not in self._materialized and not (self.root / resolved).exists()):
+            try:
+                mode, data, _ = self._visible(self.repo / resolved)
+            except OSError as exc:
+                raise ViewError(f"cannot read {path!r}: {exc.strerror}") from exc
+            if mode not in ("100644", "100755"):
+                raise ViewError(f"entry changed during capture: {resolved!r}")
+            destination = self.root / resolved
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(data)
+            self._materialized.add(resolved)
+        return self.root / resolved
 
     def _put(self, path: str, owner: str, origin: str, mode: str, data: bytes):
         path = _safe(path)

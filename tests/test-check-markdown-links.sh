@@ -295,8 +295,6 @@ run_check "$work/boundary" "$work/child-dirty.log"
 [[ "$rc" -eq 0 ]] || { cat "$work/child-dirty.log"; fail 'visible child edits or parent-only source boundary lost'; }
 echo 'ok 15 - child edits supply targets without scanning child sources'
 
-echo 'all markdown-link tests passed'
-
 # Explicit ignored independent repositories contribute targets, never sources.
 mkdir -p "$work/registered/external"
 git -C "$work/registered" init -q
@@ -322,3 +320,31 @@ if bash "$check" "$work/registered" --target-repository external > "$work/regist
 fi
 grep -q 'broken Markdown link:' "$work/registered-missing.log" || fail 'independent missing file was not checked'
 echo 'ok - explicit independent repositories supply checked targets without adding sources'
+
+# Repositories nested inside a target still resolve; an unpopulated submodule
+# nested inside a target remains a named skip, not a broken link.
+mkdir -p "$work/leaf"
+git -C "$work/leaf" init -q
+printf '# Leaf\n' > "$work/leaf/leaf.md"
+git -C "$work/leaf" add leaf.md
+git -C "$work/leaf" -c user.name=test -c user.email=test@example.com commit -qm leaf
+printf '# Present\n' > "$work/registered/external/target.md"
+git -C "$work/registered/external" add target.md
+git -C "$work/registered/external" -c protocol.file.allow=always submodule add -q "$work/leaf" nested
+git -C "$work/registered/external" -c protocol.file.allow=always submodule add -q "$work/leaf" absent
+git -C "$work/registered/external" -c user.name=test -c user.email=test@example.com commit -qm nested
+git -C "$work/registered/external" submodule deinit -q -f absent
+printf '[target](external/target.md#present) [leaf](external/nested/leaf.md#leaf) [absent](external/absent/leaf.md)\n' \
+  > "$work/registered/README.md"
+bash "$check" "$work/registered" --target-repository external > "$work/registered-nested.log" 2>&1 \
+  || { cat "$work/registered-nested.log"; fail 'link into a repository nested inside a target failed'; }
+grep -Fq 'skipped Markdown link into unavailable submodule: README.md -> external/absent/leaf.md' \
+  "$work/registered-nested.log" || { cat "$work/registered-nested.log"; fail 'unpopulated nested submodule was not a named skip'; }
+printf '[leaf](external/nested/leaf.md#gone)\n' > "$work/registered/README.md"
+if bash "$check" "$work/registered" --target-repository external > "$work/registered-nested-anchor.log" 2>&1; then
+  fail 'missing anchor in a repository nested inside a target passed'
+fi
+grep -q 'missing Markdown anchor:' "$work/registered-nested-anchor.log" || fail 'nested target anchor was not checked'
+echo 'ok - repositories nested inside targets resolve and unpopulated ones are named skips'
+
+echo 'all markdown-link tests passed'

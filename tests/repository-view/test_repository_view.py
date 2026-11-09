@@ -1,5 +1,8 @@
 """Observable repository-view contracts, using disposable real Git repositories."""
 
+import contextlib
+import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -14,7 +17,7 @@ from unittest.mock import patch
 
 TOOLS = Path(__file__).resolve().parents[2] / "Tools"
 sys.path.insert(0, str(TOOLS))
-from repository_view import RepositoryView, ViewError  # noqa: E402
+from repository_view import ManifestView, RepositoryView, UnavailableViewError, ViewError  # noqa: E402
 
 
 class RepositoryViewTests(unittest.TestCase):
@@ -64,12 +67,19 @@ class RepositoryViewTests(unittest.TestCase):
         self.write(child, ".gitignore", "secret.md\n")
         self.commit(child)
         self.write(child, "secret.md", "ignored")
+        self.write(child, "later.md", "# Before first read")
         with RepositoryView(self.repo, target_repositories=("external",)) as view:
             self.assertEqual(view.read_bytes("external/target.md"), b"# Present")
             self.assertEqual(view.entries["external/target.md"]["owner"], "external")
             self.assertFalse(view.exists("external/secret.md"))
+            # Targets are consulted live: a file is read on first use and then
+            # returns those bytes for the rest of the view's lifetime.
             self.write(child, "target.md", "# Changed")
             self.assertEqual(view.read_bytes("external/target.md"), b"# Present")
+            self.write(child, "later.md", "# Rewritten before first read")
+            self.assertEqual(view.read_bytes("external/later.md"), b"# Rewritten before first read")
+            self.write(child, "later.md", "# Rewritten after first read")
+            self.assertEqual(view.read_bytes("external/later.md"), b"# Rewritten before first read")
         with self.assertRaises(ViewError):
             RepositoryView(self.repo, mode="index", target_repositories=("external",))
         for invalid in ("missing", "..", "", "external/..", "external/target.md"):
@@ -80,6 +90,162 @@ class RepositoryViewTests(unittest.TestCase):
         with self.assertRaises(ViewError):
             with RepositoryView(self.repo, target_repositories=("alias",)):
                 pass
+
+    def target_fixture(self):
+        self.write(self.repo, ".gitignore", "external/\n")
+        self.commit(self.repo)
+        return self.new_repo("parent/external")
+
+    def test_target_repository_types_are_confirmed_on_demand(self):
+        child = self.target_fixture()
+        self.write(child, ".gitignore", "*.ignored\nsecret.md\n")
+        for name in ("emptied/a.md", "emptied/b.md", "ignored-only/a.md",
+                     "was-file", "was-file-empty", "was-directory/old.md",
+                     "kept/deep/kept.md", "real.md", "unused.md"):
+            self.write(child, name, "# " + name)
+        os.symlink("real.md", child / "alias.md")
+        os.symlink("secret.md", child / "to-ignored.md")
+        self.commit(child)
+        self.write(child, "secret.md", "# Ignored")
+        shutil.rmtree(child / "emptied")
+        (child / "emptied").mkdir()
+        shutil.rmtree(child / "ignored-only")
+        self.write(child, "ignored-only/left.ignored", "ignored")
+        (child / "was-file").unlink()
+        self.write(child, "was-file/new.md", "# New child")
+        (child / "was-file-empty").unlink()
+        (child / "was-file-empty").mkdir()
+        shutil.rmtree(child / "was-directory")
+        self.write(child, "was-directory", "replacement file")
+        self.write(child, "untracked.md", "# Untracked")
+        os.symlink("external/real.md", self.repo / "into-target.md")
+        with RepositoryView(self.repo, target_repositories=("external",)) as view:
+            # Nothing beneath the target is typed or copied at construction.
+            self.assertEqual(view.entries["external/real.md"]["kind"], "unconfirmed")
+            self.assertEqual(list((view.root / "external").iterdir()), [])
+            # A directory whose tracked files were all deleted is absent, even
+            # when it remains on disk empty or holding only ignored files.
+            self.assertFalse(view.exists("external/emptied"))
+            self.assertFalse(view.exists("external/ignored-only"))
+            # A tracked file replaced by a directory, with or without content.
+            self.assertTrue(view.is_dir("external/was-file"))
+            self.assertEqual(view.read_bytes("external/was-file/new.md"), b"# New child")
+            self.assertTrue(view.is_dir("external/was-file-empty"))
+            # A tracked directory replaced by a file hides its descendants.
+            self.assertFalse(view.exists("external/was-directory/old.md"))
+            self.assertFalse(view.is_dir("external/was-directory"))
+            self.assertEqual(view.entries["external/was-directory"]["origin"], "untracked")
+            self.assertEqual(view.read_bytes("external/was-directory"), b"replacement file")
+            self.assertTrue(view.is_dir("external/kept"))
+            self.assertTrue(view.exists("external/kept/deep/kept.md"))
+            # Symlinks resolve in the logical namespace, never to ignored files.
+            self.assertEqual(view.read_bytes("external/alias.md"), b"# real.md")
+            self.assertEqual(view.read_bytes("into-target.md"), b"# real.md")
+            self.assertFalse(view.exists("external/to-ignored.md"))
+            self.assertFalse(view.exists("external/secret.md"))
+            self.assertEqual(view.entries["external/untracked.md"]["origin"], "untracked")
+            self.assertTrue(view.exists("external/untracked.md"))
+            # Live and manifest listings never raise on unconfirmed entries.
+            listed = set(view.paths(owner="external"))
+            self.assertIn("external/real.md", listed)
+            self.assertNotIn("external/emptied/a.md", listed)
+            self.assertNotIn("external/was-directory/old.md", listed)
+            manifest = ManifestView.load(view.manifest)
+            self.assertIn("external/unused.md", set(manifest.paths(owner="external")))
+            self.assertNotIn("external/emptied", set(manifest.paths()))
+
+    def test_target_file_changing_during_its_first_read_is_an_error(self):
+        child = self.target_fixture()
+        self.write(child, "target.md", "# Target")
+        self.write(child, "other.md", "# Other")
+        self.commit(child)
+        real_fstat = os.fstat
+        calls = []
+
+        def changed(fd):
+            calls.append(fd)
+            # The second fstat, taken after reading, sees a different file.
+            return real_fstat(fd) if len(calls) == 1 else os.stat(child / "other.md")
+
+        with RepositoryView(self.repo, target_repositories=("external",)) as view:
+            self.assertTrue(view.exists("external/target.md"))
+            with patch.object(os, "fstat", changed), self.assertRaises(ViewError):
+                view.read_bytes("external/target.md")
+            self.assertEqual(len(calls), 2)
+            self.assertEqual(view.read_bytes("external/target.md"), b"# Target")
+
+    def test_target_nested_repositories_and_overlap(self):
+        leaf = self.new_repo("leaf")
+        self.write(leaf, "leaf.md", "# Leaf")
+        self.commit(leaf)
+        child = self.target_fixture()
+        self.write(child, "top.md", "# Top")
+        self.git(child, "submodule", "add", "-q", str(leaf), "nested")
+        self.git(child, "submodule", "add", "-q", str(leaf), "deep/absent")
+        self.commit(child)
+        self.git(child, "submodule", "deinit", "-q", "-f", "deep/absent")
+        self.write(child / "nested", "local.md", "# Local")
+        independent = self.new_repo("parent/external/independent")
+        self.write(independent, "inner.md", "# Inner")
+        self.commit(independent)
+        with RepositoryView(self.repo, target_repositories=("external",)) as view:
+            self.assertEqual(view.read_bytes("external/nested/leaf.md"), b"# Leaf")
+            self.assertEqual(view.read_bytes("external/nested/local.md"), b"# Local")
+            self.assertEqual(view.entries["external/nested/leaf.md"]["owner"], "external/nested")
+            self.assertIn("external/deep/absent", view.unavailable)
+            self.assertEqual(view.entries["external/deep/absent"]["kind"], "unavailable")
+            self.assertTrue(view.is_dir("external/deep"))
+            with self.assertRaises(UnavailableViewError):
+                view.resolve("external/deep/absent/leaf.md")
+            # A nested independent repository is opaque, as before.
+            self.assertTrue(view.is_dir("external/independent"))
+            self.assertFalse(view.exists("external/independent/inner.md"))
+        for overlapping in (("external", "external/independent"), ("external", "external/nested")):
+            with self.subTest(targets=overlapping), self.assertRaises(ViewError):
+                with RepositoryView(self.repo, target_repositories=overlapping):
+                    pass
+        shutil.rmtree(self.repo / "external" / "nested")
+        os.symlink(leaf, self.repo / "external" / "nested")
+        with self.assertRaises(ViewError):
+            with RepositoryView(self.repo, target_repositories=("external",)):
+                pass
+
+    def test_checker_never_opens_target_files_no_link_names(self):
+        child = self.target_fixture()
+        self.write(child, "linked.md", "# Linked\n")
+        self.write(child, "plain.md", "# Plain\n")
+        for index in range(20):
+            self.write(child, f"unused/u{index}.md", "# Unused\n")
+        self.commit(child)
+        self.write(self.repo, "README.md",
+                   "[a](external/linked.md#linked) [b](external/plain.md)\n")
+        self.commit(self.repo)
+        spec = importlib.util.spec_from_file_location(
+            "check_markdown_links", TOOLS / "check-markdown-links.py")
+        checker = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(checker)
+        touched = []
+        real_open, real_stat = os.open, os.stat
+
+        def record(real):
+            def call(path, *args, **kwargs):
+                touched.append(os.fspath(path))
+                return real(path, *args, **kwargs)
+            return call
+
+        output = io.StringIO()
+        with patch.object(os, "open", record(real_open)), \
+                patch.object(os, "stat", record(real_stat)), \
+                contextlib.redirect_stdout(output):
+            result = checker.main([str(self.repo), "--target-repository", "external"])
+        self.assertEqual(result, 0, output.getvalue())
+        names = {Path(path).name for path in touched}
+        self.assertIn("linked.md", names)  # read for its heading
+        self.assertIn("plain.md", names)  # confirmed, never read
+        self.assertFalse(names & {f"u{index}.md" for index in range(20)})
+        self.assertNotIn("unused", names)
+        opened = [path for path in touched if Path(path).name == "plain.md"]
+        self.assertEqual(len(opened), 1, opened)  # one lstat, no open
 
     def test_working_and_index_are_distinct_stable_views(self):
         for name, text in {

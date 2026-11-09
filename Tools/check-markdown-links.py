@@ -168,7 +168,8 @@ def main(argv):
               'Populated submodules supply visible targets; unavailable mounts are named skips.\n'
               'Repeat --target-repository RELATIVE_PATH to include ignored independent repositories\n'
               'as targets only; missing roots are errors and their own ignored files stay excluded.\n'
-              'Sources, .markdown-links-skip, targets and anchors all use the captured view.\n'
+              'Sources, .markdown-links-skip, targets and anchors all use the repository view;\n'
+              'target repositories are listed from Git and read only where a link refers.\n'
               'The shared repository_view.py also provides exact-index views for other consumers.\n'
               'Exit 0: valid; 1: broken links, missing anchors or stale skips; 2: evaluation error.\n'
               'See docs/repository-views.md for both modes, isolation and failure semantics.')

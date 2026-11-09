@@ -1,9 +1,12 @@
 # Repository views
 
 Use `Tools/repository_view.py` to give a repository-wide check one captured set
-of paths and bytes. The standard-library Python API and command-line adapter
-share discovery, file types, symlink resolution, and submodule handling; a
-consumer supplies its own policy and parser.
+of paths and bytes, plus any explicitly named target repositories, which are
+listed and consulted live (see
+[Independent target repositories](#independent-target-repositories)). The
+standard-library Python API and command-line adapter share discovery, file
+types, symlink resolution, and submodule handling; a consumer supplies its own
+policy and parser.
 
 ## Modes and boundaries
 
@@ -35,9 +38,11 @@ Construction requires quiescent input. The provider checks the index, untracked
 inventory, and encountered file metadata for changes during capture, but this
 is not a filesystem-wide atomic transaction. A disappearance after a file is
 selected for reading, unsupported file type, or unreadable input errors instead
-of silently shrinking the view. After construction the captured bytes remain
-stable for the context's lifetime. The provider copies bytes; it never writes
-the caller's files or index and does not use hardlinks back to them.
+of silently shrinking the view. After construction the inspected repository's
+captured bytes remain stable for the context's lifetime; target repositories
+keep the narrower guarantee described under their own heading. The provider
+copies the bytes it reads; it never writes the caller's files or index and does
+not use hardlinks back to them.
 
 ## Python consumers
 
@@ -66,9 +71,11 @@ its lifetime is still controlled by the original context or CLI runner.
   the consumer requires tracked-only discovery.
 - `resolve(path)` returns a logical repository-relative path after resolving
   captured symlink metadata. Missing ordinary paths remain missing paths.
-- `exists(path)` and `is_dir(path)` use only captured entries.
+- `exists(path)` and `is_dir(path)` use only captured entries, or, beneath a
+  target repository, listed names confirmed on first use.
 - `path(path)` returns a confined materialized `Path`; `read_bytes(path)` reads
-  its captured contents and wraps read failures in `ViewError`.
+  its captured contents and wraps read failures in `ViewError`. Beneath a
+  target repository the file is read and materialized on first use.
 - `unavailable_mount(path)` returns an unavailable mount containing the lexical
   path, or `None`. Resolving a symlink into such a mount raises
   `UnavailableViewError`, a `ViewError` subclass carrying a `mount` attribute.
@@ -82,10 +89,11 @@ Consumers must not split paths on whitespace or trim them.
 
 Symlinks are metadata only: the materialized root contains no host symlinks.
 Always use the logical methods to resolve a potential symlink target before
-reading. Relative symlinks resolve inside the captured namespace; absolute
+reading. Relative symlinks resolve inside the logical namespace; absolute
 symlinks, escaping symlinks, and cycles raise `ViewError`. They cannot read live
-files outside the snapshot. A consumer can still enumerate and report a skipped
-symlink source without resolving it.
+files outside the view's paths, and a target repository's symlink is read
+without following it when first consulted. A consumer can still enumerate and
+report a skipped symlink source without resolving it.
 
 ## Shell consumers
 
@@ -167,8 +175,29 @@ The Markdown checker exposes the same contract through repeatable
 there is no automatic discovery of ignored directories.
 
 Each target must be an existing independent repository root below the inspected
-root, without symlink ancestors or overlaps with captured paths. A missing root
-is an evaluation error. Its tracked and non-ignored untracked content is captured
-with its own repository ownership, so it supplies link targets and anchors but
-never parent Markdown sources. Its own ignored files remain invisible. Index
-views refuse this option because these clones are not part of the parent's index.
+root, without symlink ancestors or overlaps with listed paths. A missing root
+is an evaluation error. Index views refuse this option because these clones are
+not part of the parent's index.
+
+A target contributes names, not copies. Construction lists its tracked and
+non-ignored untracked paths from Git once, with its own repository ownership,
+and recurses into populated submodules; an unpopulated submodule is an
+unavailable mount as in the parent. Nothing beneath a target is opened, typed,
+or copied at construction. The target supplies link targets and anchors but
+never parent Markdown sources, and its own ignored files remain invisible
+because only listed paths and their ancestors are ever consulted.
+
+A listed path is checked on the live tree the first time a lookup reaches it,
+without following symlinks, and the answer is kept for the context's lifetime.
+The working-tree type rules above apply: a directory inferred from listed paths
+exists only while one of them is visible, a listed path that is now a directory
+exists even when empty, and a file or symlink replacing a tracked directory
+hides its former descendants. A target file is read on first use with the same
+before-and-after metadata test as capture, so a file changing during its own
+read is an evaluation error, and later reads return those same bytes. Nothing
+else about a changing target is detected: a path is answered as it stood when
+first consulted, and an unsupported file type is an error only when consulted.
+
+The manifest records a target's entries as names only, with kind
+`unconfirmed`; `ManifestView` cannot confirm them, so its `paths()` yields the
+listed names and omits inferred directories.
