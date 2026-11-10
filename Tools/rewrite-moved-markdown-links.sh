@@ -3,6 +3,8 @@
 #
 # Usage:
 #   rewrite-moved-markdown-links.sh REPO_ROOT OLD_PATH NEW_PATH STAGED_FILE
+#   rewrite-moved-markdown-links.sh --extract SOURCE_FILE
+#   rewrite-moved-markdown-links.sh --extract-batch SOURCE_FILE...
 #
 # A tool that relocates a document owns the link rebasing it necessitates.  This
 # helper supports single-line inline links, images, and reference definitions.
@@ -12,11 +14,21 @@
 # definitions; their text is scanned like any other line.  Active link syntax
 # outside that grammar is refused, rather than guessed at or silently copied
 # unchanged.
+#
+# --extract prints LINE<TAB>TARGET for each supported link in one file.
+# --extract-batch runs the same scan over many files in one process and prints
+# INDEX<TAB>LINE<TAB>TARGET, where INDEX is the file's 1-based argument position.
+# It stops at the first file outside the grammar: that file's diagnostic goes to
+# stderr, INDEX<TAB>error goes to stdout, the exit status is 1, and the caller
+# resumes after INDEX. Files before INDEX were scanned completely; the failing
+# file's earlier records are incomplete and must be discarded. Pass paths that
+# cannot be read as awk assignments or stdin, such as absolute paths.
 set -euo pipefail
 
 usage() {
   echo "usage: $0 REPO_ROOT OLD_PATH NEW_PATH STAGED_FILE" >&2
   echo "       $0 --extract SOURCE_FILE" >&2
+  echo "       $0 --extract-batch SOURCE_FILE..." >&2
   exit 2
 }
 
@@ -28,6 +40,10 @@ if [[ "${1:-}" == "--extract" ]]; then
   new_path="$source_file"
   staged_file="$source_file"
   mode=extract
+elif [[ "${1:-}" == "--extract-batch" ]]; then
+  [[ "$#" -ge 2 ]] || usage
+  shift
+  mode=extract-batch
 elif [[ "$#" -eq 4 ]]; then
   repo_root="$1"
   old_path="$2"
@@ -38,15 +54,14 @@ else
   usage
 fi
 
-tmp="$(mktemp "${staged_file}.rewrite.XXXXXX")"
-trap 'rm -f "$tmp"' EXIT
-
-# The scanner is intentionally shared by rewrite and --extract.  Keeping the
-# grammar in one implementation means the checker cannot accept syntax the
+# The scanner is intentionally shared by rewrite and both extract modes.  Keeping
+# the grammar in one implementation means the checker cannot accept syntax the
 # migrator would refuse.
-awk -v mode="$mode" -v old_path="$old_path" -v new_path="$new_path" '
+# shellcheck disable=SC2016 # awk program text, not shell expansions.
+program='
   function fail(message) {
-    printf "error: %s:%d: unsupported Markdown link syntax: %s\n", old_path, NR, message > "/dev/stderr"
+    printf "error: %s:%d: unsupported Markdown link syntax: %s\n", (mode == "extract-batch" ? FILENAME : old_path), FNR, message > "/dev/stderr"
+    if (mode == "extract-batch") printf "%d\terror\n", file_index
     bad = 1
     exit 1
   }
@@ -116,7 +131,8 @@ awk -v mode="$mode" -v old_path="$old_path" -v new_path="$new_path" '
     if (!end_paren) fail("multiline or unclosed inline link")
     inside = substr(line, open + 1, end_paren - open - 1)
     if (!parse_destination(inside)) fail("inline link destination is outside the supported grammar")
-    if (mode == "extract") { printf "%d\t%s\n", NR, parsed_target; return end_paren }
+    if (mode == "extract") { printf "%d\t%s\n", FNR, parsed_target; return end_paren }
+    if (mode == "extract-batch") { printf "%d\t%d\t%s\n", file_index, FNR, parsed_target; return end_paren }
     newtarget = rebase(parsed_target)
     if (newtarget == parsed_target) {
       rewritten = substr(line, start, end_paren - start + 1)
@@ -132,12 +148,22 @@ awk -v mode="$mode" -v old_path="$old_path" -v new_path="$new_path" '
     pos = index(line, ":")
     inside = substr(line, pos + 1)
     if (!parse_destination(inside)) fail("reference destination is outside the supported grammar")
-    if (mode == "extract") { printf "%d\t%s\n", NR, parsed_target; return line }
+    if (mode == "extract") { printf "%d\t%s\n", FNR, parsed_target; return line }
+    if (mode == "extract-batch") { printf "%d\t%d\t%s\n", file_index, FNR, parsed_target; return line }
     newtarget = rebase(parsed_target)
     if (newtarget == parsed_target) return line
     before = substr(inside, 1, target_start - 1)
     after = substr(inside, target_end + 1)
     return substr(line, 1, pos) before newtarget after
+  }
+  FNR == 1 {
+    # Every file starts outside a fence. A batch names files by argument
+    # position; an empty file has no first line, so skip past its position.
+    fence = 0
+    if (mode == "extract-batch") {
+      file_index++
+      while (file_index < ARGC && ARGV[file_index] != FILENAME) file_index++
+    }
   }
   {
     # Portable awk: interval expressions are not available on every consumer.
@@ -208,7 +234,16 @@ awk -v mode="$mode" -v old_path="$old_path" -v new_path="$new_path" '
     if (mode == "rewrite") print result
   }
   END { if (bad) exit 1 }
-' "$staged_file" > "$tmp"
+'
+
+if [[ "$mode" == extract-batch ]]; then
+  # One process for every file; the caller discards a failing file's records.
+  exec awk -v mode="$mode" -v old_path="" -v new_path="" "$program" "$@"
+fi
+
+tmp="$(mktemp "${staged_file}.rewrite.XXXXXX")"
+trap 'rm -f "$tmp"' EXIT
+awk -v mode="$mode" -v old_path="$old_path" -v new_path="$new_path" "$program" "$staged_file" > "$tmp"
 
 if [[ "$mode" == rewrite ]]; then
   mv "$tmp" "$staged_file"
