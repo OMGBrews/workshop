@@ -14,6 +14,9 @@ from repository_view import RepositoryView, ViewError, UnavailableViewError, nor
 
 TOOLS = Path(__file__).resolve().parent
 SKIP_FILE = '.markdown-links-skip'
+# Extractor batches stay well inside every platform's argument-length limit.
+BATCH_FILES = 500
+BATCH_BYTES = 100_000
 
 
 def percent_decode(value):
@@ -116,9 +119,80 @@ class Checker:
         except (ViewError, OSError) as error:
             self.error(f'Markdown link evaluation failed: {source} -> {original}: {error}')
 
+    def extract_one(self, path):
+        """Scan one source; returns (records or None on error, stderr bytes)."""
+        result = subprocess.run(
+            ['bash', str(TOOLS / 'rewrite-moved-markdown-links.sh'), '--extract', path],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        if result.returncode:
+            return None, result.stderr
+        return [record.split(b'\t', 1)[1] for record in result.stdout.split(b'\n') if record], result.stderr
+
+    def extract_all(self, paths):
+        """Scan every source with as few extractor processes as possible.
+
+        Results are per path and match extract_one: a batch stops at its first
+        unparseable file, which is reported alone, and the scan resumes after it.
+        A batch is trusted only when its stderr can be attributed: empty on
+        success, or exactly the one diagnostic of the file it stopped at. Any
+        other outcome, such as an awk warning about one file's bytes, falls back
+        to one process per file so every message stays with its own source.
+        """
+        results = [None] * len(paths)
+        start = 0
+        while start < len(paths):
+            end, size = start, 0
+            while end < len(paths) and end - start < BATCH_FILES and (end == start or size + len(paths[end]) < BATCH_BYTES):
+                size += len(paths[end]) + 1
+                end += 1
+            result = subprocess.run(
+                ['bash', str(TOOLS / 'rewrite-moved-markdown-links.sh'), '--extract-batch', *paths[start:end]],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            )
+            records = [[] for _ in range(start, end)]
+            failed = None
+            malformed = False
+            for line in result.stdout.split(b'\n'):
+                if not line:
+                    continue
+                fields = line.split(b'\t', 2)
+                try:
+                    index = int(fields[0]) - 1
+                except ValueError:
+                    malformed = True
+                    break
+                if not 0 <= index < end - start:
+                    malformed = True
+                    break
+                if fields[1:] == [b'error']:
+                    failed = index
+                elif len(fields) == 3:
+                    records[index].append(fields[2])
+                else:
+                    malformed = True
+                    break
+            if not malformed and result.returncode == 0 and failed is None and not result.stderr:
+                for offset, found in enumerate(records):
+                    results[start + offset] = (found, b'')
+                start = end
+            elif (not malformed and result.returncode == 1 and failed is not None
+                  and result.stderr.startswith(b'error: ') and result.stderr.count(b'\n') == 1
+                  and result.stderr.endswith(b'\n')):
+                for offset in range(failed):
+                    results[start + offset] = (records[offset], b'')
+                results[start + failed] = (None, result.stderr)
+                start += failed + 1
+            else:
+                for offset in range(start, end):
+                    results[offset] = self.extract_one(paths[offset])
+                start = end
+        return results
+
     def run(self):
         entries = self.skip_entries()
         used = set()
+        plan = []
         for source, metadata in sorted(self.view.entries.items()):
             if metadata['owner'] != '' or metadata['kind'] not in ('file', 'symlink') or not source.endswith('.md'):
                 continue
@@ -126,28 +200,34 @@ class Checker:
                           if (source.startswith(entry) if entry.endswith('/') else source == entry)), None)
             if entry is not None:
                 used.add(entry)
+                plan.append((source, 'listed'))
+            elif metadata['kind'] == 'symlink':
+                plan.append((source, 'symlink'))
+            else:
+                plan.append((source, 'extract'))
+        # The shared extractor owns Markdown grammar. Arguments and its bytes
+        # remain unmodified even when source filenames contain newlines; absolute
+        # paths cannot be read as awk assignments or stdin.
+        scanned = [source for source, action in plan if action == 'extract']
+        extracted = dict(zip(scanned, self.extract_all(
+            [os.path.abspath(self.view.path(source)) for source in scanned])))
+        root_prefix = os.fsencode(os.path.abspath(self.view.root) + '/')
+        for source, action in plan:
+            if action == 'listed':
                 self.skip(f'skipped Markdown source (listed in {SKIP_FILE}): {source}')
                 continue
-            if metadata['kind'] == 'symlink':
+            if action == 'symlink':
                 self.skip(f'skipped symlink Markdown source: {source}')
                 continue
-            # The shared extractor owns Markdown grammar. Arguments and its bytes
-            # remain unmodified even when source filenames contain newlines.
-            result = subprocess.run(
-                ['bash', str(TOOLS / 'rewrite-moved-markdown-links.sh'),
-                 '--extract', str(self.view.path(source))],
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            )
-            if result.stderr:
+            records, diagnostic = extracted[source]
+            if diagnostic:
                 # Report original repository-relative names, never temporary roots.
-                diagnostic = result.stderr.replace(os.fsencode(str(self.view.root) + '/'), b'')
-                sys.stderr.write(os.fsdecode(diagnostic))
-            if result.returncode:
+                sys.stderr.write(os.fsdecode(diagnostic.replace(root_prefix, b'')))
+            if records is None:
                 self.errors += 1
                 continue
-            for record in result.stdout.split(b'\n'):
-                if record:
-                    self.check_target(source, os.fsdecode(record.split(b'\t', 1)[1]))
+            for target in records:
+                self.check_target(source, os.fsdecode(target))
         for entry in entries:
             if entry not in used:
                 self.fail(f'stale {SKIP_FILE} entry matches no visible Markdown source: {entry}')

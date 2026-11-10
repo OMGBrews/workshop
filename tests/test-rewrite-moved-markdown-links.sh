@@ -123,3 +123,33 @@ bash "$rewrite" --extract "$work/container-end.md" > "$work/container-end.out"
 printf '4\tmissing.md\n9\tmissing.md\n' > "$work/container-end.expected"
 cmp "$work/container-end.expected" "$work/container-end.out" || fail 'container end hid real links'
 echo 'ok - leaving a container ends an unclosed fence'
+
+# --extract-batch: one process, the same grammar, per-file line numbers and fence
+# state, an empty file keeping its argument position, and a stop at the first
+# unparseable file that names it and leaves earlier files complete.
+printf '```\n[hidden](a.md)\n' > "$work/batch-open-fence.md"
+: > "$work/batch-empty.md"
+printf 'x\n[one](<b c.md>) [two](d.md)\n' > "$work/batch-links.md"
+printf '[bad](e(f).md)\n' > "$work/batch-bad.md"
+printf '[after](g.md)\n' > "$work/batch-after.md"
+bash "$rewrite" --extract-batch "$work/batch-open-fence.md" "$work/batch-empty.md" \
+  "$work/batch-links.md" > "$work/batch.out" || fail 'batch extraction refused supported files'
+printf '3\t2\tb c.md\n3\t2\td.md\n' > "$work/batch.expected"
+cmp "$work/batch.expected" "$work/batch.out" || fail 'batch extraction lost position, line or fence reset'
+for single in batch-open-fence batch-links; do
+  bash "$rewrite" --extract "$work/$single.md" > "$work/$single.single"
+  bash "$rewrite" --extract-batch "$work/$single.md" | cut -f2- > "$work/$single.batched"
+  cmp "$work/$single.single" "$work/$single.batched" || fail "batch and single extraction disagree on $single"
+done
+set +e
+bash "$rewrite" --extract-batch "$work/batch-links.md" "$work/batch-bad.md" "$work/batch-after.md" \
+  > "$work/batch-bad.out" 2> "$work/batch-bad.err"
+rc=$?
+set -e
+[[ "$rc" -eq 1 ]] || fail "unparseable batch exited $rc, expected 1"
+grep -Fq "$work/batch-bad.md:1: unsupported Markdown link syntax" "$work/batch-bad.err" \
+  || fail 'unparseable batch file was not named with its line'
+[[ "$(tail -n 1 "$work/batch-bad.out")" == $'2\terror' ]] || fail 'unparseable batch file position was not reported'
+grep -q $'^1\t2\td.md$' "$work/batch-bad.out" || fail 'files before the unparseable one lost their records'
+if grep -q $'^3\t' "$work/batch-bad.out"; then fail 'batch continued past the unparseable file'; fi
+echo 'ok - batch extraction matches single-file extraction and stops at the first unparseable file'

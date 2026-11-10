@@ -3,6 +3,13 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **The Markdown link check spends its time on links.** Sources are scanned by
+  one `rewrite-moved-markdown-links.sh --extract-batch` process per batch instead
+  of five processes per file, using the same awk grammar as `--extract` and the
+  rewriter, and target repositories' Git listings run concurrently, one submodule
+  depth at a time. Output, diagnostics and exit statuses are unchanged; an
+  unparseable source still exits 2 without hiding the rest of the repository.
+
 - **Problems own their retirement.** `problem-resolve` verifies and retires
   problem records without requiring Kaizen adoption. Journal evidence survives;
   pending receipts give `kaizen-review` a bounded retention inbox independent of

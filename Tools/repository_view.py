@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import errno
 import json
 import os
@@ -34,6 +35,13 @@ def _git(repo: Path, *args: str, data: bytes | None = None, store: bool = False)
     if result.returncode:
         raise ViewError(f"git {' '.join(args[:2])}: {os.fsdecode(result.stderr).strip()}")
     return result.stdout
+
+
+# A target repository's two listings. They are read-only, so the view runs them
+# concurrently across repositories: on slow filesystems they dominate capture.
+_STAGED = ("ls-files", "--stage", "-z")
+_OTHERS = ("ls-files", "--others", "--exclude-standard", "-z")
+_LISTING_WORKERS = min(16, os.cpu_count() or 4)
 
 
 def _name(value: bytes) -> str:
@@ -171,6 +179,7 @@ class RepositoryView(ManifestView):
         # Target repositories contribute names, confirmed on first use.
         self._children = {}
         self._materialized = set()
+        self._prefetched = {}
 
     def __enter__(self) -> RepositoryView:
         try:
@@ -182,16 +191,20 @@ class RepositoryView(ManifestView):
             self.root.mkdir()
             self.manifest = Path(self._temp.name) / "manifest.json"
             self._capture(self.repo, "", None)
+            # Listings start early, but each is used only after its target passes
+            # the checks below, in order; an unused listing is simply dropped. A
+            # target that already fails a check here is never listed, and each
+            # listing first confirms its target is a repository root.
+            self._prefetch([self.repo / mount for mount in map(self._mount_or_none, self.target_repositories)
+                            if mount and mount not in self.entries and not self._symlinked(self.repo / mount)],
+                           roots=True)
             for requested in self.target_repositories:
                 mount = _safe(requested)
                 if not mount or mount in self.entries:
                     raise ViewError(f"target repository overlaps captured paths: {requested!r}")
                 checkout = self.repo / mount
-                for ancestor in (checkout, *checkout.parents):
-                    if ancestor == self.repo:
-                        break
-                    if ancestor.is_symlink():
-                        raise ViewError(f"symlink target repository: {requested!r}")
+                if self._symlinked(checkout):
+                    raise ViewError(f"symlink target repository: {requested!r}")
                 top = Path(_name(_git(checkout, "rev-parse", "--show-toplevel")[:-1]))
                 if top.resolve() != checkout.resolve():
                     raise ViewError(f"target repository is not a repository root: {requested!r}")
@@ -250,12 +263,23 @@ class RepositoryView(ManifestView):
             raise ViewError("recursive repository cycle")
         self._active.add(identity)
         try:
-            _, tracked = self._index(repo, allow_unmerged=True)
-            others = _git(repo, "ls-files", "--others", "--exclude-standard", "-z")
+            _, tracked = self._index(repo, allow_unmerged=True, raw=self._listing(repo, _STAGED))
+            others = self._listing(repo, _OTHERS)
             names = [(_safe(name), mode) for name, mode, _ in tracked]
             # A nested repository that is not a submodule is listed as "B/";
             # _safe normalizes it so the overlap test still sees "B".
             names += [(_safe(_name(name)), "") for name in others.split(b"\0") if name]
+            # Resolve populated submodules first so their listings run together. A
+            # resolution error is raised when the loop reaches that submodule, so
+            # errors keep their depth-first order.
+            children = {}
+            for name, mode in names:
+                if name and mode == "160000":
+                    try:
+                        children[name] = self._child(repo, name, b"", working=True, store=False, oid="")
+                    except ViewError as exc:
+                        children[name] = exc
+            self._prefetch([child[0] for child in children.values() if isinstance(child, tuple)])
             for name, mode in names:
                 if not name:
                     raise ViewError(f"invalid Git path: {name!r}")
@@ -264,7 +288,9 @@ class RepositoryView(ManifestView):
                     self._note(logical, {"kind": UNCONFIRMED, "owner": owner,
                                          "origin": "untracked" if mode == "" else "tracked"})
                     continue
-                child = self._child(repo, name, b"", working=True, store=False, oid="")
+                child = children[name]
+                if isinstance(child, ViewError):
+                    raise child
                 if child is None:
                     self._note(logical, {"kind": "unavailable", "owner": owner,
                                          "origin": "tracked", "mode": "160000"})
@@ -275,6 +301,59 @@ class RepositoryView(ManifestView):
                 self._list_target(child[0], logical)
         finally:
             self._active.remove(identity)
+
+    def _symlinked(self, checkout: Path) -> bool:
+        for ancestor in (checkout, *checkout.parents):
+            if ancestor == self.repo:
+                return False
+            if ancestor.is_symlink():
+                return True
+        return False
+
+    @staticmethod
+    def _mount_or_none(requested):
+        try:
+            return _safe(requested)
+        except ViewError:
+            return None
+
+    def _prefetch(self, repos, *, roots: bool = False):
+        """Run each repository's listings concurrently; a failure waits for its reader.
+
+        With roots, a repository is listed only once Git confirms it is its own
+        root, so no listing runs where the ordered checks would refuse to list.
+        """
+        def fetch(repo):
+            if roots:
+                try:
+                    top = Path(_name(_git(repo, "rev-parse", "--show-toplevel")[:-1]))
+                except ViewError:
+                    return None
+                if top.resolve() != repo.resolve():
+                    return None
+            listings = []
+            for args in (_STAGED, _OTHERS):
+                try:
+                    listings.append(_git(repo, *args))
+                except ViewError as exc:
+                    listings.append(exc)
+            return listings
+        unique = list(dict.fromkeys(repos))
+        if not unique:
+            return
+        with ThreadPoolExecutor(max_workers=min(_LISTING_WORKERS, len(unique))) as pool:
+            for repo, listings in zip(unique, pool.map(fetch, unique)):
+                if listings is not None:
+                    for args, result in zip((_STAGED, _OTHERS), listings):
+                        self._prefetched[(str(repo), args)] = result
+
+    def _listing(self, repo: Path, args: tuple[str, ...]) -> bytes:
+        result = self._prefetched.pop((str(repo), args), None)
+        if result is None:
+            return _git(repo, *args)
+        if isinstance(result, ViewError):
+            raise result
+        return result
 
     def _probe(self, path: str):
         """lstat one live path below the root without following any symlink."""
@@ -396,8 +475,9 @@ class RepositoryView(ManifestView):
             (self.root / path).chmod(0o755 if mode == "100755" else 0o644)
 
     @staticmethod
-    def _index(repo: Path, *, allow_unmerged: bool = False):
-        raw = _git(repo, "ls-files", "--stage", "-z")
+    def _index(repo: Path, *, allow_unmerged: bool = False, raw: bytes | None = None):
+        if raw is None:
+            raw = _git(repo, *_STAGED)
         entries = []
         for record in raw.split(b"\0"):
             if not record:
