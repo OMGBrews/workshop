@@ -19,7 +19,13 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
+      # Pinned release archives from github.com, not apt: a package-archive
+      # outage must not take the required checks down with it. The script's
+      # header has the incident and the pins.
       - name: Install check dependencies
-        run: sudo apt-get update && sudo apt-get install --yes shellcheck zsh
+        run: |
+          sudo bash Tools/ci/install-check-tools.sh /usr/local
+          echo "shellcheck: $(command -v shellcheck)"
+          echo "zsh: $(command -v zsh)"
       - name: Run Workshop checks
         run: make check
