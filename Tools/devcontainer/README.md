@@ -13,9 +13,59 @@ and its scripts resolve siblings beside it. A generic host-side connection
 helper is available as `connect.sh`.
 
 The root package phase supplies Python 3 for the launcher installer, startup
-finalizer, and launcher runtime. A consumer's Python Dev Container feature may
-select a project-specific version later, but features layer on after the
-Dockerfile and cannot supply dependencies to `build/setup.sh`.
+finalizer, and launcher runtime. A consumer that needs a specific Python
+version installs it with `install-toolchain.sh`, described next. Dev Container
+features layer on after the Dockerfile and cannot supply dependencies to
+`build/setup.sh`.
+
+## Git LFS, Python, and Ruby without keyservers
+
+`install-toolchain.sh` installs Git LFS, and on request Python and Ruby, from
+exact upstream releases whose SHA-256 digests are written in the script. Use
+it in place of the `git-lfs`, `python`, and `ruby` Dev Container features.
+Those features fetch GPG keys from public keyservers during the build, so a
+keyserver outage stops every image from building; this script contacts none.
+
+Copy and run it directly after `FROM`, as root:
+
+```dockerfile
+COPY workshop/Tools/devcontainer/install-toolchain.sh /tmp/install-toolchain.sh
+RUN bash /tmp/install-toolchain.sh --python 3.13
+```
+
+It is a single file, so its layer is rebuilt only when the script itself
+changes. Placed first, it is unaffected by changes to `build/` or to the
+consumer's own files, which reinstall every feature.
+
+| Argument | Effect |
+|---|---|
+| none | Install Git LFS only |
+| `--python <minor>` | Also install that Python series from a prebuilt standalone release |
+| `--ruby <minor>` | Also build that Ruby series from source with a pinned `ruby-build` (several minutes) |
+| `--no-git-lfs` | Skip Git LFS |
+| `--user <name>` | Owner of the interpreter trees; defaults to the account with UID 1000 |
+
+Interpreters land in `/usr/local/python/<version>` and
+`/usr/local/ruby/<version>`, each with a `current` link, and their main
+commands are linked into `/usr/local/bin`. Commands added later by
+`pip install` or `gem install` land in the tree's own `bin`; put that on the
+image PATH when they are needed:
+
+```dockerfile
+ENV PATH="/usr/local/python/current/bin:/usr/local/ruby/current/bin:${PATH}"
+```
+
+Remove the matching features, and their `devcontainer-lock.json` entries, in
+the same change that adds these lines. The Python feature also installed
+linters and test runners such as `pytest` and `black` on PATH; this script
+does not, so a project that used those installs them itself.
+
+A requested series with no pin fails before anything is downloaded. To move a
+pin, edit the PINS section of the script with the new version and the digests
+from the upstream release's checksum file, then build one image per
+architecture. `bash tests/test-install-toolchain.sh` covers the digest check
+and install layout offline; it does not download the pinned releases, so only
+an image build shows that a new pin resolves.
 
 Setup writes Git defaults to `~/.config/git/config`, leaving `~/.gitconfig`
 available for the host identity copy. The runtime validator reads Git's merged
