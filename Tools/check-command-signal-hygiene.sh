@@ -391,7 +391,7 @@ check_one() {
 report_hit() { printf '%s:%s: %s\n' "$1" "$2" "${REASON%%$'\n'*}"; }
 
 scan_shell() {
-  local file=$1 hits=0 line n=0 marked=0 hd_delim="" hd_dash=0 probe
+  local file=$1 hits=0 line n=0 marked=0 hd_delim="" hd_dash=0 probe lead
   local -a lines=()
   mapfile -t lines < "$file"
   for line in "${lines[@]}"; do
@@ -417,7 +417,11 @@ scan_shell() {
     # The marker suppresses its own line (trailing comment) and the next
     # command line (comment above), which covers both ways people write it.
     if [[ $line == *"$MARKER"* ]]; then marked=1; continue; fi
-    if [[ $(trim "$line") == \#* ]]; then continue; fi
+    # Strip in place rather than through $(trim ...): a command substitution
+    # forks once per line, which dominated --scan time. Only the leading strip
+    # matters, since trailing whitespace cannot decide whether a line starts with #.
+    lead=${line#"${line%%[![:space:]]*}"}
+    if [[ $lead == \#* ]]; then continue; fi
     if [[ $marked -eq 1 ]]; then marked=0; continue; fi
     if screen_command "$line"; then
       report_hit "$file" "$n"
@@ -428,7 +432,7 @@ scan_shell() {
 }
 
 scan_markdown() {
-  local file=$1 hits=0 line n=0 armed=0 lang="" in_fence=0 skip_body=0 cmd
+  local file=$1 hits=0 line n=0 armed=0 lang="" in_fence=0 skip_body=0 cmd lead
   local -a lines=()
   mapfile -t lines < "$file"
   for line in "${lines[@]}"; do
@@ -454,7 +458,8 @@ scan_markdown() {
       [[ $cmd =~ ^[[:space:]]*\$[[:space:]] ]] || continue
       cmd=${cmd#*\$ }
     fi
-    if [[ $(trim "$cmd") == \#* ]]; then continue; fi
+    lead=${cmd#"${cmd%%[![:space:]]*}"}   # in place, no per-line fork (see scan_shell)
+    if [[ $lead == \#* ]]; then continue; fi
     if screen_command "$cmd"; then
       report_hit "$file" "$n"
       hits=$((hits + 1))

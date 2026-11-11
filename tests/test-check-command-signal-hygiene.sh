@@ -251,6 +251,30 @@ SH
 r=$(rc_of --scan "$TMP/marked.sh")
 is "$r" 0 "the shell marker suppresses the next command line" "marked shell counter-example"
 
+# Indented comments are skipped by both scanners. The seeded.sh case above
+# cannot show this: its defect fires whether or not the comment is skipped.
+# Here the only bad idiom is in the comments, one space-indented and one
+# tab-indented. printf writes the tab, so an editor cannot turn it into spaces.
+# Each idiom sits in a command substitution on purpose: a bare `# npm test | tail`
+# reads `#` as the command word and passes the screen even when the comment is
+# not skipped, so it could not show that the skip happened.
+printf '#!/usr/bin/env bash\n    # OLD=$(git push -q origin main 2>&1 | tail -2)\n\t# OUT=$(npm test | tail -5)\necho done\n' > "$TMP/comments.sh"
+printf '# Comments\n\n```bash\n    # OLD=$(git push -q origin main 2>&1 | tail -2)\n\t# OUT=$(npm test | tail -5)\n```\n' > "$TMP/comments.md"
+hits_of() { set +e; bash "$CHECK" --scan "$1" 2>/dev/null | grep -c ':[0-9][0-9]*: '; set -e; }
+for ext in sh md; do
+  r=$(rc_of --scan "$TMP/comments.$ext")
+  is "$r" 0 "space- and tab-indented comments are skipped in a .$ext file" \
+     "indented comments in a .$ext file"
+  # Positive control: the same lines with '# ' removed must each fire, which
+  # proves the commented text is something the screen would otherwise catch.
+  sed 's/^\([[:space:]]*\)# /\1/' "$TMP/comments.$ext" > "$TMP/uncommented.$ext"
+  r=$(rc_of --scan "$TMP/uncommented.$ext")
+  is "$r" 1 "uncommenting the same .$ext lines makes them fire" \
+     "uncommented .$ext lines; the comment test may be vacuous"
+  is "$(hits_of "$TMP/uncommented.$ext")" 2 "both the space- and tab-indented .$ext lines fire uncommented" \
+     "uncommented .$ext hit count"
+done
+
 # --- 9. data is not a command -----------------------------------------------
 # Every case here was found by the hook denying a real command during its own
 # construction. A quoted argument, a heredoc body and a commit message are data
