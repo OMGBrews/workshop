@@ -193,12 +193,16 @@ class LauncherPathTests(unittest.TestCase):
                              [str(self.launcher), "native fixture version"], name)
 
     def test_zsh_noninteractive_login_profile_cannot_shadow_launcher(self):
-        self.assertIsNotNone(shutil.which("zsh"), "zsh is required for startup regression tests")
+        # Resolved on the caller's PATH and run by absolute path: the fixture PATH
+        # below is deliberately narrow, and zsh need not live in /usr/bin (CI
+        # installs a pinned build under /usr/local).
+        zsh = shutil.which("zsh")
+        self.assertIsNotNone(zsh, "zsh is required for startup regression tests")
         self.startup(".zprofile", "ZPROFILE_USER_VALUE", 0o640, symlink=True)
         self.setup()
         self.assert_preserved()
         result = subprocess.run(
-            ["zsh", "-lc", 'command -v claude; claude --version'],
+            [zsh, "-lc", 'command -v claude; claude --version'],
             cwd=self.home, env=dict(self.env, ZDOTDIR=str(self.home)),
             text=True, capture_output=True,
         )

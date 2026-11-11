@@ -3,6 +3,15 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **Devcontainer images build without keyservers.**
+  `Tools/devcontainer/install-toolchain.sh` installs Git LFS, and on request
+  Python and Ruby, from pinned upstream releases verified by SHA-256 digests in
+  the script. It replaces the `git-lfs`, `python`, and `ruby` Dev Container
+  features, which fetch GPG keys from public keyservers and fail the build when
+  those are unreachable. On adoption, add the `COPY` and `RUN` lines from the
+  devcontainer README directly after `FROM` and remove the matching features
+  and lockfile entries in the same commit.
+
 - **The Markdown link check spends its time on links.** Sources are scanned by
   one `rewrite-moved-markdown-links.sh --extract-batch` process per batch instead
   of five processes per file, using the same awk grammar as `--extract` and the
