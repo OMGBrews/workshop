@@ -3,6 +3,13 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **Codex cloud supports an explicit manual launch route.** Repository-owned
+  declarations separate stable configuration/version identity, local validation
+  and live evidence. The validator renders setup and per-command startup without
+  executing it; cloud skills preserve Claude as default and prepare Codex prompts
+  only on explicit selection. Automatic startup and CLI dispatch remain unproven
+  or deferred. Consumers adopt tracked instructions and verify each environment.
+
 - **Devcontainer images build without keyservers.**
   `Tools/devcontainer/install-toolchain.sh` installs Git LFS, and on request
   Python and Ruby, from pinned upstream releases verified by SHA-256 digests in

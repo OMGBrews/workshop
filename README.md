@@ -90,6 +90,9 @@ Task queues in consuming repositories can be checked with
 [`Tools/check-task-dependencies.sh`](Tools/check-task-dependencies.sh); see
 [usage and audit repair policy](docs/task-dependencies.md).
 
+The [Codex cloud declaration standard](docs/codex-cloud.md) supports explicit
+manual launch, tracked startup and per-repository readiness evidence.
+
 ## Cutover record
 
 [docs/source-of-truth-cutover.md](docs/source-of-truth-cutover.md) records the
