@@ -117,6 +117,33 @@ so an old consumer library cannot break a new skill's protocol. Kit adoption mus
 include the detector, neutral bootstrap, and vendor wrapper together. Fleet pointer
 updates remain separately requested work.
 
+## Explicit Codex cloud contract
+
+Until a verified vendor signal is implemented here, Codex cloud uses the neutral
+launcher assertion. A repository-owned entry point invoked explicitly for a Codex
+cloud task sets these values for bootstrap and each wrapped command:
+
+```bash
+export AGENT_SESSION_ENVIRONMENT=cloud
+export AGENT_SESSION_REMOTE=true
+export AGENT_SESSION_EPHEMERAL=false
+```
+
+This is an explicit context assertion, not automatic Codex detection. Do not infer
+it from the repository path, a runtime instance ID, or absence of a Claude signal.
+A wrapper that is also usable locally must enter this mode explicitly rather than
+asserting cloud merely because the script exists in a checkout.
+
+The false capability is essential even when an inherited `CLAUDE_CODE_REMOTE=true`
+is present: it prevents that marker's default disposable-checkout capability from
+licensing resets, fast-forwards or Claude-only credential setup. A retained checkout
+may contain valuable work. The wrapper must preserve its source and recorded pins;
+selecting a requested source revision is a separate operation authorized by the
+launch prompt and checked for loss of local work. Child-process exports reach that
+command's descendants, not the next independent shell: activate and assert the
+contract on every command invocation. See
+[Codex manual cloud startup](harness-agnostic-repos.md#codex-manual-cloud-startup).
+
 ## Verification
 
 `tests/test-session-environment.sh` exercises the command and sourced interfaces,

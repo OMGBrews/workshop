@@ -1,7 +1,7 @@
 ---
 name: problem-plan-cloud
-description: Send every problem record in one bucket of docs/work/problems/ (now/ unless another bucket is named) to the cloud for planning, one Claude Code on the web session per record, each running problem-plan on its record and stopping at the orientation card for the owner to continue there. Reads the records from the default branch, skips those with a Disposition line, a live task citing them, or a session or pull request already at work, prints the plan before anything launches, creates the sessions in the environment docs/work/claude-code-web.md declares, verifies each one, and reports its link. Supports a dry run and a slug filter; never plans, edits, commits, or pushes itself.
-compatibility: Launches from a Claude Code on the web session through the claude-code-remote MCP server's create_session, get_session, and list_sessions tools, or from a local Claude Code session through claude --cloud under util-linux script, run on the default branch. The in-flight check reads open pull requests with an authenticated gh, or else the GitHub MCP server. With neither launch route the skill stops after the plan and prints each session's prompt for a manual start.
+description: Send every problem record in one bucket of docs/work/problems/ (now/ unless another bucket is named) to the cloud for planning, one Claude Code on the web session per record, each running problem-plan on its record and stopping at the orientation card for the owner to continue there. Reads the records from the default branch, skips those with a Disposition line, a live task citing them, or a session or pull request already at work, prints the plan before anything launches, creates the sessions in the environment docs/work/claude-code-web.md declares, verifies each one, and reports its link. Supports harness=codex for manual ChatGPT prompts, a dry run and a slug filter; never plans, edits, commits, or pushes itself.
+compatibility: With harness=codex, prepares manual ChatGPT prompts using docs/work/codex-cloud.md; no Codex CLI or automated task lookup. Default Claude route launches from a Claude Code on the web session through the claude-code-remote MCP server's create_session, get_session, and list_sessions tools, or from a local Claude Code session through claude --cloud under util-linux script, run on the default branch. The in-flight check reads open pull requests with an authenticated gh, or else the GitHub MCP server. With neither launch route the skill stops after the plan and prints each session's prompt for a manual start.
 ---
 
 # Plan problems in the cloud
@@ -24,9 +24,19 @@ included, are shared with `task-finalize-cloud` and `task-implement-cloud` and l
 [cloud-dispatch.md](cloud-dispatch.md) beside this file. Read it before step 1; the
 steps below say which of its sections to apply.
 
+## Harness selection
+
+`harness=claude` is the default. `harness=codex` selects the shared
+[Codex manual route](cloud-dispatch.md#codex-manual-route): use `docs/work/codex-cloud.md` for environment and
+capability evidence, and prepare one prompt per eligible record for the owner to
+launch. Preserve every gate and stage stop below. Unknown in-flight task state
+holds a record until the owner clears it; no automated Codex lookup is claimed.
+The Claude launch/session-list instructions below apply only to the default
+Claude route. On Codex, use the shared manual verification/report substitutions.
+
 ## Arguments
 
-All optional, in any order, besides the shared slug filter and `dry-run`:
+All optional, in any order, besides the shared slug filter, `dry-run`, and `harness=claude|codex`:
 
 - a bucket name: `now`, the default, `soon`, or `later`. `parked` is not dispatched,
   because those records are parked by the owner's explicit direction, and planning

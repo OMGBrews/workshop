@@ -85,6 +85,23 @@ printf '%s|%s|%s|%s\\n' "$AGENT_SESSION_ENVIRONMENT" "$AGENT_SESSION_SIGNAL" "$A
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(result.stdout, expected)
 
+    def test_explicit_codex_contract_survives_child_shell_without_ephemeral_permission(self):
+        # A cloud wrapper must establish the contract for every command. An
+        # inherited Claude marker must not restore its disposable-tree default.
+        values = {'PATH': os.environ['PATH'], 'DETECTOR': str(detector),
+                  'AGENT_SESSION_ENVIRONMENT': 'cloud', 'AGENT_SESSION_REMOTE': 'true',
+                  'AGENT_SESSION_EPHEMERAL': 'false', 'CLAUDE_CODE_REMOTE': 'true'}
+        for _ in range(2):
+            result = subprocess.run(['bash', '-c',
+                '. "$DETECTOR" && bash -c \'printf "%s|%s|%s\\n" "$AGENT_SESSION_ENVIRONMENT" "$AGENT_SESSION_REMOTE" "$AGENT_SESSION_EPHEMERAL"\''],
+                capture_output=True, text=True, env=values)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout, 'cloud|true|false\n')
+        # A previous process's exports are not evidence in a new shell.
+        unprovisioned = self.run_detector()
+        self.assertEqual(unprovisioned.returncode, 0)
+        self.assertEqual(unprovisioned.stdout, 'environment=unknown signal=none\n')
+
     def test_source_failure_clears_mutation_capability(self):
         result = subprocess.run(['bash', '-c', '. "$DETECTOR"; rc=$?; printf "%s|%s|%s\\n" "$rc" "$AGENT_SESSION_ENVIRONMENT" "$AGENT_SESSION_EPHEMERAL"'],
             text=True, capture_output=True, env={'PATH':os.environ['PATH'], 'DETECTOR':str(detector),

@@ -1,14 +1,21 @@
 # Cloud dispatch
 
-The launch procedure shared by the three cloud dispatch skills: `problem-plan-cloud`,
-`task-finalize-cloud`, and `task-implement-cloud`. It covers reading the records
-the sessions will see, resolving where the sessions go and which route launches them,
-finding sessions already at work, printing the plan, creating one Claude Code on the
-web session per record, verifying each, and reporting. The skills run from a Claude
-Code on the web session, which launches through the cloud session tools, or from a
-local Claude Code session, which launches with `claude --cloud`. Read it from any of
-those skills when a step says to; each skill owns its bucket, its gates, and the stage
-instructions inside the prompt.
+The launch procedure shared by `problem-plan-cloud`, `task-finalize-cloud`, and
+`task-implement-cloud`. It reads the source records, resolves their environment,
+checks work already in flight, prepares one session per eligible record, and
+reports what actually launched. Claude remains the default; explicit Codex
+selection prepares manual ChatGPT prompts. Each skill owns its bucket, gates and
+stage instructions.
+
+## Select the harness
+
+Accept exactly one optional `harness=claude` or `harness=codex` argument. Omission
+means Claude. Reject conflicting or unknown selections; never silently fall back.
+The numbered procedure below describes Claude. With `harness=codex`, apply the
+substitutions in [Codex manual route](#codex-manual-route) to those same steps.
+All record eligibility, capability classification, dependency and overlap rules
+in the calling skill still apply. Model choices and permission modes are not
+copied from a Claude session into a manual Codex prompt.
 
 ## What the three skills share
 
@@ -43,7 +50,137 @@ Every dispatch skill takes these arguments, in any order, beside its own:
 - one or more record slugs or filenames, which narrow the batch to those records in
   the skill's bucket; this is how a record whose session failed or was archived is
   sent again;
-- `dry-run`, which stops after the plan.
+- `dry-run`, which stops after the plan;
+- `harness=claude|codex`, as described above.
+
+## Codex manual route
+
+This route prepares prompts for the owner to launch in a published ChatGPT
+Codex environment. It calls no launch API or CLI, spends no cloud usage itself,
+and never claims that rendering a prompt created a task. It writes only scratch
+outputs, just like the Claude render-only route. CLI dispatch and automated
+Codex task lookup are deferred. Use the following substitutions for numbered
+steps 1–7, retaining the calling skill's gates and classification.
+
+### Source and declaration (steps 1–2)
+
+Fetch and snapshot the remote default branch exactly as step 1 requires; name
+its full commit SHA in every prompt. A restored filesystem is not evidence that
+the task starts at that SHA. Archive all capability authorities named in
+`docs/work/codex-cloud.md`, rather than the Claude declaration. Resolve the
+Workshop root from this file's physical directory and run:
+
+```bash
+tree="$(dirname "$(readlink -f .agents/skills/problem-plan-cloud/cloud-dispatch.md)")/../../.."
+python3 "$tree/Tools/codex-cloud.py" validate .
+python3 "$tree/Tools/codex-cloud.py" show . --json
+```
+
+Require `availability: configured`; otherwise report its reason and stop.
+Compare the validated declaration and every referenced install/start/command
+entry point against the fetched default-branch versions. Missing paths, local
+changes, a failed comparison or a missing declaration stop preparation. Do not
+render local-only setup into a prompt for remote source. The
+[Codex declaration standard](../../../docs/codex-cloud.md) owns schema and
+rendering semantics; validation proves neither published configuration nor live
+readiness.
+
+Use `environment.name`, `environment.configId` and `environment.versionId` to
+identify the desired published configuration. Runtime instance IDs are separate;
+do not substitute them for configuration identity. Read declared capability and
+live-readiness evidence from the snapshot, including `readiness.state` and its
+evidence path when recorded. `unverified` does not establish runnable capability;
+classify affected implementation evidence as unclear and hold it. A recorded
+receipt still needs to support the specific capability and configuration/version
+being used; distinguish missing evidence from an unavailable capability. For
+implementation, review `docs/work/ship/cloud.md`
+or the applicable bundled policy: unavailable required publication or monitoring
+capabilities hold the affected task rather than licensing a policy substitution.
+
+### In-flight work and plan (steps 3–4)
+
+Apply the open-PR check in step 3. Automated Codex session lookup is unavailable:
+report it as such for every record. Ask the owner for currently active task links
+and the corresponding record slugs, or explicit confirmation that the selected
+records have no active tasks. A known working, blocked or review-ready task is
+in flight. An unknown answer is never clearance: keep that record held pending
+owner confirmation. Preparing a draft prompt does not reserve the record.
+
+Run all of the calling skill's readiness gates, capability classification and
+file-overlap hold-back before preparing launchable prompts. The plan uses
+`prepare manual prompt`, `held` or `skip`, never `launched`. Name the source SHA,
+repository, configuration name/ID/version, unavailable lookups, owner-supplied
+in-flight evidence and number of prompts. A `dry-run` stops at this plan.
+
+### Prompt and handoff (step 5)
+
+For each eligible record, render startup using the declaration tool and its
+explicit source SHA:
+
+```bash
+python3 "$tree/Tools/codex-cloud.py" render-start . --source "<full source SHA>"
+```
+
+Check exit 0 and preserve the renderer's checkout path, quoted arguments,
+source substitution and per-command activation instructions. Fill the following
+frame with the exact rendered command,
+command prefix, the calling skill's stage block and its sibling paragraph. In a
+stage block replace `<capability declaration>` with `docs/work/codex-cloud.md`.
+Replace slash-skill invocation examples with an instruction to read and follow
+`.agents/skills/<stage skill>/SKILL.md` if the target has no slash invocation.
+Do not weaken the orientation or close-out stop.
+
+```text
+<title>
+Work on <primaryRepository> at exact source <full source SHA> in the published
+Codex configuration <name>, configId <configId>, versionId <versionId>.
+Report the observed source_config_id, source_config_version_id and task/thread
+identity when available. Runtime instance IDs are not configuration IDs.
+
+Before recovery, record initial repository and Workshop revisions and relevant
+dependency/private-asset state. Select the expected source only after checking
+that doing so preserves existing work and commits. If selection would discard
+work, stop and report. Do not reset or infer ephemeral permission from cloud
+location. Restore only clean submodules to this source's recorded pins; preserve
+advanced or dirty child work for explicit resolution. Read AGENTS.md at the
+selected revision, then run the repository's tracked startup command:
+<rendered startup command with expected source SHA>
+
+For subsequent commands use the declared per-command activation prefix:
+<command prefix>
+Do not rely on published start-skill delivery or retained proposal files.
+Report startup output and exit status; distinguish agent-invoked commands from
+automatic execution. A report-only bootstrap exit 0 is not readiness evidence.
+
+<stage block>
+<sibling paragraph, if any>
+
+Follow AGENTS.md and the selected stage skill. Planning/finalization stop at the
+orientation card. Implementation stops for owner close-out confirmation; a cloud
+part stops at its resume point. Landing uses ship under this repository's cloud
+policy, including its merge authorization and monitoring requirements. Prompt
+preparation, passing checks and close-out are not blanket merge authorization.
+```
+
+Tell the owner to start one manual ChatGPT task per prepared prompt in the
+identified published environment and return its link and observed identities.
+Print the prompts in full. Do not create environments, publish configuration,
+rotate credentials or launch through a different harness as part of dispatch.
+
+### Verify and report (steps 6–7)
+
+Before the owner reports a task, its status is `prompt prepared; not launched`.
+On return, compare the observed configuration/version and repository source with
+the prompt. Missing observations are unconfirmed; a mismatch is reported and
+resolved before treating the task as ready. Attribute relayed evidence to the
+owner rather than claiming independent API lookup. Capture each record's task
+link/identity in the report so it can be supplied to the next in-flight check.
+The dispatcher still writes no repository files or status markers.
+
+Report the stage's stopping point and that the owner continues each task there.
+No automatic return or notification is implied. Observe the task's own shipping
+policy when work later lands; a policy requiring an unavailable return mechanism
+must be resolved explicitly, not silently replaced with manual resume.
 
 ## 1. Read what the sessions will read
 

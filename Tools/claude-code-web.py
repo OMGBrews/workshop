@@ -99,7 +99,7 @@ def require_sorted_unique(values: Any, context: str) -> list[str]:
     return values
 
 
-def extract(document: Path) -> dict[str, Any]:
+def extract(document: Path, begin: str = BEGIN, end: str = END) -> dict[str, Any]:
     try:
         text = document.read_text(encoding="utf-8")
     except FileNotFoundError as error:
@@ -107,13 +107,15 @@ def extract(document: Path) -> dict[str, Any]:
     except (OSError, UnicodeError) as error:
         raise DeclarationError(f"cannot read declaration {document}: {error}") from error
 
-    if text.count(BEGIN) != 1 or text.count(END) != 1:
+    if text.count(begin) != 1 or text.count(end) != 1:
         raise DeclarationError(
-            f"{document}: expected exactly one {BEGIN!r} and one {END!r} sentinel"
+            f"{document}: expected exactly one {begin!r} and one {end!r} sentinel"
         )
-    before, remainder = text.split(BEGIN, 1)
-    block, after = remainder.split(END, 1)
-    if END in before or BEGIN in block or BEGIN in after or END in after:
+    if text.index(end) < text.index(begin):
+        raise DeclarationError(f"{document}: declaration sentinels are out of order")
+    before, remainder = text.split(begin, 1)
+    block, after = remainder.split(end, 1)
+    if end in before or begin in block or begin in after or end in after:
         raise DeclarationError(f"{document}: declaration sentinels are duplicated or out of order")
 
     lines = block.strip().splitlines()
@@ -128,6 +130,8 @@ def extract(document: Path) -> dict[str, Any]:
         parsed = json.loads(payload, object_pairs_hook=object_without_duplicates)
     except DeclarationError:
         raise
+    except RecursionError as error:
+        raise DeclarationError(f"{document}: declaration nesting too deep") from error
     except json.JSONDecodeError as error:
         raise DeclarationError(
             f"{document}: invalid JSON at line {error.lineno}, column {error.colno}: {error.msg}"

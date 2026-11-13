@@ -1,7 +1,7 @@
 ---
 name: task-implement-cloud
-description: Send the finalized tasks a Claude Code on the web session can actually finish to the cloud, one session per task running task-implement. Reads docs/work/tasks/finalized/ from the default branch, skips briefs with open questions, a blocked status, an unmet dependency, or a session or pull request already at work, then classifies every remaining acceptance criterion against what docs/work/claude-code-web.md says a cloud session can and cannot do. Only tasks whose remaining work is all cloud work are dispatched; tasks whose remaining work needs something that page says a cloud session cannot do, such as a device, a live service, or a build only a host can make, are reported with the criteria that need a host. Holds back tasks whose files overlap so parallel sessions do not collide. Supports a dry run, a slug filter, and an opt-in for the cloud part of a mixed task; never implements, commits, or pushes itself.
-compatibility: Launches from a Claude Code on the web session through the claude-code-remote MCP server's create_session, get_session, and list_sessions tools, or from a local Claude Code session through claude --cloud under util-linux script, run on the default branch. The in-flight check reads open pull requests with an authenticated gh, or else the GitHub MCP server. With neither launch route the skill stops after the plan and prints each session's prompt for a manual start.
+description: Send the finalized tasks a Claude Code on the web session can actually finish to the cloud, one session per task running task-implement. Reads docs/work/tasks/finalized/ from the default branch, skips briefs with open questions, a blocked status, an unmet dependency, or a session or pull request already at work, then classifies every remaining acceptance criterion against what docs/work/claude-code-web.md says a cloud session can and cannot do. Only tasks whose remaining work is all cloud work are dispatched; tasks whose remaining work needs something that page says a cloud session cannot do, such as a device, a live service, or a build only a host can make, are reported with the criteria that need a host. Holds back tasks whose files overlap so parallel sessions do not collide. Supports harness=codex for manual ChatGPT prompts, a dry run, a slug filter, and an opt-in for the cloud part of a mixed task; never implements, commits, or pushes itself.
+compatibility: With harness=codex, prepares manual ChatGPT prompts using docs/work/codex-cloud.md; no Codex CLI or automated task lookup. Default Claude route launches from a Claude Code on the web session through the claude-code-remote MCP server's create_session, get_session, and list_sessions tools, or from a local Claude Code session through claude --cloud under util-linux script, run on the default branch. The in-flight check reads open pull requests with an authenticated gh, or else the GitHub MCP server. With neither launch route the skill stops after the plan and prints each session's prompt for a manual start.
 ---
 
 # Implement tasks in the cloud
@@ -23,9 +23,19 @@ included, are shared with `problem-plan-cloud` and `task-finalize-cloud` and liv
 [cloud dispatch](../problem-plan-cloud/cloud-dispatch.md). Read it before step 1; the
 steps below say which of its sections to apply.
 
+## Harness selection
+
+`harness=claude` is the default. `harness=codex` selects the shared
+[Codex manual route](../problem-plan-cloud/cloud-dispatch.md#codex-manual-route): use `docs/work/codex-cloud.md` for environment and
+capability evidence, and prepare one prompt per eligible record for the owner to
+launch. Preserve every gate and stage stop below. Unknown in-flight task state
+holds a record until the owner clears it; no automated Codex lookup is claimed.
+The Claude launch/session-list instructions below apply only to the default
+Claude route. On Codex, use the shared manual verification/report substitutions.
+
 ## Arguments
 
-All optional, in any order, besides the shared slug filter and `dry-run`:
+All optional, in any order, besides the shared slug filter, `dry-run`, and `harness=claude|codex`:
 
 - `cloud-part`, which also dispatches each **split** task from step 4 for its cloud
   criteria only. The session does that part, leaves the host criteria open, and
@@ -42,7 +52,8 @@ unfinalized brief needs `task-finalize-cloud` before it is worth a session.
   where one survives. The shared [task bucket definitions](../task-create/bucket-definitions.md)
   say what each holds.
 - **What a cloud session can do**: the section of that name in the repository's
-  `docs/work/claude-code-web.md`, with the list of what a cloud session cannot do
+  `docs/work/claude-code-web.md` for Claude or `docs/work/codex-cloud.md`
+  for Codex, with the list of what a cloud session cannot do
   beneath it. That page is the authority step 4 classifies against, and it may
   name further authorities, such as a test README that says which harnesses run
   without a host, and carry its own table of examples for this skill's step 4.
@@ -58,9 +69,9 @@ unfinalized brief needs `task-finalize-cloud` before it is worth a session.
 
 ## Step 1 — Read the default branch and resolve the target
 
-Apply cloud dispatch steps 1 and 2: snapshot `docs/work` and the mod scripts README
-from the default branch, and resolve the environment, repository, and session tools
-from the declaration.
+Apply cloud dispatch steps 1 and 2: snapshot `docs/work` and further capability
+authorities named by the selected harness declaration from the default branch,
+and resolve the environment, repository, and session route from that declaration.
 
 ## Step 2 — Inventory the finalized briefs
 
@@ -191,7 +202,8 @@ Apply cloud dispatch step 4 with this table:
 
 ## Step 7 — Launch
 
-Apply cloud dispatch step 5. The record kind is "task", and the tag is
+Apply cloud dispatch step 5. Replace `<capability declaration>` with the selected
+harness declaration path. The record kind is "task", and the tag is
 `task-implement:<slug>`. A **cloud** task is titled `Implement: <H1>` and gets this
 stage block:
 
@@ -204,7 +216,7 @@ The dispatcher classified every remaining item of this task as work a cloud
 session can do and evidence it can produce:
 <one line per item: a short quote and the evidence it needs>
 
-Build and check with the commands in docs/work/claude-code-web.md under "What
+Build and check with the commands in <capability declaration> under "What
 a cloud session can do". Follow task-implement exactly. If an item turns out to
 need what a cloud session cannot do, such as <the declaration's list of what
 a cloud session cannot do, in a few words>, do not tick it on substitute
@@ -230,7 +242,7 @@ Leave these unticked, because they need what a cloud session cannot do:
 
 Follow task-implement through its verification and implementation phases for
 the cloud items only, ticking each on evidence. Build and check with the
-commands in docs/work/claude-code-web.md under "What a cloud session can do".
+commands in <capability declaration> under "What a cloud session can do".
 Do not take the close-out, because the task is not finished. Keep `status:
 in-progress`, and write or replace the brief's `## Resume point` section: what
 this session did, the command and verdict line of each check it ran, and

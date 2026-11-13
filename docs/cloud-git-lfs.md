@@ -1,13 +1,14 @@
 # Git LFS in cloud sessions
 
 How a repository that tracks files with Git LFS makes them readable and
-pushable in a Claude Code on the Web session. Read this when a cloud checkout
+pushable in cloud sessions. The Claude proxy fallback and Codex direct hydration
+paths are distinct. Read this when a cloud checkout
 holds LFS pointers, when `git lfs` reports missing credentials there, or when
 adding LFS to a repository with a [Web declaration](claude-code-web.md).
 
 ## What goes wrong without it
 
-Three independent failures, each silent or misleading:
+Independent failures observed in Claude Code on the Web, each silent or misleading:
 
 - **The checkout holds pointers.** The platform clones without smudging, so
   every LFS-tracked file arrives as a ~130-byte text file beginning
@@ -37,7 +38,7 @@ Three independent failures, each silent or misleading:
   `git update-index --refresh` find nothing to fix. plunk-godot hit this in a
   session that ran every hook twice: 149 of 322 files showed as modified.
 
-## The fix
+## Claude proxy setup
 
 With a custom network policy, the declaration's `allowedDomains` must admit
 GitHub's LFS hosts. plunk-godot, jet-letter, and marble-lab declare
@@ -71,8 +72,44 @@ Omit `--include` to hydrate everything. Hydrate at session start only what
 the repository's checks need; large archives that most sessions never open
 are better pulled on demand with `hydrate --include=<path>/**`, after
 `credential-fallback` has run. The caller gates on an ephemeral session: the
-fallback belongs in a cloud checkout, not a local one. The script's header
+fallback belongs only in the demonstrated Claude proxy checkout, not every cloud
+checkout. Cloud location or ephemeral permission alone does not establish that
+another platform uses that proxy contract. The script's header
 documents its exit codes.
+
+## Codex manual hydration
+
+The Codex manual route reuses `hydrate` independently of Claude authentication:
+
+```bash
+bash workshop/Tools/cloud-git-lfs.sh hydrate
+```
+
+Use the platform's existing HTTPS Git authentication. Provision `git-lfs` and the
+network access needed by the repository before the task; keep credentials in the
+platform's secret configuration, never the declaration, Git, or command output.
+Do not call `session` or `credential-fallback` for Codex. Explicit
+`AGENT_SESSION_EPHEMERAL=false` at bootstrap also prevents an adopter's
+Claude-oriented ephemeral-session hook from selecting that fallback. The
+[session environment contract](session-environment.md#explicit-codex-cloud-contract)
+separates this permission from cloud location.
+
+The tool already separates authentication setup, pre-push setup and hydration;
+Codex needs no copied hydration implementation. Require its positive census: at
+least one file in the requested scope, zero pointers and current index. Run again
+after a source refresh when necessary; an onboarding result does not establish
+that a fresh task's files are hydrated. If authentication, network access or the
+census fails, report required rendering checks as unavailable with the command
+and cause. Do not install the Claude placeholder helper as a guessed repair and
+do not skip or weaken checks that read private assets.
+
+Successful hydration proves reads, not upload of newly created LFS objects. A
+successful ordinary Git push with no new LFS object does not prove LFS upload
+either. A workflow that needs new uploads must separately verify the effective
+pre-push hook and actual upload under its own platform authentication. The
+`pre-push-hook` command is independently available, but its configuration alone
+is not upload evidence. Record these distinctions in the consumer's
+[Codex declaration](codex-cloud.md).
 
 ## Evidence
 

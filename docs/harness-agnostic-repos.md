@@ -264,15 +264,50 @@ no standing rules**, with no error to say so.
   the process the hook launches; long-lived shells that source the library directly
   never see it. So: **vendor environment variables are read in exactly one declared
   seam file** (`scripts/lib/harness-signals.sh` for the shared ship skill), which translates them to neutral
-  `AGENT_*` names at call time — neutral wins when both are set — and every consumer
-  reads the neutral helper. Adding a harness is one fallback row in the seam, never a
-  new read site. The seam is also where the neutral name gets *defined*: name the
-  property (`AGENT_SESSION_REMOTE`: a recognized harness-managed remote sandbox), let
-  the seam own which vendor variable asserts it. For ship's location decision,
-  invoking `bash scripts/lib/harness-signals.sh` must print exactly one line:
-  `AGENT_SESSION_EPHEMERAL=<true|false> signal=<source>`. A true value means
-  a harness-managed ephemeral sandbox, not merely a remote SSH connection.
-  Ship reads this at call time; an error or malformed result stops shipping.
+  `AGENT_*` names at call time. Location assertions must agree; conflicting evidence
+  stops shipping instead of silently preferring one harness. Consumers use the
+  [session environment contract](session-environment.md), whose canonical command
+  prints `environment=<local|cloud|unknown> signal=<source>`. Disposable-checkout
+  permission is separate: cloud location alone never licenses a reset or fast-forward.
+  Adding a harness adapter requires a verified positive signal and regression tests,
+  not a new vendor-variable read site. Unknown is never interpreted as local.
+
+### Codex manual cloud startup
+
+The supported [Codex declaration](codex-cloud.md) route is explicit manual launch.
+A declaration, prepared dependency snapshot or retained startup file does not prove
+that startup instructions reached the agent or that a startup action ran. Keep
+those observations separate from successful agent-invoked startup.
+
+Put the required first-turn command in the repository's tracked `AGENTS.md`, linking
+to a repository-owned startup procedure. The launch prompt supplies the intended
+full source commit. Before bootstrap, compare it with the restored checkout and
+stop on mismatch; do not use restored HEAD as the expected revision merely to make
+the check pass. Selecting the requested source is a separate, explicit operation
+that preserves existing work and local commits. Read AGENTS.md again after selecting
+source, and initialize only missing submodules at their recorded pins. A dirty or
+advanced initialized submodule needs explicit resolution, not a reset.
+
+The startup command asserts the observed cloud location through the neutral inputs
+and sets `AGENT_SESSION_EPHEMERAL=false`. It checks bootstrap output and verifies the
+properties needed by the task, rather than treating the report-only bootstrap's
+exit 0 as readiness. For private assets, use the
+[direct hydration path](cloud-git-lfs.md#codex-manual-hydration) with existing platform
+authentication; do not run Claude's credential fallback.
+
+Activation must reach every independent command shell. Use a repository-owned command
+wrapper that activates the declared toolchain and then executes the requested command
+with its arguments and exit status preserved, or source the activation explicitly in
+each shell. Activation inside an installer or a previous command cannot configure
+later independent shells. Keep activation paths in the repository's procedure rather
+than relying on a cloud-local proposal file. Missing dependencies are a provisioning
+failure; do not silently select the base image's other toolchain version.
+
+Verify the contract in a fresh task at the named revision using tracked instructions
+only: record configuration/version identity, initial source and asset state, bootstrap
+output/status, a positive hydration census, pinned toolchain probes, activation in
+independent shells, and the repository's required checks. Record whether startup was
+agent-invoked or automatic. A manual trial supplies no evidence of automatic startup.
 
 ## Surface 4 — tool config
 
