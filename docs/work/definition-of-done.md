@@ -86,3 +86,9 @@ carry their own deployment declarations.
   fleet repository has migrated; no task owns that removal yet.
 - Tag immutability is procedural: the ruleset listing observed on 2026-09-07
   holds only the `main` branch ruleset, and no tag-protection rule was seen.
+
+## Scheduled verification
+
+None — `.github/workflows/check.yml` runs `make check` on pull requests,
+pushes to `main`, and tags; nothing runs on a schedule, and there is no slower
+suite that landing leaves out.

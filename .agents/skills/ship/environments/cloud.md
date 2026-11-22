@@ -39,9 +39,9 @@ the skill's `references/cloud-return.md`.
 
 ## Environment-limited checks
 
-Unknown for an undeclared repository. State in the PR body which rows of the
-definition of done ran in the sandbox and which could not, and never let a
-silent skip read as a pass.
+Unknown for an undeclared repository. State in the PR body which landing
+requirements of the definition of done ran in the sandbox and which could not,
+and never let a silent skip read as a pass.
 
 ## Submodules
 

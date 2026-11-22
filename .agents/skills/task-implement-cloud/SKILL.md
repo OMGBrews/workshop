@@ -57,7 +57,8 @@ unfinalized brief needs `task-finalize-cloud` before it is worth a session.
   beneath it. That page is the authority step 4 classifies against, and it may
   name further authorities, such as a test README that says which harnesses run
   without a host, and carry its own table of examples for this skill's step 4.
-  `docs/work/definition-of-done.md` says which checks the changed paths require.
+  The landing requirements in `docs/work/definition-of-done.md` say which
+  checks the changed paths require.
   Read every one of them from the snapshot. A declaration without that section
   gives this skill nothing to classify against: stop, and name the section the
   repository needs to add.

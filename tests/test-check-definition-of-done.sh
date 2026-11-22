@@ -504,6 +504,143 @@ expect "a bare - known gap" 1 local bare_gap "FAIL 9" "bare \`-\` bullet"
 gap_prose() { replace "$1/$P" '- No CI runs the suite; landing is procedural.' 'Nothing much.'; }
 expect "known gaps as prose" 1 local gap_prose "FAIL 9" "opens with \`Nothing much.\`"
 
+# --- clause 10: the optional scheduled-verification section ------------------------------
+# The section is appended to a conformant page, so each case differs from a
+# green fixture by the section alone. Every negative asserts clause 10's own
+# FAIL line: the verdict alone cannot tell a clause that fired from one the
+# report loop never printed.
+sched_cond_entry() {
+    cat <<'EOF'
+- **Nightly slow suite**
+  - Command: `bash scripts/slow.sh`
+  - Pass condition: exit 0 from a standalone clone.
+  - Schedule: nightly at 03:00 UTC.
+  - Runs in: the maintainer's build host, through cron.
+  - Conditional on: the fingerprint of `scripts/`, `Makefile`, and the tool
+    versions the suite prints.
+  - Skip report: the run prints `skipped` and names the last passing run.
+  - Failure report: an email to the maintainer.
+  - Evidence type: automated
+  - Evidence state: available
+EOF
+}
+sched_drift_entry() {
+    cat <<'EOF'
+- **External link monitor**
+  - Command: `bash scripts/lint.sh`
+  - Pass condition: exit 0 after fetching every external link.
+  - Schedule: weekly, Monday.
+  - Runs in: the maintainer's build host, through cron.
+  - Conditional on: unconditional
+  - Skip report: none
+  - Failure report: an issue opened in this repository.
+  - Evidence type: automated
+  - Evidence state: available
+EOF
+}
+# sched_append <dir> <body>: the section, after `## Known gaps`.
+sched_append() { printf '\n## Scheduled verification\n\n%s\n' "$2" >>"$1/$P"; }
+sched_script() { printf '#!/usr/bin/env bash\ntrue\n' >"$1/scripts/slow.sh"; git -C "$1" add scripts/slow.sh; }
+sched_cond() { sched_append "$1" "$(sched_cond_entry)"; sched_script "$1"; }
+# sched_drop_label <dir> <label>: remove one sub-line and its continuation.
+sched_drop_label() {
+    python3 -c '
+import re, sys
+p, k = sys.argv[1], sys.argv[2]
+t = open(p, encoding="utf-8").read()
+n = re.sub(r"(?m)^  - " + re.escape(k) + r":.*\n(?:    \S.*\n)*", "", t, count=1)
+if n == t: sys.exit("label not found: " + k)
+open(p, "w", encoding="utf-8").write(n)
+' "$1/$P" "$2"
+}
+
+expect "a page without the scheduled-verification section" 0 local NONE \
+    "ok   10 no \`## Scheduled verification\` section; the section is optional" "definition of done: conformant"
+sched_none() { sched_append "$1" 'None — landing already runs the whole suite on every change.'; }
+expect "scheduled verification answered None with a reason" 0 local sched_none \
+    "ok   10 no scheduled verification, with the reason" "definition of done: conformant"
+expect "a declared change-conditional scheduled run" 0 local sched_cond \
+    "ok   10 1 scheduled run(s) declared" "\`bash scripts/slow.sh\`" "definition of done: conformant"
+sched_drift() { sched_append "$1" "$(sched_drift_entry)"; }
+expect "a declared unconditional scheduled run" 0 local sched_drift \
+    "ok   10 1 scheduled run(s) declared" "definition of done: conformant"
+sched_both() { sched_append "$1" "$(sched_cond_entry; sched_drift_entry)"; sched_script "$1"; }
+expect "both kinds of scheduled run in the one section" 0 local sched_both \
+    "ok   10 2 scheduled run(s) declared" "definition of done: conformant"
+sched_then_more() { sched_none "$1"; printf '\n## Wrinkles\n\nA note.\n' >>"$1/$P"; }
+expect "a free trailing section after scheduled verification" 0 local sched_then_more \
+    "ok   10" "definition of done: conformant"
+sched_extra() { sched_cond "$1"; printf '  - Runtime: about forty minutes.\n' >>"$1/$P"; }
+expect "a further sub-line after the nine scheduled labels is allowed" 0 local sched_extra \
+    "ok   10" "definition of done: conformant"
+# A scheduled entry never counts toward landing enforcement: the profile stays
+# procedural with the entry present, and clause 5 still compares it with the
+# landing requirements alone.
+expect "a scheduled entry leaves the landing-enforcement summary alone" 0 local sched_cond \
+    "ok   5  Landing enforcement \`procedural\` equals the strongest landing requirement"
+
+sched_untracked() { sched_append "$1" "$(sched_cond_entry)"; }
+expect "a scheduled command that names no tracked artifact" 1 local sched_untracked \
+    "FAIL 8" "\`## Scheduled verification\` requirement **Nightly slow suite** Command" "\`scripts/slow.sh\` is not tracked" "ok   10"
+for label in "Schedule" "Runs in" "Conditional on" "Failure report"; do
+    eval "sched_drop() { sched_cond \"\$1\"; sched_drop_label \"\$1\" '$label'; }"
+    expect "a scheduled entry without \`$label\` is rejected" 1 local sched_drop \
+        "FAIL 10" "expected \`$label:\`" "missing \`Evidence state:\`" "1 clause(s) failed"
+done
+sched_short() { sched_append "$1" $'- **Nightly slow suite**\n  - Command: `make check`\n  - Pass condition: exit 0.'; }
+expect "a scheduled entry that stops after two labels" 1 local sched_short \
+    "FAIL 10" "missing \`Schedule:\`" "missing \`Evidence state:\`" "1 clause(s) failed"
+sched_reorder() {
+    sched_cond "$1"
+    replace "$1/$P" $'  - Schedule: nightly at 03:00 UTC.\n  - Runs in: the maintainer\'s build host, through cron.\n' \
+        $'  - Runs in: the maintainer\'s build host, through cron.\n  - Schedule: nightly at 03:00 UTC.\n'
+}
+expect "scheduled labels out of order" 1 local sched_reorder \
+    "FAIL 10" "sub-line 3 is \`Runs in:\` (out of order); expected \`Schedule:\`" "1 clause(s) failed"
+sched_empty_value() { sched_cond "$1"; replace "$1/$P" '  - Failure report: an email to the maintainer.' '  - Failure report:'; }
+expect "a scheduled label with no value" 1 local sched_empty_value \
+    "FAIL 10" "\`Failure report:\` is empty" "1 clause(s) failed"
+sched_empty() { printf '\n## Scheduled verification\n' >>"$1/$P"; }
+expect "an empty scheduled-verification section" 1 local sched_empty \
+    "FAIL 10" "\`## Scheduled verification\` is empty" "1 clause(s) failed"
+sched_twice() { sched_none "$1"; sched_none "$1"; }
+expect "a duplicated scheduled-verification section" 1 local sched_twice \
+    "FAIL 10" "section \`## Scheduled verification\` appears 2 times" "1 clause(s) failed"
+sched_na() { sched_append "$1" 'Not applicable — nothing is scheduled.'; }
+expect "scheduled verification answered Not applicable" 1 local sched_na \
+    "FAIL 10" "omit it instead of writing \`Not applicable —\`" "1 clause(s) failed"
+sched_no_reason() { sched_append "$1" 'None —'; }
+expect "scheduled verification answered None with no reason" 1 local sched_no_reason \
+    "FAIL 10" "gives no reason after the dash" "1 clause(s) failed"
+sched_prose() { sched_append "$1" 'We run things overnight sometimes.'; }
+expect "scheduled verification holding only prose" 1 local sched_prose \
+    "FAIL 10" "opens with \`We run things overnight sometimes.\`" "1 clause(s) failed"
+sched_silent_skip() { sched_cond "$1"; replace "$1/$P" '  - Skip report: the run prints `skipped` and names the last passing run.' '  - Skip report: none'; }
+expect "a conditional scheduled run whose skip report is none" 1 local sched_silent_skip \
+    "FAIL 10" "Skip report is \`none\`, but the run is conditional" "1 clause(s) failed"
+sched_enforcement() { sched_cond "$1"; printf '  - Enforcement: platform-enforced\n' >>"$1/$P"; }
+expect "an Enforcement sub-line after the nine scheduled labels" 1 local sched_enforcement \
+    "FAIL 10" "\`Enforcement:\` does not belong here" \
+    "ok   5  Landing enforcement \`procedural\`" "ok   6  no platform-enforced declaration" "1 clause(s) failed"
+for label in "Applies to" "CI status"; do
+    eval "sched_stray() { sched_cond \"\$1\"; replace \"\$1/\$P\" '  - Schedule: nightly' '  - $label: every change.'\$'\\n''  - Schedule: nightly'; }"
+    expect "a stray \`$label\` sub-line in a scheduled entry" 1 local sched_stray \
+        "FAIL 10" "\`$label:\` does not belong here" "1 clause(s) failed"
+done
+sched_bad_type() { sched_cond "$1"; replace "$1/$P" $'  - Failure report: an email to the maintainer.\n  - Evidence type: automated' $'  - Failure report: an email to the maintainer.\n  - Evidence type: nightly'; }
+expect "out-of-vocabulary evidence type in a scheduled entry" 1 local sched_bad_type \
+    "FAIL 10" "Evidence type \`nightly\` is not one of automated, manual" "1 clause(s) failed"
+sched_before_gaps() { replace "$1/$P" '## Known gaps' $'## Scheduled verification\n\nNone — nothing is scheduled.\n\n## Known gaps'; }
+expect "scheduled verification placed before known gaps" 1 local sched_before_gaps \
+    "FAIL 2" "unexpected section \`## Scheduled verification\` before \`## Known gaps\`" \
+    "FAIL 10" "must be the first level-two heading after \`## Known gaps\`; found it after \`## Deployment requirements\`" "2 clause(s) failed"
+sched_after_wrinkles() { printf '\n## Wrinkles\n\nA note.\n' >>"$1/$P"; sched_none "$1"; }
+expect "scheduled verification placed after another trailing section" 1 local sched_after_wrinkles \
+    "ok   2" "FAIL 10" "found it after \`## Wrinkles\`" "1 clause(s) failed"
+sched_case() { printf '\n## Scheduled Verification\n\nNone — nothing is scheduled.\n' >>"$1/$P"; }
+expect "the scheduled-verification heading misspelled by case" 1 local sched_case \
+    "FAIL 10" "must be spelled exactly \`## Scheduled verification\`" "1 clause(s) failed"
+
 # --- clause 8: command resolution reads the artifact ------------------------------------
 missing_target() { replace "$1/$P" '  - Command: `make check`' '  - Command: `make verify`'; }
 expect "a make target absent from the Makefile" 1 local missing_target "FAIL 8" "make target \`verify\` is not a rule in tracked Makefile"

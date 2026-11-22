@@ -73,4 +73,5 @@ in
 - [`definition-of-done.md`](definition-of-done.md) — how repositories declare
   required evidence and current enforcement
 - [`definition-of-done-schema.md`](definition-of-done-schema.md) — the six
-  sections a declaration carries and the fields that cite a profile
+  sections a declaration carries, the optional scheduled-verification
+  section, and the fields that cite a profile

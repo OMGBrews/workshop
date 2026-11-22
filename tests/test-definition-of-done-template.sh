@@ -36,27 +36,46 @@ for f in "$TEMPLATE" "$SCHEMA" "$PREDICATE" "$CONFORMANCE"; do
   [ -f "$f" ] || { echo "PRECONDITION FAILED: $f is missing" >&2; exit 1; }
 done
 
-# --- 1. the template carries the schema's six sections, in order --------------
+# --- 1. the template carries the schema's six sections, in order, then the
+# optional scheduled-verification section with its default answer -------------
 expected_h2='## Repository profile
 ## Pre-commit feedback
 ## Landing requirements
 ## Release requirements
 ## Deployment requirements
 ## Known gaps'
+expected_template_h2="$expected_h2
+## Scheduled verification"
 actual_h2="$(grep '^## ' "$TEMPLATE")"
-if [ "$actual_h2" = "$expected_h2" ]; then
-  ok "template carries exactly the six level-two headings, in order"
+if [ "$actual_h2" = "$expected_template_h2" ]; then
+  ok "template carries exactly the six level-two headings, in order, then '## Scheduled verification'"
 else
-  fail "template level-two headings differ from the schema's six"
+  fail "template level-two headings differ from the schema's six followed by '## Scheduled verification'"
   printf '%s\n' "$actual_h2" | sed 's/^/    /'
 fi
+# The optional section's default answer is the None form: the first line after
+# its heading that is neither blank nor guidance.
+sched_default="$(python3 - "$TEMPLATE" <<'PY'
+import re, sys
+text = open(sys.argv[1], encoding="utf-8").read()
+text = re.sub(r"<!--.*?-->", "", text, flags=re.S)
+body = text.split("\n## Scheduled verification\n", 1)[-1]
+print(next((l.strip() for l in body.splitlines() if l.strip()), ""))
+PY
+)"
+if [ "$sched_default" = "None —" ]; then
+  ok "template's scheduled-verification section defaults to the None answer"
+else
+  fail "template's scheduled-verification section opens with '$sched_default', wanted 'None —'"
+fi
 
-# The schema's numbered list names the same six, as inline code, in the same order.
+# The schema's numbered list names the six required headings, as inline code,
+# in the same order; the optional section is reserved in prose, not numbered.
 schema_h2="$(grep -E '^[0-9]+\. `## ' "$SCHEMA" | sed -e 's/^[0-9]*\. `//' -e 's/`$//')"
 if [ "$schema_h2" = "$expected_h2" ]; then
-  ok "schema names the same six headings in the same order"
+  ok "schema names the six required headings in the same order"
 else
-  fail "schema's heading list differs from the template's"
+  fail "schema's numbered heading list differs from the six required headings"
   printf '%s\n' "$schema_h2" | sed 's/^/    /'
 fi
 

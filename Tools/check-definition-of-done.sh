@@ -153,7 +153,7 @@ if ! grep -q '^## Repository profile[[:space:]]*$' "$work/page.md" \
     verdict "transitional (older shape)"
 fi
 
-# --- the schema shape: clauses 1-7 and 9 from the page itself -----------------
+# --- the schema shape: clauses 1-7, 9, and 10 from the page itself ------------
 # The parser emits one record per finding:
 #   F <tab> clause <tab> problem      a failure
 #   O <tab> clause <tab> summary      the clause held
@@ -246,6 +246,70 @@ function close_req(   want, n, i, k, lab, val, tok, labels, nl, fixed, ci_ok) {
     nreq[reqsect]++
     if (reqsect == "Landing requirements") nland++
 }
+# The optional `## Scheduled verification` section has its own closer. It is
+# deliberately not a stage: its entries carry no Enforcement, so nothing here
+# feeds land_max, platform_declared, or strengthened_seen, and every problem is
+# filed under clause 10 rather than clause 4.
+function close_ssub() {
+    if (snsub > 0) ssubval[snsub] = trim(ssubval[snsub])
+}
+function close_sched(   want, n, i, k, lab, val, tok, low, labels, nl, fixed, cond, skip, where) {
+    if (!insched) return
+    close_ssub()
+    insched = 0
+    where = "`## Scheduled verification` entry **" schedname "**"
+    fixed = "Command|Pass condition|Schedule|Runs in|Conditional on|Skip report|Failure report|Evidence type|Evidence state"
+    nl = split(fixed, labels, "|")
+    # The three labels a scheduled run never carries are refused by name,
+    # wherever they sit, then left out of the positional comparison so each
+    # reads as one problem, not two.
+    n = 0
+    for (i = 1; i <= snsub; i++) {
+        low = tolower(ssublab[i])
+        if (low == "enforcement" || low == "applies to" || low == "ci status") {
+            f(10, where ": `" ssublab[i] ":` does not belong here — a scheduled run is not a landing, release, or deployment requirement")
+            continue
+        }
+        n++; splab[n] = ssublab[i]; spval[n] = ssubval[i]
+    }
+    cond = ""; skip = ""
+    for (i = 1; i <= nl; i++) {
+        want = labels[i]
+        if (i > n) {
+            f(10, where ": missing `" want ":` (sub-lines run " fixed_text(labels, nl) ")")
+            continue
+        }
+        lab = splab[i]; val = spval[i]
+        if (tolower(lab) != tolower(want)) {
+            if (lab == "") {
+                f(10, where ": sub-line " i " `" val "` is not `Label: value`; expected `" want ":`")
+            } else {
+                k = in_list(tolower(lab), tolower(fixed)) ? "out of order" : "an unknown label"
+                f(10, where ": sub-line " i " is `" lab ":` (" k "); expected `" want ":`")
+            }
+            continue
+        }
+        if (val == "") {
+            f(10, where ": `" want ":` is empty")
+            continue
+        }
+        tok = token(val)
+        if (want == "Command") {
+            print "C\tScheduled verification\t" schedname "\t" val
+        } else if (want == "Evidence type" && !in_list(tok, "automated|manual")) {
+            f(10, where ": Evidence type `" val "` is not one of automated, manual")
+        } else if (want == "Evidence state" && !in_list(tok, "available|unavailable|unconfirmed")) {
+            f(10, where ": Evidence state `" val "` is not one of available, unavailable, unconfirmed")
+        } else if (want == "Conditional on") {
+            cond = tok
+        } else if (want == "Skip report") {
+            skip = tok
+        }
+    }
+    if (cond != "" && cond != "unconditional" && skip == "none")
+        f(10, where ": Skip report is `none`, but the run is conditional — a run that can skip says how it reports the skip and names the passing run it relies on")
+    nsched_entries++
+}
 function fixed_text(labels, nl,   i, s) {
     s = labels[1]
     for (i = 2; i <= nl; i++) s = s ", " labels[i]
@@ -269,13 +333,13 @@ fence { if (sect != "") content[sect] = 1; next }
     next
 }
 /^## / {
-    close_req(); close_pkey()
+    close_req(); close_pkey(); close_sched()
     sect = trim(substr($0, 4)); nh2++; h2[nh2] = sect
     indos = 0
     next
 }
 /^### / {
-    close_req(); close_pkey()
+    close_req(); close_pkey(); close_sched()
     h = trim(substr($0, 5))
     if (sect == "Landing requirements") {
         if (indos) f(7, "`### " h "` follows `### Docs-only surface`; the docs-only surface is the last heading in `## Landing requirements`")
@@ -368,8 +432,34 @@ sect == "Known gaps" {
     }
     next
 }
+sect == "Scheduled verification" {
+    if ($0 ~ /^[ \t]*$/) next
+    if ($0 ~ /^- \*\*/) {
+        close_sched()
+        insched = 1; snsub = 0
+        schedname = substr($0, 5); p = index(schedname, "**")
+        if (p > 0) schedname = substr(schedname, 1, p - 1)
+        if (!sched_opened) { sched_first = $0; sched_opened = 1 }
+        next
+    }
+    if (insched && $0 ~ /^  - /) {
+        close_ssub()
+        snsub++
+        line = substr($0, 5); p = index(line, ":")
+        if (p == 0) { ssublab[snsub] = ""; ssubval[snsub] = line }
+        else { ssublab[snsub] = trim(substr(line, 1, p - 1)); ssubval[snsub] = substr(line, p + 1) }
+        next
+    }
+    if (insched && $0 ~ /^[ \t]/) {
+        if (snsub > 0) ssubval[snsub] = ssubval[snsub] " " trim($0)
+        next
+    }
+    close_sched()
+    if (!sched_opened) { sched_first = trim($0); sched_opened = 1 }
+    next
+}
 END {
-    close_req(); close_pkey()
+    close_req(); close_pkey(); close_sched()
 
     # --- 1: heading and scope statement
     if (h1 == 0) f(1, "no level-one heading")
@@ -524,6 +614,38 @@ END {
     else if (!gap_kind) f(9, "`## Known gaps` is empty; write a bullet list or one line beginning `None —`")
     else if (gap_kind == "list") o(9, ngaps " known gap(s) listed")
     else o(9, "no known gaps, with what was checked")
+
+    # --- 10: the optional scheduled-verification section
+    nsv = 0
+    for (j = 1; j <= nh2; j++) {
+        if (h2[j] != "Scheduled verification") {
+            if (tolower(h2[j]) == "scheduled verification")
+                f(10, "section `## " h2[j] "` must be spelled exactly `## Scheduled verification`")
+            continue
+        }
+        nsv++
+        if (!(gaps_at && j == gaps_at + 1))
+            f(10, "`## Scheduled verification` must be the first level-two heading after `## Known gaps`; found it " (j > 1 ? "after `## " h2[j - 1] "`" : "first on the page"))
+    }
+    if (nsv > 1) f(10, "section `## Scheduled verification` appears " nsv " times")
+    if (nsv == 0) {
+        o(10, "no `## Scheduled verification` section; the section is optional")
+    } else if (nsched_entries > 0) {
+        o(10, nsched_entries " scheduled run(s) declared in the schema grammar")
+    } else if (!sched_opened) {
+        f(10, "`## Scheduled verification` is empty; write entry bullets or one line beginning `None —`, or omit the section")
+    } else {
+        sl = tolower(sched_first)
+        if (sl ~ /^none —[ ]+[^ ]/) {
+            o(10, "no scheduled verification, with the reason")
+        } else if (sl ~ /^not applicable/) {
+            f(10, "`## Scheduled verification` opens with `" sched_first "`; the section is optional, so omit it instead of writing `Not applicable —`, or write `None —` with the reason")
+        } else {
+            why = none_form(sched_first)
+            if (why == "no") f(10, "`## Scheduled verification` opens with `" sched_first "`, which is neither a `- **Entry**` bullet nor a line beginning `None —`")
+            else f(10, "`## Scheduled verification`: " why)
+        }
+    }
 
     for (c in summary) print "O\t" c "\t" summary[c]
 }
@@ -792,7 +914,7 @@ manual_note=""
 [ "$manual" -eq 0 ] || manual_note=" ($manual manual requirement(s) with Command: none)"
 
 # --- report, clause by clause --------------------------------------------------
-for n in 1 2 3 4 5 6 7 8 9; do
+for n in 1 2 3 4 5 6 7 8 9 10; do
     if [ "$n" -eq 8 ]; then
         if [ -n "$cmd_fail" ]; then
             fail 8 "${cmd_fail%; }"
