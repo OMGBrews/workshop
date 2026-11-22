@@ -33,8 +33,8 @@ work, not a ship failure.
 
 ## Environment-limited checks
 
-None by default. Every row of the definition of done is expected to run on a
-local machine; a repository whose local environment lacks something (a secret,
+None by default. Every landing requirement in the definition of done is
+expected to run on a local machine; a repository whose local environment lacks something (a secret,
 a licensed tool, a host service) names it in its own policy file.
 
 ## Submodules

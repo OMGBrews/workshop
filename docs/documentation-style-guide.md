@@ -82,7 +82,7 @@ docs/
 └── work/               # THE MACHINE'S DIRECTORY — files the shared Workshop
                         # tooling reads and writes; clause detail is in
                         # docs/work-directory.md
-    ├── definition-of-done.md   [required; six sections per definition-of-done-schema.md]
+    ├── definition-of-done.md   [required; six sections, one optional, per definition-of-done-schema.md]
     ├── claude-code-web.md      [required in fleet projects; Workshop host excepted]
     ├── consumed-by.md          [required where a parent mounts the repo]
     ├── tasks/                  [required for repos on the task system]
@@ -766,7 +766,7 @@ Source code directories benefit from a short `README.md` that orients developers
 
 ### Definition-of-done documents
 
-Located at `docs/work/definition-of-done.md`, one per repository. Six sections in a fixed order — repository profile, pre-commit feedback, landing requirements, release requirements, deployment requirements, known gaps — as [`definition-of-done-schema.md`](./definition-of-done-schema.md) defines them; the `DOCS-ONLY` block, where a repository declares one, sits last in landing requirements under `### Docs-only surface`.
+Located at `docs/work/definition-of-done.md`, one per repository. Six sections in a fixed order — repository profile, pre-commit feedback, landing requirements, release requirements, deployment requirements, known gaps — as [`definition-of-done-schema.md`](./definition-of-done-schema.md) defines them, optionally followed by `## Scheduled verification`; the `DOCS-ONLY` block, where a repository declares one, sits last in landing requirements under `### Docs-only surface`.
 
 **Template**: [`templates/definition-of-done.md`](./templates/definition-of-done.md)
 

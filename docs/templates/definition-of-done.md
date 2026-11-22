@@ -49,6 +49,10 @@
          ## Known gaps
 
          None — a link check would be useful once the cookbook cross-references itself.
+
+         ## Scheduled verification
+
+         None — nothing runs on a schedule; there is no suite to run.
 -->
 
 <!-- Scope statement, 1-3 sentences: what this page covers and who reads it. -->
@@ -152,3 +156,28 @@ Not applicable —
      Or one line: "None — <what was checked>". -->
 
 -
+
+## Scheduled verification
+
+<!-- Optional, and never a landing, release, or deployment requirement. Declare
+     a run here only for a slower suite that landing does not already run, or
+     for a monitor of state that changes without a commit. One bullet per run,
+     sub-lines in this order:
+       - **Run name**
+         - Command: <exact invocation from the repository root>
+         - Pass condition: <what the output shows>
+         - Schedule: <the cadence>
+         - Runs in: <the environment or workflow that executes it>
+         - Conditional on: <unconditional | every input the verdict depends
+                            on, whose fingerprint decides a skip, never "new
+                            commits">
+         - Skip report: <how a skipped run reports itself as skipped and names
+                         the passing run it relies on; none only when
+                         unconditional>
+         - Failure report: <where a failure is delivered so someone is told>
+         - Evidence type: automated | manual
+         - Evidence state: available | unavailable | unconfirmed
+     No Enforcement, Applies to, or CI status line. Most repositories write
+     one line, "None — <reason>", or delete the section. -->
+
+None —

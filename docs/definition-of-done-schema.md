@@ -1,8 +1,8 @@
 # Definition-of-done schema
 
 The shape of every repository's `docs/work/definition-of-done.md`: the six
-sections it carries, the fields each section holds, and the vocabulary each
-field draws from. Read this when writing or checking one. The standing rule is
+sections it carries, the one optional section it may add, the fields each
+section holds, and the vocabulary each field draws from. Read this when writing or checking one. The standing rule is
 [`definition-of-done.md`](definition-of-done.md); the terms are defined in
 [`verification-terminology.md`](verification-terminology.md) and the profiles
 in [`verification-profiles.md`](verification-profiles.md), and neither is
@@ -23,9 +23,12 @@ in this order:
 6. `## Known gaps`
 
 Level-three headings are free inside a section, with one reserved name,
-`### Docs-only surface`. Further level-two sections such as `## Wrinkles` or
-`## See also` may follow `## Known gaps`; nothing precedes or interleaves the
-six. The presence of `## Repository profile` is what distinguishes this shape
+`### Docs-only surface`. Nothing precedes or interleaves the six. One further
+level-two name is reserved: `## Scheduled verification`, which is optional and,
+when present, appears once, as the first level-two heading after
+`## Known gaps`; see [Scheduled verification](#scheduled-verification). Free
+level-two sections such as `## Wrinkles` or `## See also` may follow. The
+presence of `## Repository profile` is what distinguishes this shape
 from the older single-table shape; see [Migration](#migration).
 
 Every section states current, executable truth. Anything desired but not yet
@@ -206,6 +209,73 @@ advisory-only, `unavailable`, or `unconfirmed`, and links the task that owns
 its remediation where one exists. A protection listed here is not also
 declared as a requirement. An empty list is written as one line,
 `None — <what was checked>`.
+
+## Scheduled verification
+
+Optional. The six sections describe evidence gathered at a lifecycle boundary;
+this one declares evidence gathered on a timer. Nothing in it is a landing,
+release, or deployment requirement: no change waits on a scheduled run, an
+entry carries no `Enforcement`, and it never counts towards the profile's
+`Landing enforcement` or its `Enforcement evidence`. A page that omits the
+section is conformant, and omitting it is how a repository says the question
+does not apply, so `Not applicable —` is not written here.
+
+Two kinds of run warrant an entry:
+
+- **A scheduled run of a verification suite that landing does not already
+  run** — a slower or environment-heavy suite kept out of the landing
+  requirements. A scheduled re-run of the landing suite is not a reason to
+  declare one: where landing runs the whole suite on every change, a run
+  conditional on "something changed" repeats what landing just did.
+- **An unconditional run that observes state which changes without a commit**
+  — external links, platform rules, the checkouts a coordination root
+  composes. This is a
+  [monitor](verification-terminology.md#supporting-mechanisms), not change
+  verification, and it never skips: a change-conditional run cannot see what
+  no commit records.
+
+A repository with neither writes one line, `None — <reason>`; that is the
+expected answer for most. Otherwise the section holds one bullet per scheduled
+run, whose sub-lines carry these labels, in this order:
+
+```markdown
+- **Nightly device suite**
+  - Command: `bash scripts/device-suite.sh`
+  - Pass condition: exit 0 on the build host, with the device farm attached.
+  - Schedule: nightly at 03:00 UTC.
+  - Runs in: `.github/workflows/nightly.yml`, on the self-hosted runner.
+  - Conditional on: the fingerprint of `src/`, `tests/`, the lockfile, the
+    pinned submodule commits, and the toolchain versions the suite prints.
+  - Skip report: the run reports `skipped` and names the passing run whose
+    fingerprint it matched.
+  - Failure report: an issue opened in this repository, assigned to the
+    maintainer.
+  - Evidence type: automated
+  - Evidence state: available
+```
+
+- **Command**, **Pass condition**, **Evidence type**, **Evidence state** — as
+  in the [requirement grammar](#requirement-grammar).
+- **Schedule** — the cadence, and the time where it matters.
+- **Runs in** — the environment or workflow that executes the run. A workflow
+  file shows that a schedule is configured, not that the run happens: where no
+  run has been observed, the evidence state is `unconfirmed`.
+- **Conditional on** — `unconditional`, or the inputs whose fingerprint
+  decides whether the run may skip. Name every input the suite's verdict
+  depends on: sources, the pinned commits of submodules and shared tooling,
+  tool versions, configuration. "New commits since the last run" is not such a
+  list — a moved pin or an upgraded tool changes the verdict without one. An
+  input that matches no file stops the run; it does not shrink the fingerprint.
+- **Skip report** — how a run that skipped says so: it reports the
+  [skipped outcome](verification-terminology.md#outcome-vocabulary), never
+  passed, and names the earlier passing run it relies on. Write `none` only
+  when `Conditional on` is `unconditional`.
+- **Failure report** — where a failed or errored run is delivered so that
+  someone is told: an issue, a message, a page. A failure that nobody is told
+  about is read as silence, and silence is read as green.
+
+No sub-line is labelled `Enforcement`, `Applies to`, or `CI status`. Further
+sub-lines may follow the nine, as in the stage sections.
 
 ## Migration
 

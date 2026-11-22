@@ -7,8 +7,9 @@ finished. Read this before authoring or applying a repository's
 **Every repo states its required evidence in one file:
 `docs/work/definition-of-done.md`.** It answers six questions in order:
 repository profile, pre-commit feedback, landing requirements, release
-requirements, deployment requirements, known gaps. Their shape is defined in
-[`definition-of-done-schema.md`](definition-of-done-schema.md), and
+requirements, deployment requirements, known gaps. A seventh, scheduled
+verification, is optional and never a requirement for landing. Their shape is
+defined in [`definition-of-done-schema.md`](definition-of-done-schema.md), and
 `Tools/check-definition-of-done.sh <repo-root>` checks a page against it. A
 stage with nothing says so in one line; that is an answer. A *missing* file is
 the only real gap, and it is reported rather than worked around.
