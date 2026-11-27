@@ -66,7 +66,7 @@ guess.
 
 ## Releases and deployments
 
-Landing changes on the default branch is not releasing. A release
+Landing a change on the default branch is not releasing it. A release
 declares an exact versioned candidate or artifact. Publishing, promotion,
 deployment, and post-deployment verification are separate actions with their
 own requirements and authorization. A repository documents those boundaries

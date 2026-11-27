@@ -206,17 +206,20 @@ names as a capability authority, such as a test README that says which harnesses
 run without a host; add those paths to the archive, and nothing else.
 
 Check the fetch and the archive both exited 0; a failed fetch leaves a stale
-snapshot, which is a stop, not a warning.
+snapshot, which is a stop, not a warning. Record the commit printed last: the plan
+names it.
 
 **Policy still at the old path stops the whole dispatch.** If
 `$snapshot/docs/work/ship/` exists at all, the repository has not finished
 moving its landing policy to `docs/work/land/` after the `ship` skill became
 `land`. Every dispatched session lands under this repository's policy, so the
 stop is per repository, not per record: name every file under
-`docs/work/ship/` and the `docs/work/land/` path it moves to, and launch
-nothing. Test the folder, not `cloud.md` alone; there is no fallback to the
-old path, and a partial move must not hand sessions the bundled default. Record the commit printed last: the plan
-names it. Every later step reads records from `$snapshot`, and passes `$snapshot`
+`docs/work/ship/` and the `docs/work/land/` path it moves to, and launch no
+session and prepare no prompt. Test the folder, not `cloud.md` alone; there is
+no fallback to the old path, and a partial move must not hand sessions the
+bundled default.
+
+Every later step reads records from `$snapshot`, and passes `$snapshot`
 as the repository root to tools that take one. Then compare the snapshot with this
 checkout:
 

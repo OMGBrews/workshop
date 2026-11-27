@@ -30,7 +30,7 @@ if git -C "$sm" fetch origin 2>/dev/null; then
 else
   recorded="$(git rev-parse ":$sm" 2>/dev/null || git ls-tree HEAD "$sm" | awk '{print $3}')"
   if [ -z "$(git -C "$sm" status --porcelain)" ] && [ "$(git -C "$sm" rev-parse HEAD)" = "$recorded" ]; then
-    echo "$sm: no unshipped work (verified without a remote: clean, HEAD == recorded gitlink)"
+    echo "$sm: no unlanded work (verified without a remote: clean, HEAD == recorded gitlink)"
   else
     echo "$sm: UNKNOWN — fetch failed and the checkout has moved or is dirty" >&2
   fi

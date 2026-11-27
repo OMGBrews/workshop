@@ -116,7 +116,7 @@ and delivered.
 
 **Cite a handoff by backticked slug, never by path or link.** A slug survives
 the document's deletion; a path does not, and a link breaks the moment the work
-ships.
+lands.
 
 When retiring a brief, a filename search is **not** a sufficient control. The
 references that matter are usually the ones written in prose — "the upstream
