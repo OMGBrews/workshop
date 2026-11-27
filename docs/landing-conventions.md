@@ -1,4 +1,4 @@
-# Shipping conventions
+# Landing conventions
 
 How finished code and documentation land on the default branch in every
 repository that follows this file. Read it before the end of a session that
@@ -66,7 +66,7 @@ guess.
 
 ## Releases and deployments
 
-Shipping changes to the default branch is landing, not releasing. A release
+Landing a change on the default branch is not releasing it. A release
 declares an exact versioned candidate or artifact. Publishing, promotion,
 deployment, and post-deployment verification are separate actions with their
 own requirements and authorization. A repository documents those boundaries

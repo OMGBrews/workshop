@@ -3,6 +3,24 @@
 This file records user-visible Workshop milestones. Maintainers update it when
 they create a manually initiated milestone tag or GitHub Release.
 
+- **The `ship` skill is now `land`.** Claude Code 2.1.331 added a built-in
+  listed as `ship-local (ship)` that shadows a project skill of the same name, so
+  typing the command ran the built-in, which always opens a pull request, never
+  merges, and reads no repository policy. The new name is also the word the
+  verification terminology already uses for this step. Repository policy moves
+  from `docs/work/ship/` to `docs/work/land/`, with no fallback: the `land` skill,
+  for the current repository and each parent, and the shared cloud dispatcher stop
+  and name every file still under `docs/work/ship/`. `docs/shipping-conventions.md`
+  is now `docs/landing-conventions.md`. No compatibility redirect is kept under the
+  old name. `session-land` keeps its name and now says it commits locally and
+  leaves publishing to `land`. On adoption, in the same commit as the Workshop
+  pointer: move every file under `docs/work/ship/` to `docs/work/land/`; rerun
+  `Tools/sync-skill-symlinks.sh .` so the dangling `ship` links are removed and
+  `land` links added; and re-copy
+  `docs/templates/cloud-sessions/agent-session-start.sh` over
+  `scripts/agent/session-start.sh`, whose live message now names `/land`. The other
+  two cloud-session scripts are unchanged.
+
 - **Codex cloud supports an explicit manual launch route.** Repository-owned
   declarations separate stable configuration/version identity, local validation
   and live evidence. The validator renders setup and per-command startup without

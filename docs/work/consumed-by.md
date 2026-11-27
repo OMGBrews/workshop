@@ -2,10 +2,10 @@
 
 The superproject that records this repository as a submodule tracking `main`, and why a
 merged change here is not the end of the job. The machine-readable list between the
-sentinels is what a `ship` skill parses; the prose is for whoever has to decide what to do
+sentinels is what a `land` skill parses; the prose is for whoever has to decide what to do
 about a lagging pointer.
 
-<!-- CONSUMED-BY:BEGIN — DO NOT REMOVE: /ship parses the parent list between these sentinels. -->
+<!-- CONSUMED-BY:BEGIN — DO NOT REMOVE: /land parses the parent list between these sentinels. -->
 OMGBrews/workshop-dev
 <!-- CONSUMED-BY:END -->
 
@@ -37,4 +37,4 @@ checks rerun against the new pointer.** A pre-merge PR-branch SHA passes locally
 is in the local clone, and is orphaned by the squash merge that lands it; the wrapper's
 pointer check refuses it rather than letting a fresh clone fail on a submodule fetch. A wrapper pull request
 opened earlier would be tested against the old pointer and start red on any wrapper edit that
-needs this change — the dependent-parent case `/ship` defers.
+needs this change — the dependent-parent case `/land` defers.

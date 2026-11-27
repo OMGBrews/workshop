@@ -93,8 +93,9 @@ evidence path when recorded. `unverified` does not establish runnable capability
 classify affected implementation evidence as unclear and hold it. A recorded
 receipt still needs to support the specific capability and configuration/version
 being used; distinguish missing evidence from an unavailable capability. For
-implementation, review `docs/work/ship/cloud.md`
-or the applicable bundled policy: unavailable required publication or monitoring
+implementation, review `docs/work/land/cloud.md`
+or the applicable bundled policy, after the old-path stop in
+[step 1](#1-read-what-the-sessions-will-read): unavailable required publication or monitoring
 capabilities hold the affected task rather than licensing a policy substitution.
 
 ### In-flight work and plan (steps 3–4)
@@ -157,7 +158,7 @@ automatic execution. A report-only bootstrap exit 0 is not readiness evidence.
 
 Follow AGENTS.md and the selected stage skill. Planning/finalization stop at the
 orientation card. Implementation stops for owner close-out confirmation; a cloud
-part stops at its resume point. Landing uses ship under this repository's cloud
+part stops at its resume point. Landing uses the land skill under this repository's cloud
 policy, including its merge authorization and monitoring requirements. Prompt
 preparation, passing checks and close-out are not blanket merge authorization.
 ```
@@ -178,7 +179,7 @@ link/identity in the report so it can be supplied to the next in-flight check.
 The dispatcher still writes no repository files or status markers.
 
 Report the stage's stopping point and that the owner continues each task there.
-No automatic return or notification is implied. Observe the task's own shipping
+No automatic return or notification is implied. Observe the task's own landing
 policy when work later lands; a policy requiring an unavailable return mechanism
 must be resolved explicitly, not silently replaced with manual resume.
 
@@ -199,14 +200,26 @@ echo "EXIT=$?"
 git rev-parse "$default"
 ```
 
-`docs/work` holds the records, the declaration, the definition of done, and the ship
+`docs/work` holds the records, the declaration, the definition of done, and the landing
 policies. `task-implement-cloud` also reads every further document the declaration
 names as a capability authority, such as a test README that says which harnesses
 run without a host; add those paths to the archive, and nothing else.
 
 Check the fetch and the archive both exited 0; a failed fetch leaves a stale
 snapshot, which is a stop, not a warning. Record the commit printed last: the plan
-names it. Every later step reads records from `$snapshot`, and passes `$snapshot`
+names it.
+
+**Policy still at the old path stops the whole dispatch.** If
+`$snapshot/docs/work/ship/` exists at all, the repository has not finished
+moving its landing policy to `docs/work/land/` after the `ship` skill became
+`land`. Every dispatched session lands under this repository's policy, so the
+stop is per repository, not per record: name every file under
+`docs/work/ship/` and the `docs/work/land/` path it moves to, and launch no
+session and prepare no prompt. Test the folder, not `cloud.md` alone; there is
+no fallback to the old path, and a partial move must not hand sessions the
+bundled default.
+
+Every later step reads records from `$snapshot`, and passes `$snapshot`
 as the repository root to tools that take one. Then compare the snapshot with this
 checkout:
 
@@ -436,7 +449,7 @@ origin/main before trusting task or problem documents.
 
 Follow AGENTS.md throughout, including every rule it sets on what a session may
 read, run, or operate. <stage skill> commits and never pushes. When the owner asks to
-land the result, use the ship skill: this repository's cloud ship policy
+land the result, use the land skill: this repository's cloud landing policy
 applies, and main is never a push target.
 ```
 
@@ -496,7 +509,7 @@ Then, briefly:
 - **Checks that could not run**: an unavailable in-flight listing, a bound hit, or a
   difference between this checkout and the default branch.
 - **What happens next**: what each session stops at, and that the owner continues
-  each one at its link and lands the result from there with `ship`.
+  each one at its link and lands the result from there with `land`.
   - On the cloud route, a session whose turn fails reports back here as a
     child-session event where the harness supports it; nothing else wakes this
     session. Checking on one later is `get_session` by its ID. Stopping one is
@@ -537,5 +550,5 @@ These were tried from a local session on Claude Code 2.1.311 on 2026-10-27:
 - `docs/work/claude-code-web.md` in the consuming repository — the environment, what
   a cloud session can do, and the turn-one check; its shape is the
   [Claude Code Web declarations](../../../docs/claude-code-web.md) standard
-- `docs/work/ship/cloud.md` in the consuming repository, read by the
-  [`ship`](../ship/SKILL.md) skill — how each session lands its result
+- `docs/work/land/cloud.md` in the consuming repository, read by the
+  [`land`](../land/SKILL.md) skill — how each session lands its result

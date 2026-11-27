@@ -152,7 +152,7 @@ manual workflow reads these sections from the selected source revision to classi
 acceptance criteria. Schema validation does not verify prose or capabilities;
 missing or unsupported evidence must hold affected implementation tasks.
 
-## Live evidence and shipping
+## Live evidence and landing
 
 Record source/Workshop SHAs, stable configuration/version IDs, observed runtime and
 thread identity, initial state, agent-invoked actions versus automatic actions,
@@ -160,10 +160,10 @@ bootstrap output/status, LFS census, dependency probes, required check results a
 limitations. Evidence should identify its provenance and retained raw logs without
 claiming inaccessible logs were independently reviewed. A fresh task must follow
 tracked instructions without proposal-file recovery. Run a real implementation
-through owner close-out and `ship`, record the returned PR and CI, and distinguish
+through owner close-out and `land`, record the returned PR and CI, and distinguish
 publication from landing. Reverify when source, configuration or dependencies change.
 
-Use the repository cloud ship policy. If subscription/timer tools are unavailable,
+Use the repository cloud landing policy. If subscription/timer tools are unavailable,
 an explicitly agreed policy may use direct CI reads and owner-driven resume;
 never silently substitute a scheduler or infer merge authority. The shared
 [cloud workflow](../.agents/skills/problem-plan-cloud/cloud-dispatch.md) reuses

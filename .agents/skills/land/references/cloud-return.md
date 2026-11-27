@@ -1,6 +1,6 @@
-# Ship reference — bringing a paused cloud session back
+# Land reference — bringing a paused cloud session back
 
-Loaded by the `ship` skill on a pull-request route in a cloud session, where
+Loaded by the `land` skill on a pull-request route in a cloud session, where
 the session may pause with a PR open and needs a way back. The measurements
 behind these rules are in Workshop's `docs/session-return-durability.md`.
 
@@ -26,7 +26,7 @@ maintainer's device, both to arm and later to cancel.
 
 Arm a timer only when **the subscription is not the return path**: the
 subscribe call errored, is absent from the tool list, or did not confirm. One
-timer per ship, never per PR. A rejected or errored scheduling call ends the
+timer per landing, never per PR. A rejected or errored scheduling call ends the
 attempt; do not re-issue it with equivalent arguments.
 
 ## Two schedulers that cannot see each other
@@ -52,4 +52,4 @@ Name what is armed: subscription, timer, both, or neither. If the subscription
 is the only path and it drops, this session will not wake itself; say so. Never
 fall back to `CronCreate` as if it were equivalent, since it dies with the
 session, and never make the merge step reachable **only** through a wake-up:
-open PRs persist, and a later session runs `ship merge`.
+open PRs persist, and a later session runs `land merge`.

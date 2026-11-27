@@ -296,7 +296,7 @@ consumed_badline() {
     printf '# Consumed by\n\n<!-- CONSUMED-BY:BEGIN -->\nnot a parent\n<!-- CONSUMED-BY:END -->\n' \
         >"$1/docs/work/consumed-by.md"
 }
-expect "consumed-by with a line /ship cannot read" 1 consumed_badline \
+expect "consumed-by with a line /land cannot read" 1 consumed_badline \
     "FAIL 8" "each line must be owner/repo"
 
 consumed_twin() {

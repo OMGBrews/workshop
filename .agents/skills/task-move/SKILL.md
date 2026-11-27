@@ -80,7 +80,7 @@ repair, restore outbound links from their original targets, and stage the move
 and associated repairs together. Run the existing repository link check, or
 inspect affected references manually if none exists. A failed repair/check or
 an unresolved reference stops here with changes available for inspection;
-do not proceed to confirmation or shipping.
+do not proceed to confirmation or landing.
 
 ## Phase 4 — Confirm
 
@@ -88,11 +88,11 @@ Print: "Moved `{task-name}.md` from `{source-bucket}/` to `{target-bucket}/`."
 Name the repaired files and the link-check result, or the manual verification
 performed when no check exists.
 
-## Phase 5 — Ship it (docs-only fast path)
+## Phase 5 — Land it (docs-only fast path)
 
-Offer to ship the move immediately after Phase 4 — task moves are the exact
+Offer to land the move immediately after Phase 4 — task moves are the exact
 churn the docs-only fast lane exists for. The rules are the repo's adopted
-shipping convention, never a repo-local heading: resolve the Workshop tree
+landing convention, never a repo-local heading: resolve the Workshop tree
 from this skill's **physical** directory (per
 [`../../../docs/skill-path-resolution.md`](../../../docs/skill-path-resolution.md)),
 ask its predicate, and apply the convention's local-versus-PR rule.
@@ -104,7 +104,7 @@ ask its predicate, and apply the convention's local-versus-PR rule.
    TREE_ROOT="$(dirname "$(readlink -f .agents/skills/task-move/SKILL.md)")/../../.."
    ```
 
-2. After the user accepts the shipping offer, confirm the staged diff contains
+2. After the user accepts the landing offer, confirm the staged diff contains
    only this move and its associated link repairs, with unrelated staging
    preserved and excluded from the commit. Commit those paths/hunks on the
    default branch only where the repository permits that route.
@@ -123,5 +123,5 @@ ask its predicate, and apply the convention's local-versus-PR rule.
 Neither exit grants consent: the offer is the ask, and the user's acceptance
 of the offer is the authorization. In a cloud session or a PR-required repo,
 neither this skill nor any other public task skill opens or merges a PR and
-none assumes the shared `ship` skill is installed — report that the committed
+none assumes the shared `land` skill is installed — report that the committed
 change is ready and hand off to the repository's documented PR workflow.

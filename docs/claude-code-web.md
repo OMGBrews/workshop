@@ -116,7 +116,7 @@ Every declaration has these fields:
 | `version` | Integer `1`. |
 | `availability` | `configured`, `not-configured`, or `unsupported`. |
 | `primaryRepository` | The normalized `owner/repo` selected as the Web session's primary repository. |
-| `additionalRepositories` | Sorted, unique `owner/repo` values that every session must attach. Task-specific, shipping-only, and prior-art repositories do not belong here. |
+| `additionalRepositories` | Sorted, unique `owner/repo` values that every session must attach. Task-specific, landing-only, and prior-art repositories do not belong here. |
 
 A `configured` declaration also has an `environment` object and no `reason`.
 The environment contains every observable setting:
@@ -291,7 +291,7 @@ what makes the necessary duplication safe. Fleet inventories are generated from
 project declarations and are not hand-maintained lists of names or IDs.
 
 Task-specific attachments remain task input. Parent repositories needed only to
-ship a submodule pointer remain declared in `docs/work/consumed-by.md`; child
+land a submodule pointer remain declared in `docs/work/consumed-by.md`; child
 composition remains declared in `.gitmodules`.
 
 ## See also

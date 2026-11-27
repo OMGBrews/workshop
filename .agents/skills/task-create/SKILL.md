@@ -88,17 +88,17 @@ Ask a single-select question (one option only) to offer it:
 
 If the user picks Yes, hand off to `task-finalize <path-to-new-task>`. If No, stop.
 
-## Phase 6 — Ship it (docs-only fast path)
+## Phase 6 — Land it (docs-only fast path)
 
 Runs when a committed task file exists and nothing after it does:
 
-- Phase 5 ended with "No — leave it here" — offer the ship now.
+- Phase 5 ended with "No — leave it here" — offer the landing now.
 - Phase 5 handed off to `task-finalize` — resume this phase only when
   finalization actually **committed** the new task. If it returned with the
-  authored content staged for review, stop there: shipping is for the
+  authored content staged for review, stop there: landing is for the
   committed task, and that review is not over.
 
-The rules are the repo's adopted shipping convention, never a repo-local
+The rules are the repo's adopted landing convention, never a repo-local
 heading: resolve the Workshop tree from this skill's **physical** directory
 (per
 [`../../../docs/skill-path-resolution.md`](../../../docs/skill-path-resolution.md)),
@@ -128,5 +128,5 @@ ask its predicate, and apply the convention's local-versus-PR rule.
 Neither exit grants consent: the offer is the ask, and the user's acceptance
 of the offer is the authorization. In a cloud session or a PR-required repo,
 neither this skill nor any other public task skill opens or merges a PR and
-none assumes the shared `ship` skill is installed — report that the committed
+none assumes the shared `land` skill is installed — report that the committed
 change is ready and hand off to the repository's documented PR workflow.

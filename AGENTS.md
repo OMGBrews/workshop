@@ -28,7 +28,7 @@ Outside contributors use the public channels in [SUPPORT.md](SUPPORT.md).
   [docs/definition-of-done.md](docs/definition-of-done.md) before claiming a
   check or task complete. Read
   [docs/verification-terminology.md](docs/verification-terminology.md) before
-  discussing or changing checks, definitions of done, CI, shipping, releases,
+  discussing or changing checks, definitions of done, CI, landing, releases,
   or deployments.
 - The repository's own required evidence is declared in
   [docs/work/definition-of-done.md](docs/work/definition-of-done.md).

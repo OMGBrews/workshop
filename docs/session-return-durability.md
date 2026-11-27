@@ -4,7 +4,7 @@
 
 ## The question
 
-`/ship` (`.agents/skills/ship/SKILL.md`) tells a session to arm its own return: after opening PRs, schedule a check-in so the session comes back and drives the work to merged rather than going idle forever. The pull-request route's hand-off rests on that return actually happening.
+`/land` (`.agents/skills/land/SKILL.md`; named `ship` before its rename) tells a session to arm its own return: after opening PRs, schedule a check-in so the session comes back and drives the work to merged rather than going idle forever. The pull-request route's hand-off rests on that return actually happening.
 
 Three things have to be true for that to be sound:
 
@@ -217,7 +217,7 @@ arm, a second to cancel when the merge lands first.
 Not the primary finding — the subscription is still the wake mechanism, on the 2026-07-29
 numbers, and stays armed unconditionally. What changes is the fallback's **default**: arm the
 check-in only when the subscription did not arm, which is the one case where the timer is a
-sole return path rather than a duplicate of one. `/ship` Step 4 and its `references/cloud-return.md` state the rule; this
+sole return path rather than a duplicate of one. `/land` Step 4 and its `references/cloud-return.md` state the rule; this
 section is its evidence.
 
 Two costs this measurement does **not** settle, so neither should be asserted: whether the
@@ -238,7 +238,7 @@ open — whether a check-in scheduled hours out fires into a long-idle session a
 - **Prefer `send_later` over `CronCreate` for anything that must outlive the turn.** `CronCreate` is explicitly in-memory and session-only; `send_later` is a server-side Routine that survives container restarts.
 - **Arm it conditionally, not reflexively** — the third rule, added 2026-07-30 once the cost was measured. See below.
 
-For `/ship` specifically: **the PR subscription — not the scheduled check-in — is the primary wake mechanism for a merge**, and it earned that on the numbers here. Arm it unconditionally.
+For `/land` specifically: **the PR subscription — not the scheduled check-in — is the primary wake mechanism for a merge**, and it earned that on the numbers here. Arm it unconditionally.
 
 The scheduled check-in is a different call. This run's own conclusion was "arm both, treat the timer as insurance" — that stood for one day and is **superseded**, because it priced only the benefit. With the cost measured ([the cost side](#the-cost-side--what-arming-the-timer-charges-measured-2026-07-30)), the rule is: **arm the check-in only when the subscription did not arm.** The reasons webhooks are imperfect are real — they are documented to miss CI success and new pushes, and a session-gone Routine can be disabled undelivered — but neither is repaired by a timer the session can arm only when a human is already reachable.
 
@@ -247,4 +247,4 @@ One caveat this run cannot retire: it observed a merge roughly two minutes after
 ## See also
 
 - [`signal-hygiene.md`](signal-hygiene.md) — how to know a step actually happened; this experiment is an application of it
-- [`ship`'s `SKILL.md`](../.agents/skills/ship/SKILL.md) — the skill whose pull-request hand-off depends on the answer
+- [`land`'s `SKILL.md`](../.agents/skills/land/SKILL.md) — the skill whose pull-request hand-off depends on the answer

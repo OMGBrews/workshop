@@ -1,6 +1,6 @@
-# Ship reference — submodules and declared parents
+# Land reference — submodules and declared parents
 
-Loaded by the `ship` skill only when a repository in the plan carries a
+Loaded by the `land` skill only when a repository in the plan carries a
 `.gitmodules` edge with `branch =`, or a `docs/work/consumed-by.md`. A
 repository with neither has no parent work and never reads this file.
 
@@ -11,11 +11,11 @@ directory name.
 
 - **Composition** (`branch = main`): a superproject and a real component of it.
   A component can have more than one parent, so a parent list is a list. A
-  stale pointer here presents an old component as current. The ship bumps
+  stale pointer here presents an old component as current. The landing bumps
   these by default, child-first.
 - **Distribution** (no `branch` key, pinned): a shared tree mounted by many
-  consumers. The ship never bumps one. A lagging pin is the expected state, and
-  moving it is the consumer's deliberate act, not a ship's side effect.
+  consumers. The landing never bumps one. A lagging pin is the expected state, and
+  moving it is the consumer's deliberate act, not a landing's side effect.
 
 ## Inventory without a remote
 
@@ -30,7 +30,7 @@ if git -C "$sm" fetch origin 2>/dev/null; then
 else
   recorded="$(git rev-parse ":$sm" 2>/dev/null || git ls-tree HEAD "$sm" | awk '{print $3}')"
   if [ -z "$(git -C "$sm" status --porcelain)" ] && [ "$(git -C "$sm" rev-parse HEAD)" = "$recorded" ]; then
-    echo "$sm: no unshipped work (verified without a remote: clean, HEAD == recorded gitlink)"
+    echo "$sm: no unlanded work (verified without a remote: clean, HEAD == recorded gitlink)"
   else
     echo "$sm: UNKNOWN — fetch failed and the checkout has moved or is dirty" >&2
   fi
@@ -73,10 +73,10 @@ including the cloud proxy's, and exits non-zero on input it cannot reduce.
 Read its exit code.
 
 **The plan closes transitively**: a parent that receives a bump is itself a
-repository that ships, so read its declaration and repeat until nothing new
+repository that lands, so read its declaration and repeat until nothing new
 appears.
 
-**Docs-only ships flip the default**: when everything a repository ships is
+**Docs-only landings flip the default**: when everything a repository lands is
 docs-only per its predicate, plan a named lag notice per parent instead of a
 bump PR, and let the maintainer ask for the bump.
 
@@ -85,8 +85,9 @@ bump PR, and let the maintainer ask for the bump.
 1. Publish the child's authorized commits, then fetch and prove the selected
    child SHA is reachable from its remote default branch. A push to another
    branch is not enough to advance a parent pointer.
-2. Resolve each tracked parent's environment, policy, ownership of local
-   changes, and required checks independently. A pinned edge stays pinned.
+2. Resolve each tracked parent's environment, policy (through `SKILL.md`
+   Step 0's policy list, including its stop on a leftover `docs/work/ship/`
+   folder), ownership of local changes, and required checks independently. A pinned edge stays pinned.
    Locate absent parents using the declared-parent procedure below; attach
    through a harness tool only when that environment requires it.
 3. In a clean child checkout, check out the verified SHA and record that
@@ -126,11 +127,11 @@ children's bumps before it merges in its own turn.
    path; otherwise update the existing PR. Wait for required PR checks and
    merge (squash) only under that parent's own authorization. Otherwise report
    the open PR, both pointer SHAs, and pending higher parents; stop upward here.
-6. **Prove the end state**: per shipped submodule, the gitlink recorded on
+6. **Prove the end state**: per landed submodule, the gitlink recorded on
    `origin/<default>` is reachable from that submodule's `origin/<default>`,
    and the superproject's `origin/<default>` contains the merge SHA. Print both
    SHAs and the number of gitlinks inspected. `gitlinks inspected: 0` is said
-   in those words, never as a bare pass: a ship with no submodule work passes
+   in those words, never as a bare pass: a landing with no submodule work passes
    the per-submodule assertion vacuously, and only the containment line proves
    anything.
 
@@ -154,7 +155,9 @@ landed on its default branch, by direct push or merge, never before.
    git clone https://github.com/<owner>/<parent-repo>.git "$parent"
    ```
 
-   Read the parent's instructions and resolve its own environment and policy.
+   Read the parent's instructions and resolve its own environment and policy
+   through `SKILL.md` Step 0, whose leftover-`docs/work/ship/` stop applies to
+   the parent as it does to the child.
    For a PR route, create the policy's branch before editing; for a direct
    route, retain its declared target branch. Do not force the child's route
    or authorization onto the parent.

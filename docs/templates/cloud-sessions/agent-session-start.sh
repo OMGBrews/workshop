@@ -407,7 +407,7 @@ report_pointer_lag() { # <path> <url> <branch>
   fi
   [ "$rpl_tip" = "$rpl_rec" ] && return 0
   echo "[session-start] $rpl_path: HEAD records ${rpl_rec:0:7}, but $rpl_branch on $rpl_url is at ${rpl_tip:0:7} — work read through $rpl_path here is the recorded commit's, not the child's latest. Not a fault: pointers move only when someone asks."
-  echo "[session-start]   Take it when you want it: git submodule update --init --remote -- $rpl_path && git add $rpl_path, then commit the gitlink — in a cloud session /ship with the parent attached records it; in an hq workspace ./scripts/sync/pull.sh && ./scripts/sync/push.sh does the whole fleet."
+  echo "[session-start]   Take it when you want it: git submodule update --init --remote -- $rpl_path && git add $rpl_path, then commit the gitlink — in a cloud session /land with the parent attached records it; in an hq workspace ./scripts/sync/pull.sh && ./scripts/sync/push.sh does the whole fleet."
   return 0
 }
 

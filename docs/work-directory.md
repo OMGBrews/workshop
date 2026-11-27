@@ -14,9 +14,9 @@ policy beside them rather than baking it into a shared tool.
 | Path | Purpose | Owner |
 |------|---------|-------|
 | `docs/work/handoffs/` | Outbox for undelivered cross-repo briefs; see [Cross-repo handoffs](cross-repo-handoffs.md) | Repository maintainer |
-| `docs/work/consumed-by.md` | Parent repositories whose tracked pointers the [ship skill](../.agents/skills/ship/SKILL.md) follows, declared between `CONSUMED-BY:BEGIN` / `CONSUMED-BY:END` sentinels | Repository maintainer |
+| `docs/work/consumed-by.md` | Parent repositories whose tracked pointers the [land skill](../.agents/skills/land/SKILL.md) follows, declared between `CONSUMED-BY:BEGIN` / `CONSUMED-BY:END` sentinels | Repository maintainer |
 | `docs/work/tasks/` | Task briefs and their lifecycle buckets | Task skills and the repository maintainer |
-| `docs/work/ship/<environment>.md` | Per-environment landing policy read by the ship skill | Repository maintainer |
+| `docs/work/land/<environment>.md` | Per-environment landing policy read by the land skill | Repository maintainer |
 | `docs/work/definition-of-done.md` | Repository-required verification evidence | Repository maintainer |
 | `docs/work/kaizen/` | Process-friction journal and recurring patterns | Kaizen skills and the repository maintainer |
 | `docs/work/problems/` | Current, fixable flaws and the evidence that keeps them open | Problem skills, kaizen skills, and the repository maintainer |
