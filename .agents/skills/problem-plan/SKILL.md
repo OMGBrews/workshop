@@ -345,7 +345,7 @@ Follow the `task-create` skill's procedure in this session, through writing
 the file: read its text and apply it, rather than handing control to it. Its
 gather-info questions — name, bucket, goal, effort — are answered from the
 interview, not re-asked. Stop at its Confirm phase; take neither its finalize
-offer nor its ship step, both of which would strand the rest of this run. Then
+offer nor its landing step, both of which would strand the rest of this run. Then
 edit the new brief so the decision travels with it:
 
 - **`## Context`** — the flaw in two or three sentences, a relative link to

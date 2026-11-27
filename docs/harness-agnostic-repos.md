@@ -228,6 +228,13 @@ rubric.
 - **A dangling symlink is created without error and looks fine under `ls`.** It fails
   only at invocation time, as "Unknown skill" — mid-task, in the worst case silently.
   Verify with `test -e` and a readable `SKILL.md`, never a visual scan.
+- **A harness built-in can shadow a shared skill of the same name.** The symptom is
+  the skill missing from the session's skill listing while its directory, bridge link,
+  and `SKILL.md` are all intact and readable; typing the command then runs the
+  built-in instead. Rename the shared skill rather than relying on a per-harness
+  setting to hide the built-in, and check a new skill's name against the current
+  built-in listing before publishing it. See
+  [Ecosystem facts](#ecosystem-facts).
 
 ## Surface 3 — bootstrap
 
@@ -263,9 +270,9 @@ no standing rules**, with no error to say so.
   sandboxes) passes when it should not. The hook wrapper's translation only reaches
   the process the hook launches; long-lived shells that source the library directly
   never see it. So: **vendor environment variables are read in exactly one declared
-  seam file** (`scripts/lib/harness-signals.sh` for the shared ship skill), which translates them to neutral
+  seam file** (`scripts/lib/harness-signals.sh` for the shared land skill), which translates them to neutral
   `AGENT_*` names at call time. Location assertions must agree; conflicting evidence
-  stops shipping instead of silently preferring one harness. Consumers use the
+  stops landing instead of silently preferring one harness. Consumers use the
   [session environment contract](session-environment.md), whose canonical command
   prints `environment=<local|cloud|unknown> signal=<source>`. Disposable-checkout
   permission is separate: cloud location alone never licenses a reset or fast-forward.
@@ -476,6 +483,12 @@ change. Each fact here backs a rule above.
 - **`.agents/skills/` is the cross-client skill discovery path, and Claude Code does not
   yet read it** ([anthropics/claude-code#31005](https://github.com/anthropics/claude-code/issues/31005));
   it reads `.claude/skills/`, and follows per-skill directory symlinks correctly.
+- **A Claude Code built-in skill takes precedence over a project skill of the same
+  name** (v2.1.331). That release added built-ins listed as `ship-local (ship)` and
+  `steward`. In a session on it, the project skill `ship` was absent from the skill
+  listing while the other bridged skills were present and `.claude/skills/ship` still
+  resolved to its `SKILL.md`; typing the command ran the built-in. Workshop renamed
+  the skill to `land`. See the shadowing rule under [Surface 2](#surface-2--skills).
 
 ## See also
 
@@ -496,4 +509,4 @@ change. Each fact here backs a rule above.
 - [Claude Code memory docs](https://code.claude.com/docs/en/memory) — `.claude/rules/`,
   imports, and when `AGENTS.md` loads natively
 
-The shared [session detector](session-environment.md) owns location assertions and their compatibility exports. Bootstrap seeds are checked copies of its canonical implementation; shipping resolves it directly from its own Workshop tree.
+The shared [session detector](session-environment.md) owns location assertions and their compatibility exports. Bootstrap seeds are checked copies of its canonical implementation; landing resolves it directly from its own Workshop tree.

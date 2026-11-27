@@ -280,11 +280,11 @@ fi
 # --- 8: consumed-by.md (required where a parent mounts the repo) --------------
 # A missing file in both locations means "no declared parents", never an
 # error. When present, the new location is required and its first anchored
-# CONSUMED-BY block is validated with /ship's own parser rules: sentinels
+# CONSUMED-BY block is validated with /land's own parser rules: sentinels
 # anchored to the start of a line, stop at the first END, every declaration
 # line an owner/repo pair. `fleet` was a reserved word here until the grammar
 # was narrowed: it named a private distribution repo that every project once
-# mounted, so /ship would state the lag instead of offering a bump nobody
+# mounted, so /land would state the lag instead of offering a bump nobody
 # could take. No such repo exists and no live declaration used the word, so
 # admitting it only left a spelling that parses and means nothing.
 if [ ! -f docs/work/consumed-by.md ] && [ ! -f docs/consumed-by.md ]; then
@@ -299,7 +299,7 @@ else
         else
             bad=$(printf '%s\n' "$decl" | grep -Evx '[A-Za-z0-9._-]+/[A-Za-z0-9._-]+' || true)
             if [ -n "$bad" ]; then
-                fail 8 "docs/work/consumed-by.md declares a line /ship cannot read: $(printf '%s' "$bad" | tr '\n' ' ')— each line must be owner/repo"
+                fail 8 "docs/work/consumed-by.md declares a line /land cannot read: $(printf '%s' "$bad" | tr '\n' ' ')— each line must be owner/repo"
             else
                 pass 8 "docs/work/consumed-by.md declares: $(printf '%s' "$decl" | tr '\n' ' ')"
             fi

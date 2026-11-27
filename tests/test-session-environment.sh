@@ -108,15 +108,15 @@ printf '%s|%s|%s|%s\\n' "$AGENT_SESSION_ENVIRONMENT" "$AGENT_SESSION_SIGNAL" "$A
                 'AGENT_SESSION_ENVIRONMENT':'local', 'AGENT_SESSION_EPHEMERAL':'true'})
         self.assertEqual(result.stdout, '2|unknown|false\n')
 
-    def test_ship_resolves_physical_mount_not_legacy_consumer(self):
+    def test_land_resolves_physical_mount_not_legacy_consumer(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp) / 'consumer with spaces'
             skills = repo / '.agents/skills'; skills.mkdir(parents=True)
             (repo / 'different-mount').symlink_to(root, target_is_directory=True)
-            (skills / 'ship').symlink_to(repo / 'different-mount/.agents/skills/ship', target_is_directory=True)
+            (skills / 'land').symlink_to(repo / 'different-mount/.agents/skills/land', target_is_directory=True)
             old = repo / 'scripts/lib/harness-signals.sh'; old.parent.mkdir(parents=True)
             old.write_text('echo incompatible-old-provider\n')
-            physical = (skills / 'ship/SKILL.md').resolve().parent.parent.parent.parent
+            physical = (skills / 'land/SKILL.md').resolve().parent.parent.parent.parent
             result = self.run_detector({'CLAUDE_CODE_REMOTE':'true'},
                 path=physical / 'docs/templates/cloud-sessions/harness-signals.sh')
             self.assertEqual(result.returncode, 0)

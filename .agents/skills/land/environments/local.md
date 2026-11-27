@@ -1,8 +1,8 @@
-# Ship policy — `local` (bundled default)
+# Land policy — `local` (bundled default)
 
-The default for a repository that declares no `docs/work/ship/local.md`. It
-restates the fleet's shipping convention for an authorized local session
-(Workshop `docs/shipping-conventions.md`): where the default branch permits it,
+The default for a repository that declares no `docs/work/land/local.md`. It
+restates the fleet's landing convention for an authorized local session
+(Workshop `docs/landing-conventions.md`): where the default branch permits it,
 commit and push directly. A repository with different rules writes its own file
 and says why.
 
@@ -27,9 +27,9 @@ commit another session made and has not pushed is not published unasked.
 
 ## Monitoring
 
-None owed. CI runs after the push and the ship does not wait on it; the report
+None owed. CI runs after the push and the landing does not wait on it; the report
 names the pushed SHA so the run can be found. A red run afterwards is ordinary
-work, not a ship failure.
+work, not a landing failure.
 
 ## Environment-limited checks
 
@@ -39,7 +39,7 @@ a licensed tool, a host service) names it in its own policy file.
 
 ## Submodules
 
-A pinned edge (no `branch =` in `.gitmodules`) is never bumped by a ship; a
+A pinned edge (no `branch =` in `.gitmodules`) is never bumped by a landing; a
 dirty or advanced checkout under one is a stop, because that work belongs in
 the submodule's own repository and lands there first. A tracked edge
 (`branch = <name>`) is bumped child-first per the skill's submodule reference.

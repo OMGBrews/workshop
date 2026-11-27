@@ -1,13 +1,16 @@
 ---
-name: ship
-description: Land finished work on the default branch by the route this repository declares for the current environment — a direct push from a local session, or a branch, pull request, CI watch, and merge from a cloud session. Reads the per-environment policy file under docs/work/ship/; bundled defaults cover a repository that declares nothing.
+name: land
+description: Land finished work on the default branch by the route this repository declares for the current environment — a direct push from a local session, or a branch, pull request, CI watch, and merge from a cloud session. Reads the per-environment policy file under docs/work/land/; bundled defaults cover a repository that declares nothing.
 ---
 
-# Ship
+# Land
 
 Turn finished work in this checkout into default-branch state, by whichever
 route the repository has declared for the environment the session is running
-in. Shipping means **landing**. It does not release, publish, promote, deploy,
+in. Landing is the boundary
+[verification terminology](../../../docs/verification-terminology.md#lifecycle-boundaries)
+defines: work reaches the shared default branch by pull-request merge or an
+authorized direct push. The skill does not release, publish, promote, deploy,
 or mint any public artifact; those later boundaries keep their own
 requirements, authorization, and runbooks.
 
@@ -18,7 +21,7 @@ This skill separates two things that used to share one document:
 - **Policy** — which route, which branch, who may merge, how to watch CI, which
   checks this environment cannot run, what the report must say. They differ
   per repository and per environment and live in one short file each:
-  `docs/work/ship/<environment>.md`. A repository that declares nothing gets
+  `docs/work/land/<environment>.md`. A repository that declares nothing gets
   the bundled default of the same name from `environments/` beside this file.
 
 **Arguments**: `[local|cloud] [merge]`, all optional. The first word forces the
@@ -37,7 +40,7 @@ direct-push route and is reported as such.
       implements this protocol. Quote the returned line:
       `environment=<local|cloud|unknown> signal=<source>`.
       Exit 0 with local or cloud selects that environment. Unknown, malformed
-      output, an unavailable detector, or nonzero exit stops shipping; report the
+      output, an unavailable detector, or nonzero exit stops the landing; report the
       signal and ask for an explicit local/cloud argument. Never infer local from
       a missing cloud variable, repository path, branch name, or origin URL.
 
@@ -49,7 +52,7 @@ direct-push route and is reported as such.
    **A result that contradicts the session's own knowledge is a stop, not a
    tiebreak.** If detection says `local` and the session knows it is in a
    harness-managed sandbox (a harness-assigned branch, a snapshot-restored
-   checkout, a documented cloud container), or the reverse, ship nothing; say
+   checkout, a documented cloud container), or the reverse, land nothing; say
    which signal was missing and ask for the explicit argument. The local
    route from a sandbox pushes to the default branch unreviewed, so a guess in
    that direction is the expensive one.
@@ -59,18 +62,27 @@ direct-push route and is reported as such.
    a policy file for it exists, and a detection rule for it is a change to
    this step, not to the policy file.
 
-2. **Policy file.** From the repository root, read the first that exists:
-   1. `docs/work/ship/<environment>.md` — the repository's own declaration;
-   2. `environments/<environment>.md` beside this file, resolved from the
+2. **Policy file.** From the repository root, take the first that applies:
+   1. The folder `docs/work/ship/` exists at all → stop. It is the policy
+      location this skill used before its rename to `land`, so the
+      repository's move is incomplete. Name every file in it and the
+      `docs/work/land/` path each one moves to, and land nothing. Test the
+      folder, not this environment's file: a repository whose only leftover
+      is `ship/local.md` would otherwise fall through to the bundled `cloud`
+      default without a word. There is no fallback to the old path.
+   2. `docs/work/land/<environment>.md` — the repository's own declaration;
+   3. `environments/<environment>.md` beside this file, resolved from the
       skill's **physical** directory (`readlink -f` on the path the harness
       reached it by), never lexically from a symlink path.
 
-   Neither exists → stop and report an undeclared environment. Nothing ships.
+   Neither declaration nor default exists → stop and report an undeclared
+   environment. Nothing lands. Every repository this run touches resolves its
+   policy through this same list, parents included.
 
 3. **Validate the policy file.** It carries exactly these seven headings, in
    this order, each answered. A heading with nothing to say says so in one
    line; a missing heading is a malformed policy, and a malformed policy stops
-   the ship before any remote action.
+   the landing before any remote action.
 
    | Heading | Answers |
    |---|---|
@@ -79,7 +91,7 @@ direct-push route and is reported as such.
    | `## Merge authorization` | On a pull-request route: what evidence lets this session merge, or that it must stop for review. On a direct route: what the invocation authorizes. Every standing delegation states its reason. |
    | `## Monitoring` | How this environment waits on CI and conflicts, and what brings a paused session back. |
    | `## Environment-limited checks` | Which definition-of-done rows cannot run here and what the PR body or report must say about them. |
-   | `## Submodules` | How each submodule edge is treated: tracked edges this ship bumps, pinned edges it never bumps, and what a dirty submodule checkout means. |
+   | `## Submodules` | How each submodule edge is treated: tracked edges this landing bumps, pinned edges it never bumps, and what a dirty submodule checkout means. |
    | `## Report` | What the closing report must contain beyond the invariant lines in Step 6. |
 
 4. **Say which file you read, by path**, in the plan and again in the report.
@@ -91,7 +103,7 @@ a policy file that contradicts an invariant does not win; report the conflict.
 
 ## Invariants — every environment, every route
 
-**Signal hygiene.** This skill ends by saying "shipped", so a false success is
+**Signal hygiene.** This skill ends by saying "landed", so a false success is
 its worst failure. Read
 [`signal-hygiene.md`](../../../docs/signal-hygiene.md) before changing
 anything here. A push is verified by its own exit status and the remote's
@@ -109,7 +121,7 @@ without authorizing the merge. Keep the three apart in the report
 ([`verification-terminology.md`](../../../docs/verification-terminology.md)).
 
 **Required evidence.** Satisfy `Landing requirements` in the repository's
-`docs/work/definition-of-done.md` for the surface the change touches. Do not ship red and do not substitute a
+`docs/work/definition-of-done.md` for the surface the change touches. Do not land red and do not substitute a
 weaker check for a documented one. Name every check skipped and why; afterwards
 a silent skip and satisfied evidence look identical.
 
@@ -136,7 +148,7 @@ capability problem.
 
 **The working tree may be shared.** On a local machine several sessions often
 work in one checkout, so `git status` shows the union of everyone's work. A
-ship commits only the files **this session** changed, by its own record of
+landing commits only the files **this session** changed, by its own record of
 what it wrote; everything else is left exactly as found, never staged,
 stashed, formatted, reverted, or pushed. The procedures that make that safe
 (pathspec commits, a hook that would stash other sessions' edits, integrating
@@ -150,10 +162,10 @@ and they load whenever the inventory finds a change this session did not make.
 From the repository root:
 
 1. `git status --porcelain=v1 -z`, then classify every dirty path against the
-   session's own record of what it changed: **mine** ships; **foreign** (not in
+   session's own record of what it changed: **mine** lands; **foreign** (not in
    the record) is left as found and named in the report; **shared** (in the
    record, but its diff carries hunks this session did not write) stops the
-   ship. Any foreign path means
+   landing. Any foreign path means
    [`references/shared-working-tree.md`](references/shared-working-tree.md)
    applies from here on. Uncommitted work of the session's own that is not
    finished is a stop too: finish it or exclude it, and say which.
@@ -170,17 +182,17 @@ From the repository root:
 
    **A failed fetch is not an empty result.** Behind the cloud proxy,
    `git -C <sm> fetch origin` fails for an unattached repository and the `log`
-   that follows prints nothing, reading as "nothing to ship". Check the fetch's
+   that follows prints nothing, reading as "nothing to land". Check the fetch's
    exit status; the no-remote fallback and its limits are in
    [`references/submodules.md`](references/submodules.md#inventory-without-a-remote).
-4. **Declared parents.** If any repository that ships here carries
+4. **Declared parents.** If any repository that lands here carries
    `docs/work/consumed-by.md`, or a `.gitmodules` edge here carries
    `branch =`, load [`references/submodules.md`](references/submodules.md) and
    plan the pointer bumps it describes. A repository with neither has no
    parent work, and that is the common case.
-5. **Print the ship plan**: environment and the signal that chose it; policy
-   file read, by path; route and target branch; what ships; what will be
-   skipped and why. A plan with nothing to ship ends here with that sentence.
+5. **Print the landing plan**: environment and the signal that chose it; policy
+   file read, by path; route and target branch; what lands; what will be
+   skipped and why. A plan with nothing to land ends here with that sentence.
 
 ## Step 2 — Capability
 
@@ -205,7 +217,7 @@ and strands a pushed branch.
 If the PR probe fails, stop and follow the repository's credential-recovery
 runbook. Do not mint or rotate credentials from this skill; shared credentials
 may belong to a wider fleet. If they say to push anyway, push, hand back
-the compare URL, and report "branch pushed, PR not opened", never "shipped".
+the compare URL, and report "branch pushed, PR not opened", never "landed".
 
 ## Step 3 — Required checks
 
@@ -235,7 +247,7 @@ missing declaration.
 **Docs-only lane.** Read `Docs-only surface` under `Landing requirements`.
 Run the repository's predicate from the Workshop mount.
 Resolve `<mount>` from this skill's physical directory: follow the skill path
-with `readlink -f`, then take the root above `.agents/skills/ship/`. Do not
+with `readlink -f`, then take the root above `.agents/skills/land/`. Do not
 resolve relative paths lexically from the consumer's symlink; see
 [`skill-path-resolution.md`](../../../docs/skill-path-resolution.md).
 
@@ -261,7 +273,7 @@ kit: `scripts/agent/session-start.sh`, `.claude/hooks/session-start.sh`, and
 `<mount>/docs/templates/cloud-sessions/` and executable. Test that the template
 exists before comparing: `cmp` against a missing file fails exactly like a
 drifted copy, and a missing template is "cannot evaluate", reported as such,
-not drift. Real drift stops the ship; upstream the hotfix into the template
+not drift. Real drift stops the landing; upstream the hotfix into the template
 first, then redeploy.
 
 ## Step 4 — Land
@@ -292,7 +304,7 @@ pull-request route. Never bypass protection or silently reinterpret a rejection.
    **before** integrating anything: a replay onto a moved default branch
    rewrites every commit in that range, foreign ones included. A foreign
    commit stops here, with the commits listed, until the user says whether
-   they may be published with this ship.
+   they may be published with this landing.
 3. Bring the branch current as `## Target branch` says. Fetch and inspect
    both the remote target and remote default. For a non-default target,
    integrate its remote tip as well as any base updates the policy requires;
@@ -333,7 +345,7 @@ pull-request route. Never bypass protection or silently reinterpret a rejection.
    subject for one commit, the task name for several. Body: what changed,
    which checks ran here, which were deferred or unavailable and why. Record
    the returned URL; no URL, no PR.
-3. Several repositories shipping together cross-link their PR bodies so the
+3. Several repositories landing together cross-link their PR bodies so the
    change set reads as one unit. Submodule PRs come first and the superproject
    PR carries **no** pointer bump until the child has merged
    ([`references/submodules.md`](references/submodules.md)).
@@ -347,7 +359,7 @@ pull-request route. Never bypass protection or silently reinterpret a rejection.
 6. **Merge or stop**, exactly as `## Merge authorization` says. A standing
    delegation merges (squash, one commit per change) once its stated evidence
    is in hand. Anything else stops here with the PR open, and the report names
-   who the merge waits on and what will bring the session back. `ship merge`
+   who the merge waits on and what will bring the session back. `land merge`
    re-enters at this step.
 
 **A deferred parent opens here.** After its child merges, verify the returned
@@ -394,7 +406,7 @@ Pull-request route, afterwards:
   an ancestry or `git cherry` test: the squash minted a new commit, so both
   misreport a merged branch as unmerged. Without PR tooling, compare against
   `origin/<branch>` **before** pruning, since pruning destroys that evidence.
-- Cancel any insurance timer the ship armed, in the same scheduler family that
+- Cancel any insurance timer the landing armed, in the same scheduler family that
   armed it ([`references/cloud-return.md`](references/cloud-return.md)).
 - Any pointer bump owed to a declared parent runs now, child-first, per
   [`references/submodules.md`](references/submodules.md).
@@ -418,7 +430,7 @@ heading adds:
   bypassed, with the step run that stood in for it;
 - what, if anything, is armed to bring the session back.
 
-Say "shipped" only about a landing Step 5 proved. A pushed branch without a
+Say "landed" only about a landing Step 5 proved. A pushed branch without a
 PR, an open PR, and a merged child with a lagging parent are each reported in
 their own words.
 
@@ -436,7 +448,7 @@ their own words.
 - **Policy file and invariant disagree** — the invariant holds; report the
   conflict so the policy file gets fixed.
 - **Session ends mid-route** — open PRs are durable server-side state; a later
-  session runs `ship merge`. The session's own return is a separate question
+  session runs `land merge`. The session's own return is a separate question
   answered by `## Monitoring`, never assumed.
 
 ## Hard "do NOT" list
@@ -451,7 +463,7 @@ their own words.
   push.** No `git add -A`, `git add .`, `git commit -a`, `git stash`,
   `rebase --autostash`, `reset --hard`, `checkout -- .`, `clean`, or branch
   switch in a tree that carries changes this session did not make.
-- **Do NOT report "shipped"** without the containment line, or while a declared
+- **Do NOT report "landed"** without the containment line, or while a declared
   parent still records the pre-merge pointer without naming it.
 - **Do NOT re-issue a scheduling or attachment call that was rejected**; each
   is a permission prompt on the maintainer's device.

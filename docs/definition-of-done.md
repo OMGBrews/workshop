@@ -42,7 +42,7 @@ applicable requirements pass, an authorized local session may push directly
 where the default branch permits it; a cloud session or protected repository
 uses a pull request. Neither a passing check nor a docs-only classification
 authorizes a commit, push, pull request, or merge. The full convention is in
-[`shipping-conventions.md`](shipping-conventions.md).
+[`landing-conventions.md`](landing-conventions.md).
 
 ## See also
 
@@ -50,5 +50,5 @@ authorizes a commit, push, pull request, or merge. The full convention is in
   and verification vocabulary
 - [`verification-profiles.md`](verification-profiles.md) — expectations by
   repository role and risk
-- [`shipping-conventions.md`](shipping-conventions.md) — authorization and
+- [`landing-conventions.md`](landing-conventions.md) — authorization and
   the two landing routes

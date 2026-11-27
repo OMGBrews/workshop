@@ -32,7 +32,7 @@ For launch questions, report:
 - the primary repository;
 - the always-attached additional repositories; and
 - any task-specific repository attachment that the user's task independently
-  requires. A parent in `docs/work/consumed-by.md` is shipping-only unless the
+  requires. A parent in `docs/work/consumed-by.md` is landing-only unless the
   task includes its pointer update; a child in `.gitmodules` is not automatically
   an attached repository.
 

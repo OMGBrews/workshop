@@ -1,8 +1,8 @@
 # Session environment detection
 
 The [canonical detector](templates/cloud-sessions/harness-signals.sh) owns session
-location signals for shipping and bootstrap. It distinguishes location from the
-separate permission to treat a checkout as disposable; repository shipping policy
+location signals for landing and bootstrap. It distinguishes location from the
+separate permission to treat a checkout as disposable; repository landing policy
 still decides how an authorized change lands.
 
 ## Command contract
@@ -20,7 +20,7 @@ environment=local signal=AGENT_SESSION_ENVIRONMENT
 `environment` is local, cloud, or unknown. `signal` names the evidence (comma-separated
 when several agree), none, invalid input, or conflicting inputs. Exit 0 means a valid
 evaluation, including unknown; exit 2 means malformed input or contradictory evidence.
-Unknown is not local and cannot select a shipping route. No credentials are inspected
+Unknown is not local and cannot select a landing route. No credentials are inspected
 or printed. The detector does not inspect Git remotes, branches, paths, or repository
 configuration to infer where the current process runs.
 
@@ -78,7 +78,7 @@ Each call reads the variables as they exist at that moment, after any detector
 normalization performed by sourcing. No pre-source values are retained.
 `unknown` is a fallback sentinel only for the remote helper; project and shell
 hints retain their original empty-value fallback behavior. The helpers print
-literal values and do not change classifier outputs or establish shipping or
+literal values and do not change classifier outputs or establish landing or
 bootstrap authority.
 
 For example, sourcing with legacy remote `false` and a positive cloud marker
@@ -98,7 +98,7 @@ a cloud clone would also read as local. For a local devcontainer, `containerEnv`
 an appropriate provisioning point; applying a change there requires recreating the
 container. Never bake local into a shared image that could run in a cloud session.
 A cloud provider's positive marker still conflicts with an incorrectly inherited
-local declaration, rather than silently permitting a local shipping route.
+local declaration, rather than silently permitting a local landing route.
 
 Other harnesses use the neutral declaration until they have a supported authoritative
 adapter here. A new adapter requires evidence for its marker and behavioral tests;
@@ -112,7 +112,7 @@ identity. The bootstrap drift check and cloud declaration validator enforce the
 three-file kit; older pins that predate the detector retain their older contract.
 HQ, whose Workshop is an independent checkout, verifies its seed in its bootstrap test.
 
-The ship skill always resolves the detector from its own physical Workshop tree,
+The land skill always resolves the detector from its own physical Workshop tree,
 so an old consumer library cannot break a new skill's protocol. Kit adoption must
 include the detector, neutral bootstrap, and vendor wrapper together. Fleet pointer
 updates remain separately requested work.
@@ -148,7 +148,7 @@ contract on every command invocation. See
 
 `tests/test-session-environment.sh` exercises the command and sourced interfaces,
 unknown and invalid inputs, conflicts, explicit overrides, legacy callers, capability
-separation, and the ship command resolved through a differently named mount. The
+separation, and the land command resolved through a differently named mount. The
 bootstrap and declaration tests exercise missing and drifted deployed copies.
 `tests/test-harness-context-hints.sh` exercises the legacy helpers' call-time
 lookups, neutral precedence, vendor fallbacks and classifier non-interference.

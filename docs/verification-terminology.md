@@ -238,7 +238,7 @@ The reusable prompt and expected classification for reader-side trials are in
   verification expectations by repository role and risk
 - [`definition-of-done.md`](definition-of-done.md) — how repositories declare
   required evidence and current enforcement
-- [`shipping-conventions.md`](shipping-conventions.md) — authorization and the
+- [`landing-conventions.md`](landing-conventions.md) — authorization and the
   two standard landing routes
 - [`signal-hygiene.md`](signal-hygiene.md) — what makes a result trustworthy
 - [`harness-agnostic-repos.md`](harness-agnostic-repos.md) — how the standing

@@ -15,7 +15,7 @@ verify, ticks nothing, and leaves the brief in progress for a host anyway.
 
 Each session runs `task-implement` to the end of its verification and stops at the
 close-out question, where the owner confirms the task finished. The owner then lands
-the work from that session with `ship`.
+the work from that session with `land`.
 
 Run it from a Claude Code on the web session or from a local Claude Code session;
 the two launch the sessions by different routes. The launch mechanics, both routes
@@ -165,7 +165,7 @@ Three rules settle the common hard cases:
 - **A stopping condition that allows "report it as unavailable" does not make the
   item cloud.** The criterion still cannot be ticked without the evidence.
 - **Preparing a release is cloud work; publishing and deploying are host.** A
-  version bump and changelog can be written in the cloud, though the cloud ship
+  version bump and changelog can be written in the cloud, though the cloud landing
   policy sends that pull request to the owner's review.
 
 **Then give the task one verdict:**
@@ -273,13 +273,13 @@ skipped list:
 
 The report's "what happens next" says each full session stops at its close-out
 question, and each cloud-part session at its resume point; that the owner lands the
-work from that session with `ship`; and that the cloud ship policy sends a pull
+work from that session with `land`; and that the cloud landing policy sends a pull
 request that touches a path the policy excludes, such as a version bump, to the
 owner's review rather than merging it. From a local session it also says that a session
 cannot report a failed turn back to it, that checking on one is its link at
 claude.ai/code or `get_run_log` on its session ID, and that a session should be archived
-at claude.ai/code only once its work has landed with `ship` or been given up,
-because its commits may exist nowhere else until `ship` pushes them.
+at claude.ai/code only once its work has landed with `land` or been given up,
+because its commits may exist nowhere else until `land` pushes them.
 
 ## See also
 
@@ -292,5 +292,5 @@ because its commits may exist nowhere else until `ship` pushes them.
 - `docs/work/claude-code-web.md` in the consuming repository — the capability
   authority, and the build commands each session uses; its shape is the
   [Claude Code Web declarations](../../../docs/claude-code-web.md) standard
-- `docs/work/ship/cloud.md` in the consuming repository — which implementation pull
+- `docs/work/land/cloud.md` in the consuming repository — which implementation pull
   requests merge on their own and which wait for review

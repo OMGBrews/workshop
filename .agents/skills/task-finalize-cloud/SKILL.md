@@ -15,7 +15,7 @@ fans that out, one task per session, and finalizes nothing itself.
 
 Each session runs `task-finalize` through its verification and orientation card,
 then stops. The owner opens the session at claude.ai/code, answers the questions
-there, and lands the finalized brief from that session with `ship`. A landed brief
+there, and lands the finalized brief from that session with `land`. A landed brief
 sits in `docs/work/tasks/finalized/`, where `task-implement-cloud` picks it up.
 
 Run it from a Claude Code on the web session or from a local Claude Code session;
@@ -141,7 +141,7 @@ summary, and leave the sibling's brief to its own session.
 
 Apply cloud dispatch steps 6 and 7. The report's "what happens next" says each
 session stops at its orientation card; that after `task-finalize`'s commit the
-owner lands the brief from that session with `ship`; and that a landed brief moves
+owner lands the brief from that session with `land`; and that a landed brief moves
 to `finalized/`, ready for `task-implement-cloud`. From a local session it also says
 that a session cannot report a failed turn back to it, that checking on one is its
 link at claude.ai/code or `get_run_log` on its session ID, and that archiving a

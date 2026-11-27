@@ -127,9 +127,9 @@ nothing: *not home*, and *not ready*.
 Follow the `task-create` skill through writing the file: the goal statement
 from step 4 answers its goal question, and its bucket default stands unless
 the user says otherwise. Stop after its confirmation phase. Do **not** take
-its finalize offer or its ship step yet — both would strand the thought's
+its finalize offer or its landing step yet — both would strand the thought's
 deletion: `task-finalize` commits only the task's own files, and
-`task-create`'s ship step expects `git status` to show the task file alone.
+`task-create`'s landing step expects `git status` to show the task file alone.
 
 Instead, commit the task, any tasks-root scaffolding `task-create` created,
 and the thought's deletion together. Only then relay the offer: run

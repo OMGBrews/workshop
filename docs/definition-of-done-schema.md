@@ -86,7 +86,7 @@ A key-value list, one key per line, these keys in this order:
   higher one, lists the missing evidence under known gaps. For the other three
   profiles, write `Not applicable — <profile>`.
 - **Default landing route** — `pull request` or `authorized direct push`, the
-  two routes in [`shipping-conventions.md`](shipping-conventions.md#how-work-lands).
+  two routes in [`landing-conventions.md`](landing-conventions.md#how-work-lands).
 - **Landing enforcement** — `advisory`, `procedural`, or `platform-enforced`:
   what happens to a change that reaches the default branch without its landing
   requirements satisfied. It summarizes section 3: it is the strongest
@@ -163,7 +163,7 @@ expects — first, and where CI runs it, the matching `CI status` names. Manual
 evidence such as a review is a requirement with `Evidence type: manual` and
 `Command: none`. Authorization to land is not a requirement and is not
 declared here; it stays with
-[`shipping-conventions.md`](shipping-conventions.md).
+[`landing-conventions.md`](landing-conventions.md).
 
 ### Docs-only surface
 
@@ -300,5 +300,5 @@ adoption owns the removal.
   of every token above
 - [`verification-profiles.md`](verification-profiles.md) — the four profiles
   and their baselines
-- [`shipping-conventions.md`](shipping-conventions.md) — authorization and the
+- [`landing-conventions.md`](landing-conventions.md) — authorization and the
   two landing routes

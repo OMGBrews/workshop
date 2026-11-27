@@ -91,7 +91,7 @@ tool failure, or weaken the check. Missing optional tooling is not an error.
 
 On success, report the moves, repaired files, and verification result (manual
 when applicable). Return to the caller's authorization rules: this procedure
-stages work and grants no commit or shipping permission.
+stages work and grants no commit or landing permission.
 
 The [verification walkthrough](link-repair-verification.md) exercises these
 steps with mechanical repair, manual fallback, co-moved targets, and failures.

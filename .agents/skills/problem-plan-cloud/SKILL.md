@@ -16,7 +16,7 @@ nothing itself.
 
 Each session runs `problem-plan` up to its orientation card and stops. The owner
 opens the session at claude.ai/code, answers the interview there, and lands the
-result from that session with `ship`.
+result from that session with `land`.
 
 Run it from a Claude Code on the web session or from a local Claude Code session;
 the two launch the sessions by different routes. The launch mechanics, both routes
@@ -146,7 +146,7 @@ plan the pair here or leave it to its own session.
 
 Apply cloud dispatch steps 6 and 7. The report's "what happens next" says each
 session stops at its orientation card, and that after `problem-plan`'s commit the
-owner lands the plan from that session with `ship`. From a local session it also says
+owner lands the plan from that session with `land`. From a local session it also says
 that a session cannot report a failed turn back to it, that checking on one is its
 link at claude.ai/code or `get_run_log` on its session ID, and that archiving a
 session at claude.ai/code before the interview loses no commit, because

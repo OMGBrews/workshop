@@ -346,7 +346,12 @@ everything; push nothing.
 
 - **Multi-repo checkouts** (submodules, or a workspace of clones): commit child-first, then
   the parent's pointer, and only for edges the parent already tracks. Publication —
-  `push.sh`, the `ship` skill, any PR — is the user's call, not a landing's.
+  `push.sh`, the `land` skill, any PR — is the user's call, not this skill's.
+
+**This skill commits locally and never publishes.** Its name predates the `land`
+skill: "landing a session" here means leaving the tree committed, not putting work on
+the default branch. Pushing, opening a pull request, and merging are the `land` skill's
+job, run when the user asks for it.
 
 Verify by reading the commands' own signals, never by asserting the outcome
 ([`signal-hygiene.md`](../../../docs/signal-hygiene.md)):

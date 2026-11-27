@@ -1,6 +1,6 @@
-# Ship reference — a working tree shared by several sessions
+# Land reference — a working tree shared by several sessions
 
-Loaded by the `ship` skill whenever the inventory finds changes this session
+Loaded by the `land` skill whenever the inventory finds changes this session
 did not make. On a local machine several agent sessions commonly work in the
 same checkout at once, so `git status` shows the union of everyone's work, the
 index may hold another session's staged files, and the branch may carry
@@ -20,13 +20,13 @@ not in the record is foreign.
 
 For each line of `git status --porcelain=v1 -z`, decide:
 
-- **Mine** — in the session's record. Ships.
+- **Mine** — in the session's record. Lands.
 - **Foreign** — not in the record. Left exactly as found: not staged, not
   committed, not formatted, not reverted, not stashed. Named in the report by
   path, under "left for another session".
 - **Shared** — in the record, but `git diff -- <path>` shows hunks this
   session did not write. **Stop.** A file two sessions edited cannot be split
-  safely by a ship; put it to the user with the hunks named.
+  safely by a landing; put it to the user with the hunks named.
 - **Generated** — produced by a generator this session ran (TypeScript
   sections, the reference library, `.env.example`). Mine, and said so.
 
@@ -119,7 +119,7 @@ dies with `could not reset submodule index` half-applied.
 commits, keeps every other index entry including foreign staged ones, and
 **fails with `Entry '<path>' not uptodate. Cannot merge.`** when such a path
 has local changes. That failure is the design: upstream changed a file another
-session is editing, and the ship stops and names the file rather than
+session is editing, and the landing stops and names the file rather than
 overwriting it. `reset --soft` then moves the branch without touching the
 index or tree. Afterwards re-run the checks the incoming commits could affect,
 and `git submodule update` only if a gitlink moved and that submodule's
@@ -136,7 +136,7 @@ git log --format='%h %s' origin/<default>..HEAD
 ```
 
 Every commit must be one this session made, by its own record. A foreign
-commit in the range stops the ship: another session may still be verifying it,
+commit in the range stops the landing: another session may still be verifying it,
 and publishing it is their call. Report the commits and ask, and ask **before**
 integrating upstream, because the worktree replay above rewrites every commit
 in the range and would mint new SHAs for the foreign ones too. When the foreign
